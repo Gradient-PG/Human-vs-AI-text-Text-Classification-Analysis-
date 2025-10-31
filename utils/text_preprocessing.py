@@ -17,22 +17,6 @@ from sklearn.model_selection import train_test_split
 from transformers import AutoTokenizer
 
 
-def load_raw_data(path: str) -> pd.DataFrame:
-    """
-    Load raw CSV data.
-    
-    Args:
-        path: Path to the CSV file
-        
-    Returns:
-        DataFrame with text and labels
-        
-    Hint: Simple pd.read_csv() wrapper for consistency
-    """
-    # TODO: Implement
-    pass
-
-
 def preprocess_text(df: pd.DataFrame, text_column: str = 'text') -> List[str]:
     """
     Basic text preprocessing (optional cleaning).
@@ -48,11 +32,13 @@ def preprocess_text(df: pd.DataFrame, text_column: str = 'text') -> List[str]:
         - Convert to lowercase (optional, tokenizer may handle this)
         - Remove extra whitespace
         - Handle NaN values
-        
-    Note: Don't do too much - the tokenizer will handle most things!
     """
-    # TODO: Implement
-    pass
+    # TODO: Replace newlines and other special characters with spaces
+
+    df[text_column] = df[text_column].apply(lambda x: x.lower())
+    df[text_column] = df[text_column].apply(lambda x: x.strip())
+
+    return df[text_column].tolist()
 
 
 def create_train_test_split(
@@ -74,11 +60,9 @@ def create_train_test_split(
         
     Returns:
         train_df, test_df tuple
-        
-    Hint: Use sklearn.model_selection.train_test_split with stratify parameter
     """
-    # TODO: Implement
-    pass
+    train_df, test_df = train_test_split(df, test_size=test_size, random_state=random_state, stratify=df[label_column])
+    return train_df, test_df
 
 
 def tokenize_texts(
@@ -101,13 +85,10 @@ def tokenize_texts(
     Returns:
         Dictionary with 'input_ids', 'attention_mask', etc.
         
-    Hint:
-        1. Load tokenizer: AutoTokenizer.from_pretrained(tokenizer_name)
-        2. Call tokenizer(texts, ...) with appropriate parameters
-        3. Return the tokenizer output as dict
     """
-    # TODO: Implement
-    pass
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    encodings = tokenizer(texts, max_length=max_length, padding=padding, truncation=truncation, return_tensors='pt')
+    return encodings
 
 
 def save_processed_data(
@@ -126,14 +107,13 @@ def save_processed_data(
         train_labels: Training labels
         test_labels: Test labels
         output_dir: Directory to save processed data
-        
-    Hint:
-        Use torch.save() or np.save() to save the data
-        Save as: train_encodings.pt, test_encodings.pt, 
-                 train_labels.npy, test_labels.npy
     """
-    # TODO: Implement
-    pass
+    import os
+
+    torch.save(train_encodings, os.path.join(output_dir, 'train_encodings.pt'))
+    torch.save(test_encodings, os.path.join(output_dir, 'test_encodings.pt'))
+    np.save(os.path.join(output_dir, 'train_labels.npy'), train_labels)
+    np.save(os.path.join(output_dir, 'test_labels.npy'), test_labels)
 
 
 def load_processed_data(

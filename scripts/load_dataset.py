@@ -12,24 +12,6 @@ Output:
 """
 
 import pandas as pd
-from pathlib import Path
-
-
-def load_raw_dataset(csv_path: str) -> pd.DataFrame:
-    """
-    Load the raw CSV dataset.
-    
-    Args:
-        csv_path: Path to the CSV file
-        
-    Returns:
-        DataFrame with the loaded data
-        
-    Hint: Use pandas.read_csv()
-    """
-    # TODO: Implement loading logic
-    pass
-
 
 def print_dataset_stats(df: pd.DataFrame) -> None:
     """
@@ -46,25 +28,18 @@ def print_dataset_stats(df: pd.DataFrame) -> None:
         - Label distribution (value_counts for the label column)
         - First few examples
         
-    Hint: Use df.info(), df.describe(), df['label_column'].value_counts()
     """
-    # TODO: Implement stats printing
-    pass
+    print(df.info())
+    print(df['generated'].value_counts())
+    print(df.head())
 
 
 def main():
     """
     Main entry point - load data and display stats.
-    
-    Hint: 
-    1. Define the path to your raw CSV (e.g., 'data/raw/AI_Human.csv')
-    2. Call load_raw_dataset()
-    3. Call print_dataset_stats()
     """
-    # TODO: Implement main logic
-    pass
-
+    df = pd.read_csv('data/raw/AI_Human.csv')
+    print_dataset_stats(df)
 
 if __name__ == "__main__":
     main()
-

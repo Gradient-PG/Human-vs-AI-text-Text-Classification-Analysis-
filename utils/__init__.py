@@ -3,7 +3,6 @@ Utility modules for the Human vs AI Text Classification project.
 """
 
 from .text_preprocessing import (
-    load_raw_data,
     preprocess_text,
     create_train_test_split,
     tokenize_texts,
@@ -18,7 +17,6 @@ from .dataset_loader import (
 )
 
 __all__ = [
-    'load_raw_data',
     'preprocess_text',
     'create_train_test_split',
     'tokenize_texts',

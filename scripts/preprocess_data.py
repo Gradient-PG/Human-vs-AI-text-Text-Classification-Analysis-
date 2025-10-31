@@ -24,17 +24,18 @@ Output:
 
 import sys
 from pathlib import Path
+import pandas as pd
 
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
 
 from utils.text_preprocessing import (
-    load_raw_data,
     preprocess_text,
     create_train_test_split,
     tokenize_texts,
     save_processed_data
 )
+from scripts.load_dataset import print_dataset_stats
 
 
 def main():
@@ -66,28 +67,59 @@ def main():
     print("Starting preprocessing pipeline...")
     print("="*60)
     
-    # TODO: Implement the pipeline
-    # Step 1: Define paths
+    # Step 0: Define paths
+    raw_data_path = 'data/raw/AI_Human.csv'
+    processed_data_path = 'data/processed'
+
+    # Step 1: Load raw data
+    print("1. Loading raw data...")
+    df = pd.read_csv(raw_data_path)
+    df = df[:10000]
+
+    print_dataset_stats(df)
+  
+    # Step 2: Preprocess text
+    print("2. Preprocessing text...")
+
+    df['text'] = preprocess_text(df, text_column='text')
+
+    # Step 3: Create train/test split
+    print("3. Creating train/test split...")
+
+    train_df, test_df = create_train_test_split(df, text_column='text', label_column='generated', test_size=0.2, random_state=0)
+
+    # Step 4: Extract texts and labels
+    print("4. Extracting texts and labels...")
+
+    print("\nTrain DataFrame:")
+    print(train_df)
+    print("\nTest DataFrame:")
+    print(test_df)
+
+    train_texts = train_df['text'].tolist()
+    test_texts = test_df['text'].tolist()
+    train_labels = train_df['generated'].tolist()
+    test_labels = test_df['generated'].tolist()
+      
+    # Step 5: Tokenize
+    print("5. Tokenizing texts...")
+
+    train_encodings = tokenize_texts(train_texts)
+    test_encodings = tokenize_texts(test_texts)
+
+    # Step 6: Save processed data
+    print("6. Saving processed data...")
+
+    save_processed_data(
+        train_encodings = train_encodings,
+        test_encodings = test_encodings,
+        train_labels = train_labels,
+        test_labels = test_labels,
+        output_dir = processed_data_path
+    )
     
-    # Step 2: Load raw data
-    
-    # Step 3: Print basic info
-    
-    # Step 4: Create train/test split
-    
-    # Step 5: Extract texts and labels
-    
-    # Step 6: Tokenize
-    
-    # Step 7: Save processed data
-    
-    # Step 8: (Optional) Save CSV files
-    
-    # Step 9: Print summary
-    
-    print("="*60)
-    print("Preprocessing complete!")
-    print("="*60)
+    # Step 7: Print summary
+    print(f"7. Preprocessing complete! Files were saved to {processed_data_path}")
 
 
 if __name__ == "__main__":
