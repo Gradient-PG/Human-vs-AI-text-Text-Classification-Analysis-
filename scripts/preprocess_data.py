@@ -11,15 +11,10 @@ Usage:
     python scripts/preprocess_data.py
     
 Input:
-    - data/raw/AI_Human.csv (or your CSV filename)
+    - data/raw/AI_Human.csv
     
 Output:
-    - data/processed/train_encodings.pt
-    - data/processed/test_encodings.pt
-    - data/processed/train_labels.npy
-    - data/processed/test_labels.npy
-    - data/processed/train.csv (optional, for reference)
-    - data/processed/test.csv (optional, for reference)
+    - data/processed/tokenized_dataset/ (HuggingFace Dataset format)
 """
 
 import sys
@@ -32,9 +27,10 @@ sys.path.append(str(Path(__file__).parent.parent))
 from utils.text_preprocessing import (
     preprocess_text,
     create_train_test_split,
-    tokenize_texts,
-    save_processed_data
+    tokenize_and_create_dataset,
+    save_dataset
 )
+from datasets import DatasetDict
 from scripts.load_dataset import print_dataset_stats
 
 
@@ -74,7 +70,7 @@ def main():
     # Step 1: Load raw data
     print("1. Loading raw data...")
     df = pd.read_csv(raw_data_path)
-    df = df[:30000]
+    # df = df[:30000]
 
     print_dataset_stats(df)
   
@@ -101,28 +97,43 @@ def main():
     train_labels = train_df['generated'].tolist()
     test_labels = test_df['generated'].tolist()
       
-    # Step 5: Tokenize
-    print("5. Tokenizing texts...")
+    # Step 5: Tokenize and create datasets
+    print("5. Tokenizing and creating datasets...")
 
     max_length = 512
     batch_size = 1000
 
-    train_encodings = tokenize_texts(train_texts, max_length=max_length, batch_size=batch_size)
-    test_encodings = tokenize_texts(test_texts, max_length=max_length, batch_size=batch_size)
-
-    # Step 6: Save processed data
-    print("6. Saving processed data...")
-
-    save_processed_data(
-        train_encodings = train_encodings,
-        test_encodings = test_encodings,
-        train_labels = train_labels,
-        test_labels = test_labels,
-        output_dir = processed_data_path
+    print("\n   Processing train split...")
+    train_dataset = tokenize_and_create_dataset(
+        train_texts, 
+        train_labels,
+        max_length=max_length, 
+        batch_size=batch_size
     )
     
+    print("\n   Processing test split...")
+    test_dataset = tokenize_and_create_dataset(
+        test_texts,
+        test_labels, 
+        max_length=max_length, 
+        batch_size=batch_size
+    )
+
+    # Step 6: Combine into DatasetDict and save
+    print("\n6. Saving datasets...")
+    
+    dataset_dict = DatasetDict({
+        'train': train_dataset,
+        'test': test_dataset
+    })
+    
+    save_dataset(dataset_dict, output_dir=processed_data_path)
+    
     # Step 7: Print summary
-    print(f"7. Preprocessing complete! Files were saved to {processed_data_path}")
+    print(f"\n7. Preprocessing complete!")
+    print(f"   Train samples: {len(train_dataset)}")
+    print(f"   Test samples: {len(test_dataset)}")
+    print(f"   Saved to: {processed_data_path}/tokenized_dataset")
 
 
 if __name__ == "__main__":

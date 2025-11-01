@@ -5,6 +5,7 @@ This module provides:
 - TextDataset class for wrapping tokenized texts and labels
 - Helper functions to create train/test DataLoaders
 - Functions to load datasets from saved files
+- Compatibility with HuggingFace datasets
 """
 
 import torch
@@ -12,6 +13,8 @@ from torch.utils.data import Dataset, DataLoader
 from typing import Dict, Tuple, Any, Optional, Union
 from pathlib import Path
 import numpy as np
+from datasets import load_from_disk
+import os
 
 
 class TextDataset(Dataset):
@@ -73,8 +76,8 @@ class TextDataset(Dataset):
         return len(self.labels)
 
 def get_dataloaders(
-    train_dataset: TextDataset,
-    test_dataset: TextDataset,
+    train_dataset: Union[TextDataset, Any],
+    test_dataset: Union[TextDataset, Any],
     batch_size: int = 32,
     shuffle_train: bool = True,
     num_workers: int = 0
@@ -82,11 +85,11 @@ def get_dataloaders(
     """
     Create DataLoaders for training and testing.
     
-    Can work with either in-memory data or file paths.
+    Works with PyTorch Dataset or HuggingFace Dataset.
     
     Args:
-        train_dataset: Training dataset
-        test_dataset: Test dataset
+        train_dataset: Training dataset (TextDataset or HF Dataset)
+        test_dataset: Test dataset (TextDataset or HF Dataset)
         batch_size: Batch size for DataLoader
         shuffle_train: Whether to shuffle training data
         num_workers: Number of workers for data loading (0 = main thread)
@@ -97,3 +100,18 @@ def get_dataloaders(
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle_train, num_workers=num_workers)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     return train_loader, test_loader
+
+
+def load_hf_dataset(data_dir: str = 'data/processed'):
+    """
+    Load HuggingFace DatasetDict from disk.
+    
+    Args:
+        data_dir: Directory containing processed data
+        
+    Returns:
+        DatasetDict with train and test splits
+    """
+    dataset_path = os.path.join(data_dir, 'tokenized_dataset')
+    dataset = load_from_disk(dataset_path)
+    return dataset

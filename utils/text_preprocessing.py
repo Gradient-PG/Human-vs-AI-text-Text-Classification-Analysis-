@@ -16,7 +16,8 @@ from pathlib import Path
 from sklearn.model_selection import train_test_split
 from transformers import AutoTokenizer
 from tqdm import tqdm
-from datasets import Dataset
+from datasets import Dataset, DatasetDict, load_from_disk
+import os
 
 
 def preprocess_text(df: pd.DataFrame, text_column: str = 'text') -> List[str]:
@@ -67,19 +68,21 @@ def create_train_test_split(
     return train_df, test_df
 
 
-def tokenize_texts(
+def tokenize_and_create_dataset(
     texts: List[str],
+    labels: List[int],
     tokenizer_name: str = 'distilbert-base-uncased',
     max_length: int = 512,
     padding: str = 'max_length',
     truncation: bool = True,
     batch_size: int = 1000
-) -> Dict[str, Any]:
+) -> Dataset:
     """
-    Tokenize text using Hugging Face tokenizer with batch processing to reduce memory usage.
+    Tokenize texts and create a HuggingFace Dataset with labels.
     
     Args:
         texts: List of text strings to tokenize
+        labels: List of integer labels
         tokenizer_name: Name of the HF tokenizer to use
         max_length: Maximum sequence length
         padding: Padding strategy ('max_length' or 'longest')
@@ -87,9 +90,8 @@ def tokenize_texts(
         batch_size: Number of texts to process at once
         
     Returns:
-        Dictionary with 'input_ids', 'attention_mask', etc.
+        HuggingFace Dataset with tokenized texts and labels
     """
-
     print(f"   Loading tokenizer: {tokenizer_name}")
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
     
@@ -99,9 +101,8 @@ def tokenize_texts(
     else:
         print(f"   -- Using slow tokenizer")
     
-    # Create HuggingFace Dataset from texts
     print(f"   Creating dataset from {len(texts)} texts...")
-    dataset = Dataset.from_dict({"text": texts})
+    dataset = Dataset.from_dict({"text": texts, "labels": labels})
     
     # Define tokenization function
     def tokenize_function(examples):
@@ -121,58 +122,42 @@ def tokenize_texts(
         desc="Tokenizing"
     )
     
-    # Convert to torch tensors
-    print("   Converting to PyTorch tensors...")
-    tokenized_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask'])
+    tokenized_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'labels'])
     
-    # Extract as dictionary (similar format to original function)
-    encodings = {
-        'input_ids': tokenized_dataset['input_ids'],
-        'attention_mask': tokenized_dataset['attention_mask']
-    }
-    
-    return encodings
+    return tokenized_dataset
 
 
-def save_processed_data(
-    train_encodings: Dict[str, Any],
-    test_encodings: Dict[str, Any],
-    train_labels: np.ndarray,
-    test_labels: np.ndarray,
+def save_dataset(
+    dataset_dict: DatasetDict,
     output_dir: str = 'data/processed'
 ) -> None:
     """
-    Save tokenized data to disk for later use.
+    Save HuggingFace DatasetDict to disk using memory-mapped format.
     
     Args:
-        train_encodings: Tokenized training texts
-        test_encodings: Tokenized test texts
-        train_labels: Training labels
-        test_labels: Test labels
+        dataset_dict: DatasetDict containing train/test splits
         output_dir: Directory to save processed data
     """
-    import os
-
-    torch.save(train_encodings, os.path.join(output_dir, 'train_encodings.pt'))
-    torch.save(test_encodings, os.path.join(output_dir, 'test_encodings.pt'))
-    np.save(os.path.join(output_dir, 'train_labels.npy'), train_labels)
-    np.save(os.path.join(output_dir, 'test_labels.npy'), test_labels)
+    dataset_path = os.path.join(output_dir, 'tokenized_dataset')
+    dataset_dict.save_to_disk(dataset_path)
+    print(f"   Dataset saved to {dataset_path}")
 
 
-def load_processed_data(
+def load_dataset(
     data_dir: str = 'data/processed'
-) -> Tuple[Dict[str, Any], Dict[str, Any], np.ndarray, np.ndarray]:
+) -> DatasetDict:
     """
-    Load previously saved processed data.
+    Load HuggingFace DatasetDict from disk.
     
     Args:
         data_dir: Directory containing processed data
         
     Returns:
-        train_encodings, test_encodings, train_labels, test_labels
-        
-    Hint: Use torch.load() or np.load() to load the saved files
+        DatasetDict with train and test splits
     """
-    # TODO: Implement
-    pass
+    dataset_path = os.path.join(data_dir, 'tokenized_dataset')
+    dataset = load_from_disk(dataset_path)
+    print(f"   Dataset loaded from {dataset_path}")
+    print(f"   Train samples: {len(dataset['train'])}, Test samples: {len(dataset['test'])}")
+    return dataset
 
