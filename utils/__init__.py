@@ -13,7 +13,6 @@ from .text_preprocessing import (
 from .dataset_loader import (
     TextDataset,
     get_dataloaders,
-    get_single_dataloader
 )
 
 __all__ = [
@@ -24,6 +23,5 @@ __all__ = [
     'load_processed_data',
     'TextDataset',
     'get_dataloaders',
-    'get_single_dataloader'
 ]
 

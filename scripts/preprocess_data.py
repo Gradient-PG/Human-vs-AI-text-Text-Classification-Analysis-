@@ -74,7 +74,7 @@ def main():
     # Step 1: Load raw data
     print("1. Loading raw data...")
     df = pd.read_csv(raw_data_path)
-    df = df[:10000]
+    df = df[:30000]
 
     print_dataset_stats(df)
   
@@ -104,8 +104,11 @@ def main():
     # Step 5: Tokenize
     print("5. Tokenizing texts...")
 
-    train_encodings = tokenize_texts(train_texts)
-    test_encodings = tokenize_texts(test_texts)
+    max_length = 512
+    batch_size = 1000
+
+    train_encodings = tokenize_texts(train_texts, max_length=max_length, batch_size=batch_size)
+    test_encodings = tokenize_texts(test_texts, max_length=max_length, batch_size=batch_size)
 
     # Step 6: Save processed data
     print("6. Saving processed data...")

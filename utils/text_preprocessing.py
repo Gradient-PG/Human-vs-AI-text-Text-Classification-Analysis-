@@ -15,6 +15,8 @@ from typing import List, Tuple, Dict, Any
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 from transformers import AutoTokenizer
+from tqdm import tqdm
+from datasets import Dataset
 
 
 def preprocess_text(df: pd.DataFrame, text_column: str = 'text') -> List[str]:
@@ -70,10 +72,11 @@ def tokenize_texts(
     tokenizer_name: str = 'distilbert-base-uncased',
     max_length: int = 512,
     padding: str = 'max_length',
-    truncation: bool = True
+    truncation: bool = True,
+    batch_size: int = 1000
 ) -> Dict[str, Any]:
     """
-    Tokenize text using Hugging Face tokenizer.
+    Tokenize text using Hugging Face tokenizer with batch processing to reduce memory usage.
     
     Args:
         texts: List of text strings to tokenize
@@ -81,13 +84,53 @@ def tokenize_texts(
         max_length: Maximum sequence length
         padding: Padding strategy ('max_length' or 'longest')
         truncation: Whether to truncate sequences exceeding max_length
+        batch_size: Number of texts to process at once
         
     Returns:
         Dictionary with 'input_ids', 'attention_mask', etc.
-        
     """
+
+    print(f"   Loading tokenizer: {tokenizer_name}")
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-    encodings = tokenizer(texts, max_length=max_length, padding=padding, truncation=truncation, return_tensors='pt')
+    
+    # Check if fast tokenizer is available
+    if hasattr(tokenizer, 'is_fast') and tokenizer.is_fast:
+        print(f"   ++ Using fast tokenizer (Rust-based)")
+    else:
+        print(f"   -- Using slow tokenizer")
+    
+    # Create HuggingFace Dataset from texts
+    print(f"   Creating dataset from {len(texts)} texts...")
+    dataset = Dataset.from_dict({"text": texts})
+    
+    # Define tokenization function
+    def tokenize_function(examples):
+        return tokenizer(
+            examples["text"],
+            padding=padding,
+            truncation=truncation,
+            max_length=max_length
+        )
+    
+    print(f"   Tokenizing in batches of {batch_size}...")
+    tokenized_dataset = dataset.map(
+        tokenize_function,
+        batched=True,
+        batch_size=batch_size,
+        remove_columns=["text"],
+        desc="Tokenizing"
+    )
+    
+    # Convert to torch tensors
+    print("   Converting to PyTorch tensors...")
+    tokenized_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask'])
+    
+    # Extract as dictionary (similar format to original function)
+    encodings = {
+        'input_ids': tokenized_dataset['input_ids'],
+        'attention_mask': tokenized_dataset['attention_mask']
+    }
+    
     return encodings
 
 

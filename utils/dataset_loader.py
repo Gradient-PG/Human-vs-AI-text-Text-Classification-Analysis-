@@ -4,11 +4,13 @@ PyTorch Dataset and DataLoader utilities for text classification.
 This module provides:
 - TextDataset class for wrapping tokenized texts and labels
 - Helper functions to create train/test DataLoaders
+- Functions to load datasets from saved files
 """
 
 import torch
 from torch.utils.data import Dataset, DataLoader
-from typing import Dict, Tuple, Any
+from typing import Dict, Tuple, Any, Optional, Union
+from pathlib import Path
 import numpy as np
 
 
@@ -16,23 +18,37 @@ class TextDataset(Dataset):
     """
     PyTorch Dataset for text classification.
     
-    Wraps tokenized encodings (input_ids, attention_mask, etc.) 
-    and corresponding labels.
+    Can be initialized with:
+    1. Pre-loaded encodings and labels (in-memory)
+    2. Paths to saved files (loads dynamically)
     """
     
-    def __init__(self, encodings: Dict[str, Any], labels: np.ndarray):
+    def __init__(
+        self, 
+        encodings: Optional[Dict[str, torch.Tensor]] = None,
+        labels: Optional[Union[np.ndarray, torch.Tensor]] = None,
+        encodings_path: Optional[str] = None,
+        labels_path: Optional[str] = None
+    ):
         """
         Initialize the dataset.
         
         Args:
-            encodings: Dictionary with keys like 'input_ids', 'attention_mask'
-                      Each value should be a list or array of shape (num_samples, seq_len)
-            labels: Array of labels, shape (num_samples,)
-            
-        Hint: Store encodings and labels as instance variables
+            encodings: Dictionary with tensors like 'input_ids', 'attention_mask'
+                      Shape: {key: Tensor[num_samples, seq_len]}
+            labels: Array/Tensor of labels, shape (num_samples,)
+            encodings_path: Path to saved encodings file (.pt)
+            labels_path: Path to saved labels file (.npy or .pt)
         """
-        # TODO: Implement
-        pass
+
+        if encodings_path and labels_path:
+            self.encodings = torch.load(encodings_path)
+            self.labels = torch.load(labels_path)
+        elif encodings and labels:
+            self.encodings = encodings
+            self.labels = labels
+        else:
+            raise ValueError("Either encodings_path and labels_path or encodings and labels must be provided")
     
     def __getitem__(self, idx: int) -> Tuple[Dict[str, torch.Tensor], torch.Tensor]:
         """
@@ -43,32 +59,22 @@ class TextDataset(Dataset):
             
         Returns:
             Tuple of (input_dict, label) where:
-                - input_dict contains tensors for 'input_ids', 'attention_mask', etc.
-                - label is a single label tensor
-                
-        Hint: 
-            - Extract idx-th element from each encoding key
-            - Convert to torch.Tensor if not already
-            - Return as ({key: tensor}, label_tensor)
+                - input_dict: {key: tensor[seq_len]} for this sample
+                - label: scalar tensor for this sample
         """
-        # TODO: Implement
-        pass
+        return self.encodings[idx], self.labels[idx]
     
     def __len__(self) -> int:
         """
         Return the total number of samples.
         
-        Hint: Return length of labels array
+        Hint: Return len(self.labels) or self.labels.shape[0]
         """
-        # TODO: Implement
-        pass
-
+        return len(self.labels)
 
 def get_dataloaders(
-    train_encodings: Dict[str, Any],
-    test_encodings: Dict[str, Any],
-    train_labels: np.ndarray,
-    test_labels: np.ndarray,
+    train_dataset: TextDataset,
+    test_dataset: TextDataset,
     batch_size: int = 32,
     shuffle_train: bool = True,
     num_workers: int = 0
@@ -76,49 +82,18 @@ def get_dataloaders(
     """
     Create DataLoaders for training and testing.
     
+    Can work with either in-memory data or file paths.
+    
     Args:
-        train_encodings: Tokenized training data
-        test_encodings: Tokenized test data
-        train_labels: Training labels
-        test_labels: Test labels
+        train_dataset: Training dataset
+        test_dataset: Test dataset
         batch_size: Batch size for DataLoader
         shuffle_train: Whether to shuffle training data
         num_workers: Number of workers for data loading (0 = main thread)
         
     Returns:
-        train_loader, test_loader tuple
-        
-    Hint:
-        1. Create TextDataset instances for train and test
-        2. Wrap each in a DataLoader with appropriate parameters
-        3. Remember to shuffle training data but not test data
+        train_loader, test_loader tuple        
     """
-    # TODO: Implement
-    pass
-
-
-def get_single_dataloader(
-    encodings: Dict[str, Any],
-    labels: np.ndarray,
-    batch_size: int = 32,
-    shuffle: bool = False,
-    num_workers: int = 0
-) -> DataLoader:
-    """
-    Create a single DataLoader (useful for inference or validation).
-    
-    Args:
-        encodings: Tokenized data
-        labels: Corresponding labels
-        batch_size: Batch size
-        shuffle: Whether to shuffle
-        num_workers: Number of workers
-        
-    Returns:
-        DataLoader instance
-        
-    Hint: Similar to get_dataloaders but for a single dataset
-    """
-    # TODO: Implement
-    pass
-
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle_train, num_workers=num_workers)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    return train_loader, test_loader
