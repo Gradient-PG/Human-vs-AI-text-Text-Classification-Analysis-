@@ -34,7 +34,7 @@ from datasets import DatasetDict
 from scripts.load_dataset import print_dataset_stats
 
 
-def main():
+def preprocess_data(tokenizer_name: str = 'distilbert-base-uncased', max_length: int = 512, batch_size: int = 1000):
     """
     Main preprocessing pipeline.
     
@@ -100,15 +100,13 @@ def main():
     # Step 5: Tokenize and create datasets
     print("5. Tokenizing and creating datasets...")
 
-    max_length = 512
-    batch_size = 1000
-
     print("\n   Processing train split...")
     train_dataset = tokenize_and_create_dataset(
         train_texts, 
         train_labels,
         max_length=max_length, 
-        batch_size=batch_size
+        batch_size=batch_size,
+        tokenizer_name=tokenizer_name
     )
     
     print("\n   Processing test split...")
@@ -116,7 +114,8 @@ def main():
         test_texts,
         test_labels, 
         max_length=max_length, 
-        batch_size=batch_size
+        batch_size=batch_size,
+        tokenizer_name=tokenizer_name
     )
 
     # Step 6: Combine into DatasetDict and save
@@ -137,5 +136,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    preprocess_data()
 
