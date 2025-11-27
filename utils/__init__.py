@@ -7,23 +7,29 @@ from .text_preprocessing import (
     create_train_test_split,
     tokenize_and_create_dataset,
     save_dataset,
-    load_dataset
+    load_dataset,
 )
 
-from .dataset_loader import (
+from .text_dataset_loader import (
     TextDataset,
     get_dataloaders,
-    load_hf_dataset
+    load_hf_dataset,
+)
+
+from .encoded_dataset_loader import (
+    EncodedDataset,
+    get_encoded_dataloader,
 )
 
 __all__ = [
-    'preprocess_text',
-    'create_train_test_split',
-    'tokenize_and_create_dataset',
-    'save_dataset',
-    'load_dataset',
-    'TextDataset',
-    'get_dataloaders',
-    'load_hf_dataset',
+    "preprocess_text",
+    "create_train_test_split",
+    "tokenize_and_create_dataset",
+    "save_dataset",
+    "load_dataset",
+    "TextDataset",
+    "get_dataloaders",
+    "load_hf_dataset",
+    "EncodedDataset",
+    "get_encoded_dataloader",
 ]
-
