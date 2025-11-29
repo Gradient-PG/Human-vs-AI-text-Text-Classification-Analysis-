@@ -98,6 +98,9 @@ class DatasetEncoder:
             "labels": labels_array
         })
         
+        # Set format to numpy for efficient loading
+        encoded_dataset.set_format(type='numpy', columns=['embeddings', 'labels'])
+        
         return encoded_dataset
     
     def _mean_pooling(self, token_embeddings, attention_mask):
@@ -160,5 +163,4 @@ class DatasetEncoder:
         encoded_dataset_dict.save_to_disk(str(self.output_dir))
 
         print(f"Encoded and saved to {self.output_dir}")
-        print(f"Embedding shape: {encoded_dict['train'][0]['embeddings'].shape}")
 
