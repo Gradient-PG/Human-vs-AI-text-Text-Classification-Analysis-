@@ -20,12 +20,14 @@ class ClassifierTrainer:
     
     Args:
         head: The classifier model (sklearn)
-        model_save_path: Path where trained model will be saved
+        model_save_path: Path where trained model will be saved (optional, None for no saving)
+        wandb_logger: Weights & Biases logger (optional)
     """
     
-    def __init__(self, head, model_save_path: str):
+    def __init__(self, head, model_save_path: str = None, wandb_logger=None):
         self.head = head
-        self.model_save_path = Path(model_save_path)
+        self.model_save_path = Path(model_save_path) if model_save_path else None
+        self.wandb = wandb_logger
         self.is_sklearn = hasattr(head, 'partial_fit') or hasattr(head, 'fit')
         
     def load_encoded_dataset(self, encoded_dataset_path: str):
@@ -90,6 +92,8 @@ class ClassifierTrainer:
             shuffle=True
         )
         
+        global_step = 0
+        
         for epoch in range(epochs):
             pbar = tqdm(
                 enumerate(train_dataloader), 
@@ -103,6 +107,7 @@ class ClassifierTrainer:
                 
                 # Train step
                 self.head.partial_fit(X, y, classes=[0, 1])
+                global_step += 1
                 
                 # Periodic evaluation
                 if i % eval_every == 0:
@@ -113,6 +118,15 @@ class ClassifierTrainer:
                         'train_acc': f'{train_score:.4f}',
                         'test_acc': f'{test_score:.4f}'
                     })
+                    
+                    # Log to wandb
+                    if self.wandb:
+                        self.wandb.log({
+                            'train_acc': train_score,
+                            'test_acc': test_score,
+                            'epoch': epoch + 1,
+                            'step': global_step
+                        })
         
         # Final evaluation
         print("\nFinal evaluation...")
@@ -121,7 +135,16 @@ class ClassifierTrainer:
         
         print(f"Train accuracy: {final_train_score:.4f}, Test accuracy: {final_test_score:.4f}")
         
-        self.save_model()
+        # Log final metrics to wandb
+        if self.wandb:
+            self.wandb.log({
+                'final_train_acc': final_train_score,
+                'final_test_acc': final_test_score
+            })
+        
+        # Save model only if path provided
+        if self.model_save_path:
+            self.save_model()
     
     def save_model(self):
         """Save trained model to disk."""

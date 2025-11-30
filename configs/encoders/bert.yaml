@@ -1,0 +1,4 @@
+name: bert-base-uncased
+batch_size: 64
+# pooling strategy is implicit (CLS for BERT family)
+

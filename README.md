@@ -1,171 +1,404 @@
-# Interpreting Layer Activations in Human-vs-AI Text Classification
+# Human vs AI Text Classification Analysis
 
-A deep learning research project analyzing how different neural architectures (GRU, LSTM, CNN) represent and distinguish between human-written and AI-generated text.
+A modular text classification system for distinguishing human-written from AI-generated text using transformer encoders and classical ML classifiers.
 
-## 📋 Project Overview
+## 📋 Overview
 
-This project investigates how neural networks internally represent textual patterns that distinguish human-written from AI-generated content. We train multiple encoder architectures and feed their learned representations to classical ML classifiers, then visualize and interpret the layer activations.
+This project implements a **config-driven pipeline** for text classification experiments. It separates the encoding phase (using transformer models like BERT) from the classification phase (using sklearn classifiers), allowing flexible experimentation with different model combinations.
 
-**Key Components:**
-- Train GRU, LSTM, and CNN encoders on binary text classification
-- Extract latent representations from trained models
-- Feed embeddings to classical ML classifiers (Decision Tree, SVM, Logistic Regression)
-- Interpret and visualize layer activations during inference
-- Compare how different architectures "see" human vs AI text
+**Architecture:**
+1. **Tokenization**: Convert raw text to tokens using HuggingFace tokenizers
+2. **Encoding**: Generate embeddings using transformer models (BERT, DistilBERT, etc.)
+3. **Classification**: Train lightweight classifiers on frozen embeddings (SGD, Logistic Regression, etc.)
 
-## 🗂️ Repository Structure
+**Key Features:**
+- ✅ Configuration-based experiments via YAML files
+- ✅ Automatic caching to avoid redundant computation
+- ✅ Modular pipeline with independent tokenizer/encoder/classifier components
+- ✅ Support for any HuggingFace tokenizer and transformer encoder
+- ✅ Compatible with sklearn classifiers
+
+## 🗂️ Project Structure
 
 ```
-human-vs-ai-text/
+Human-vs-AI-text-Text-Classification-Analysis-/
 │
-├── data/                          # Dataset storage
-│   ├── raw/                       # Raw CSV files from Kaggle
-│   └── processed/                 # Tokenized and split data
+├── configs/                          # Experiment configurations
+│   ├── experiments/                  # Main experiment configs
+│   │   └── baseline.yaml            # BERT tokenizer + encoder + SGD classifier
+│   ├── tokenizers/                   # Tokenizer configurations
+│   │   └── bert.yaml
+│   ├── encoders/                     # Encoder model configurations
+│   │   └── bert.yaml
+│   └── classifiers/                  # Classifier configurations
+│       └── sgd.yaml
 │
-├── models/                        # Neural network definitions
-│   └── (Phase 2: GRU, LSTM, CNN encoders)
+├── data/
+│   ├── raw/                          # Raw CSV dataset
+│   │   └── AI_Human.csv             # From Kaggle
+│   └── processed/                    # Processed datasets with versioning
+│       ├── AI_Human/
+│       │   ├── tokenized/           # Organized by tokenizer
+│       │   │   └── {tokenizer_name}/
+│       │   └── encoded/             # Organized by tokenizer_encoder
+│       │       └── {tok}_{enc}/
+│       └── registry.json            # Dataset provenance tracking
 │
-├── scripts/                       # Executable scripts
-│   ├── load_dataset.py           # Quick data loader and stats
-│   ├── preprocess_data.py        # Full preprocessing pipeline
-│   └── verify_setup.py           # Environment verification
+├── models/
+│   └── (trained models saved here via standalone scripts)
 │
-├── utils/                         # Helper modules
-│   ├── text_preprocessing.py     # Text processing utilities
-│   ├── dataset_loader.py         # PyTorch Dataset & DataLoader
-│   └── __init__.py
+├── scripts/
+│   ├── run_training.py              # 🚀 Main training pipeline with caching
+│   ├── tokenize_dataset.py          # Standalone tokenization script
+│   ├── encode_dataset.py            # Standalone encoding script
+│   ├── train_classifier.py          # Standalone training script
+│   └── load_dataset.py              # Quick dataset inspection
 │
-├── notebooks/                     # Jupyter notebooks
-│   └── data_exploration.ipynb    # Initial data analysis
+├── utils/
+│   ├── dataset_tokenizer.py         # Tokenization utilities
+│   ├── dataset_encoder.py           # Encoding utilities
+│   └── classifier_trainer.py        # Generic sklearn trainer
 │
-├── results/                       # Outputs and visualizations
-│   ├── figures/                  # Plots and charts
-│   ├── metrics/                  # Performance metrics
-│   └── activations/              # Activation maps
+├── notebooks/
+│   └── data_exploration.ipynb       # Dataset analysis
 │
-├── requirements.txt               # Python dependencies
-├── SETUP.md                       # Setup instructions
-└── README.md                      # This file
+├── results/                          # Analysis outputs
+│   ├── figures/
+│   ├── metrics/
+│   └── activations/
+│
+├── requirements.txt                  # Python dependencies
+└── README.md                         # This file
 ```
 
 ## 🚀 Quick Start
 
 ### 1. Setup Environment
-...
+
+```bash
+# Create virtual environment (optional but recommended)
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
 
 ### 2. Download Dataset
 
-Download from [Kaggle: AI vs Human Text](https://www.kaggle.com/datasets/shanegerami/ai-vs-human-text) and place the CSV in `data/raw/`.
+Download the dataset from [Kaggle: AI vs Human Text](https://www.kaggle.com/datasets/shanegerami/ai-vs-human-text) and place it at:
 
-### 3. Explore Data
-
-```bash
-jupyter notebook notebooks/data_exploration.ipynb
+```
+data/raw/AI_Human.csv
 ```
 
-### 4. Preprocess Data
+### 3. Run Training Pipeline
 
-After implementing the preprocessing functions:
+The **recommended way** to run training is using the config-based pipeline:
 
 ```bash
-python scripts/preprocess_data.py
+# Run complete pipeline (tokenize → encode → train)
+python scripts/run_training.py baseline
 ```
+
+**What this does:**
+1. Tokenizes the dataset using BERT tokenizer → saves to `data/processed/AI_Human/tokenized/bert-base-uncased/`
+2. Encodes using BERT model → saves to `data/processed/AI_Human/encoded/bert_bert/`
+3. Trains SGD classifier → logs metrics to console (and wandb if enabled)
+
+**On subsequent runs:**
+- ✅ Cached datasets are automatically reused
+- ✅ Only the training step runs
+- ✅ No wasted compute on re-tokenization or re-encoding
+
+### 4. Weights & Biases Integration (Optional)
+
+Track your experiments with Weights & Biases:
+
+```bash
+# Install wandb (optional)
+pip install wandb
+
+# Run with wandb logging
+python scripts/run_training.py baseline --wandb-project my-text-classification
+
+# Customize run name
+python scripts/run_training.py baseline --wandb-project my-project --wandb-run-name bert-baseline
+```
+
+### 5. Force Re-processing (if needed)
+
+```bash
+# Force re-tokenization (e.g., after changing max_length)
+python scripts/run_training.py baseline --force-retokenize
+
+# Force re-encoding (e.g., after changing encoder model)
+python scripts/run_training.py baseline --force-reencode
+```
+
+## 📝 Configuration System
+
+Experiments are defined via YAML files in `configs/`. The system uses **hierarchical composition** to keep configs DRY.
+
+### Creating a New Experiment
+
+**Example: RoBERTa encoder experiment**
+
+1. Create tokenizer config `configs/tokenizers/roberta.yaml`:
+```yaml
+name: roberta-base
+max_length: 512
+padding: max_length
+truncation: true
+batch_size: 1000
+```
+
+2. Create encoder config `configs/encoders/roberta.yaml`:
+```yaml
+name: roberta-base
+batch_size: 64
+```
+
+3. Create experiment config `configs/experiments/roberta_exp.yaml`:
+```yaml
+experiment_name: roberta_experiment
+random_state: 42
+
+# Component references
+tokenizer: roberta
+encoder: roberta
+classifier: sgd
+
+# Data settings
+dataset:
+  name: AI_Human
+  file: AI_Human.csv
+  text_column: text
+  label_column: generated
+  test_size: 0.2
+
+# Training settings
+training:
+  batch_size: 64
+  epochs: 1
+  eval_every: 50
+
+# Paths
+paths:
+  raw_data: data/raw
+  processed_data: data/processed
+  models: models
+  results: results
+```
+
+4. Run it:
+```bash
+python scripts/run_training.py roberta_exp
+```
+
+See `configs/README.md` for more details.
+
+## 🔧 Alternative: Standalone Scripts
+
+For debugging or one-off runs, use the standalone scripts:
+
+```bash
+# Step 1: Tokenize
+python scripts/tokenize_dataset.py
+
+# Step 2: Encode
+python scripts/encode_dataset.py
+
+# Step 3: Train
+python scripts/train_classifier.py
+```
+
+**Note:** These scripts use hardcoded paths and don't benefit from the caching system.
 
 ## 📊 Dataset
 
 **Source:** [Kaggle - AI vs Human Text](https://www.kaggle.com/datasets/shanegerami/ai-vs-human-text)
 
-**Description:** Text samples labeled as either human-written (0) or AI-generated (1).
+**Description:** Binary classification dataset with text samples labeled as:
+- `0` = Human-written
+- `1` = AI-generated
+
+**Statistics:** (Run `python scripts/load_dataset.py` to see full stats)
 
 **Preprocessing:**
-- Train/test split (80/20)
-- Tokenization using Hugging Face transformers (`distilbert-base-uncased`)
-- Max sequence length: 512 tokens
-- Saved as PyTorch tensors for efficient loading
+- Train/test split: 80/20 (stratified)
+- Tokenization: HuggingFace transformers (configurable)
+- Max sequence length: 512 tokens (configurable)
+- Storage format: HuggingFace Datasets (efficient Arrow format)
 
-## 🧩 Project Phases
+## 🧪 Experiment Workflow
 
-### ✅ Phase 1 — Setup & Preprocessing (CURRENT)
-- [x] Create project structure
-- [x] Setup virtual environment
-- [x] Prepare skeleton scripts with hints
-- [ ] **YOUR TASK:** Implement preprocessing functions
-- [ ] **YOUR TASK:** Run data exploration notebook
+### How Caching Works
 
-### Phase 2 — Model Training
-- Implement GRU, LSTM, CNN encoders
-- Extract embeddings from trained encoders
-- Train classical ML classifiers on embeddings
-- Evaluate and compare performance
+The pipeline uses **path-based caching** with metadata tracking:
 
-### Phase 3 — Activation Analysis
-- Modify encoders to capture intermediate activations
-- Collect activations for sample inputs
-- Visualize via PCA/t-SNE and heatmaps
-- Analyze patterns in human vs AI representations
+```
+1. Check if tokenized data exists for this tokenizer config
+   → If yes: load from cache
+   → If no: tokenize and save with metadata
 
-### Phase 4 — Visualization & Reporting
-- Generate comprehensive performance plots
-- Create activation maps
-- Document key insights
+2. Check if encoded data exists for this tokenizer+encoder combo
+   → If yes: load from cache
+   → If no: encode and save with metadata
 
-### Phase 5 — Finalization
-- Clean and organize code
-- Update README with results
-- Tag release v1.0
+3. Always train a new classifier (produces timestamped experiment)
+```
+
+### Dataset Versioning
+
+Datasets are organized by their configuration:
+
+```
+data/processed/AI_Human/
+├── tokenized/
+│   ├── bert-base-uncased/          # BERT tokenizer output
+│   │   ├── train/
+│   │   ├── test/
+│   │   └── metadata.json
+│   └── roberta-base/                # RoBERTa tokenizer output
+│       └── ...
+└── encoded/
+    ├── bert_bert/                   # BERT tok + BERT enc
+    │   ├── train/
+    │   ├── test/
+    │   └── metadata.json
+    └── bert_roberta/                # BERT tok + RoBERTa enc
+        └── ...
+```
+
+Each `metadata.json` contains:
+- Timestamp of creation
+- Full configuration used
+- Provenance information
 
 ## 🛠️ Tech Stack
 
-- **Deep Learning:** PyTorch
-- **NLP:** Hugging Face Transformers
+- **Deep Learning Framework:** PyTorch 2.0+
+- **NLP & Transformers:** HuggingFace Transformers & Datasets
 - **Classical ML:** scikit-learn
 - **Data Processing:** pandas, numpy
+- **Configuration:** PyYAML
 - **Visualization:** matplotlib, seaborn
-- **Development:** Jupyter notebooks
+- **Progress Tracking:** tqdm
 
-## 📝 Implementation Notes
+## 📦 Key Components
 
-Phase 1 files are provided as **skeletons with hints** - you'll implement the logic! This gives you:
-- Clear function signatures and docstrings
-- Helpful hints on what to use
-- TODOs marking what needs implementation
-- Freedom to write the actual code
+### `utils/dataset_tokenizer.py`
+- Handles text tokenization using HuggingFace tokenizers
+- Performs train/test splitting
+- Saves tokenized datasets in HuggingFace Dataset format
 
-**Files to implement:**
-- `utils/text_preprocessing.py` - Data loading and tokenization
-- `utils/dataset_loader.py` - PyTorch Dataset wrapper
-- `scripts/load_dataset.py` - Simple data inspection
-- `scripts/preprocess_data.py` - Full pipeline
-- `notebooks/data_exploration.ipynb` - Visual exploration
+### `utils/dataset_encoder.py`
+- Loads pre-trained transformer models
+- Extracts embeddings (CLS token or mean pooling)
+- Supports batch processing with GPU acceleration
+- Automatically detects BERT-family models for CLS pooling
 
-## 📈 Expected Outputs (Phase 1)
+### `utils/classifier_trainer.py`
+- Generic trainer for sklearn classifiers
+- Supports incremental training with `partial_fit`
+- Provides batch-wise evaluation during training
+- Saves trained models as pickle files
 
-After preprocessing, you should have:
-- `data/processed/train_encodings.pt`
-- `data/processed/test_encodings.pt`
-- `data/processed/train_labels.npy`
-- `data/processed/test_labels.npy`
-- (Optional) CSV files for reference
+### `scripts/run_training.py`
+- **Main training pipeline** orchestrator
+- Loads and merges hierarchical configs
+- Implements smart caching logic
+- Integrates with Weights & Biases for experiment tracking
+- No local model/metrics saving (use wandb or standalone scripts for that)
+
+## 🎯 Supported Models
+
+### Tokenizers/Encoders (any HuggingFace model)
+- ✅ BERT (`bert-base-uncased`, `bert-large-uncased`)
+- ✅ DistilBERT (`distilbert-base-uncased`)
+- ✅ RoBERTa (`roberta-base`, `roberta-large`)
+- ✅ ALBERT, ELECTRA, etc.
+- ✅ Any model with `AutoTokenizer` and `AutoModel` support
+
+### Classifiers (any sklearn classifier)
+- ✅ SGDClassifier (fast, online learning)
+- ✅ LogisticRegression
+- ✅ SVC (Support Vector Classifier)
+- ✅ RandomForestClassifier
+- ✅ MLPClassifier (Neural Network)
+- ✅ Any classifier with `fit` or `partial_fit` method
+
+## 📈 Results & Experiments
+
+Training metrics are logged to:
+- **Console output** (train/test accuracy during training)
+- **Weights & Biases** (if `--wandb-project` specified)
+  - Config tracking
+  - Metrics over time (train_acc, test_acc)
+  - Final performance metrics
+
+For model persistence, use the standalone `scripts/train_classifier.py` script which saves to disk.
+
+## 🔬 Example Use Cases
+
+### Compare Different Encoders
+```bash
+# Experiment 1: BERT encoder
+python scripts/run_training.py baseline --wandb-project text-clf --wandb-run-name bert-sgd
+
+# Experiment 2: DistilBERT encoder (reuses BERT tokenization if same tokenizer)
+# Create configs/experiments/distilbert_exp.yaml first
+python scripts/run_training.py distilbert_exp --wandb-project text-clf --wandb-run-name distilbert-sgd
+```
+
+### Compare Different Classifiers
+```bash
+# Create configs/classifiers/logistic.yaml
+# Create configs/experiments/bert_logistic.yaml
+python scripts/run_training.py bert_logistic --wandb-project text-clf
+
+# Since tokenization and encoding are cached, this runs very fast!
+```
+
+### Hyperparameter Tuning
+Edit the experiment config to change:
+- `training.batch_size`
+- `training.epochs`
+- `classifier_config.params` (classifier hyperparameters)
+
+## 🚧 Future Enhancements
+
+- [ ] Add PyTorch classifier support (currently sklearn only)
+- [ ] Implement metrics tracking (accuracy, F1, confusion matrix)
+- [ ] Add visualization tools for embeddings (PCA, t-SNE)
+- [ ] Support for ensemble classifiers
+- [ ] Integration with experiment tracking tools (MLflow, Weights & Biases)
+- [ ] Add evaluation-only mode for trained models
+- [ ] Support for custom preprocessing functions
 
 ## 🤝 Contributing
 
-This is a research project. Feel free to experiment with:
-- Different tokenizers (BERT, RoBERTa, GPT-2)
-- Various max sequence lengths
-- Alternative preprocessing strategies
-- Additional exploratory analyses
+To add new components:
+
+1. **New Tokenizer:** Add YAML config in `configs/tokenizers/`
+2. **New Encoder:** Add YAML config in `configs/encoders/`
+3. **New Classifier:** Add YAML config in `configs/classifiers/`
+4. **New Experiment:** Compose existing components in `configs/experiments/`
 
 ## 📄 License
 
-MIT License - Feel free to use this for your own research!
+MIT License - Feel free to use this for research and education!
 
-## 🎯 Research Goals
+## 📚 References
 
-1. **Understand representation differences:** How do GRU, LSTM, and CNN encode textual patterns differently?
-2. **Identify discriminative features:** What layer activations are most important for distinguishing human vs AI text?
-3. **Compare architectures:** Which architecture provides the most interpretable/separable representations?
-4. **Visualize learned patterns:** Can we see what the models "look for" in human vs AI text?
+- [HuggingFace Transformers](https://huggingface.co/docs/transformers)
+- [HuggingFace Datasets](https://huggingface.co/docs/datasets)
+- [scikit-learn](https://scikit-learn.org/)
+- [Dataset Source: Kaggle AI vs Human Text](https://www.kaggle.com/datasets/shanegerami/ai-vs-human-text)
 
 ---
 
-**Current Status:** Phase 1 - Setup skeleton files created, ready for implementation! 🚀
+**Status:** ✅ Production-ready with baseline BERT experiment
+
+**Last Updated:** November 2025

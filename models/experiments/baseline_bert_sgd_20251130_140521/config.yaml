@@ -1,0 +1,35 @@
+classifier: sgd
+classifier_config:
+  params:
+    loss: hinge
+    max_iter: 1000
+    random_state: 42
+  type: sklearn.linear_model.SGDClassifier
+dataset:
+  file: AI_Human.csv
+  label_column: generated
+  name: AI_Human
+  test_size: 0.2
+  text_column: text
+encoder: bert
+encoder_config:
+  batch_size: 64
+  name: bert-base-uncased
+experiment_name: baseline
+paths:
+  models: models
+  processed_data: data/processed
+  raw_data: data/raw
+  results: results
+random_state: 42
+tokenizer: bert
+tokenizer_config:
+  batch_size: 1000
+  max_length: 512
+  name: bert-base-uncased
+  padding: max_length
+  truncation: true
+training:
+  batch_size: 64
+  epochs: 1
+  eval_every: 50

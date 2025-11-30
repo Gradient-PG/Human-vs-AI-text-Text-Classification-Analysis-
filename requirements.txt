@@ -23,4 +23,8 @@ ipywidgets>=8.0.0
 
 # Utilities
 tqdm>=4.65.0
+pyyaml>=6.0.0
+
+# Optional: Experiment tracking
+# wandb>=0.16.0  # Uncomment for Weights & Biases logging
 

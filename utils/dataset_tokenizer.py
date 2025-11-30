@@ -145,4 +145,5 @@ class DatasetTokenizer:
         dataset_dict.save_to_disk(str(output_path))
         
         print(f"Saved to {output_path}")
+        return output_path
 
