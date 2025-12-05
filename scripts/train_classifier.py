@@ -7,10 +7,10 @@ which can work with any sklearn or pytorch head model.
 
 Usage:
     python scripts/train_classifier.py
-    
+
 Input:
     - data/processed/encoded_dataset/ (pre-encoded embeddings)
-    
+
 Output:
     - models/classifier.pkl (trained classifier)
 """
@@ -32,21 +32,14 @@ def main():
     epochs = 1
     batch_size = 64
     eval_every = 50
-    
+
     head = linear_model.SGDClassifier(loss="hinge", random_state=42)
-    
-    trainer = ClassifierTrainer(
-        head=head,
-        model_save_path=model_save_path
-    )
-    
+
+    trainer = ClassifierTrainer(head=head, model_save_path=model_save_path)
+
     trainer.load_encoded_dataset(encoded_dataset_path)
-    
-    trainer.train(
-        epochs=epochs,
-        batch_size=batch_size,
-        eval_every=eval_every
-    )
+
+    trainer.train(epochs=epochs, batch_size=batch_size, eval_every=eval_every)
 
 
 if __name__ == "__main__":
