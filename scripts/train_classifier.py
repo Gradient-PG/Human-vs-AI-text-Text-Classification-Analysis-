@@ -17,7 +17,7 @@ Output:
 
 import sys
 from pathlib import Path
-from sklearn import linear_model
+from sklearn import linear_model, tree, ensemble
 
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
@@ -28,12 +28,12 @@ from utils.classifier_trainer import ClassifierTrainer
 def main():
     # Configuration
     encoded_dataset_path = "data/processed/encoded_dataset"
-    model_save_path = "models/sgd_classifier.pkl"
+    model_save_path = "models/random_forest_classifier.pkl"
     epochs = 1
     batch_size = 64
     eval_every = 50
 
-    head = linear_model.SGDClassifier(loss="hinge", random_state=42)
+    head = ensemble.RandomForestClassifier(random_state=42)
 
     trainer = ClassifierTrainer(head=head, model_save_path=model_save_path)
 

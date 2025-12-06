@@ -11,6 +11,7 @@ from datasets import load_from_disk
 from pathlib import Path
 from tqdm import tqdm
 from typing import Union
+import time
 
 
 # TODO: Add pytorch support
@@ -28,7 +29,8 @@ class ClassifierTrainer:
         self.head = head
         self.model_save_path = Path(model_save_path) if model_save_path else None
         self.wandb = wandb_logger
-        self.is_sklearn = hasattr(head, "partial_fit") or hasattr(head, "fit")
+        self.is_sklearn_partial = hasattr(head, "partial_fit")
+        self.is_sklearn_regular = hasattr(head, "fit")
 
     def load_encoded_dataset(self, encoded_dataset_path: str):
         """
@@ -79,12 +81,50 @@ class ClassifierTrainer:
         if not hasattr(self, "train_dataset"):
             raise ValueError("Must call load_encoded_dataset() before train()")
 
-        if self.is_sklearn:
-            self._train_sklearn(epochs, batch_size, eval_every)
+        if self.is_sklearn_partial:
+            self._train_sklearn_partial(epochs, batch_size, eval_every)
+        elif self.is_sklearn_regular:
+            self._train_sklearn_regular()
         else:
             raise NotImplementedError("PyTorch training not yet implemented")
 
-    def _train_sklearn(self, epochs: int, batch_size: int, eval_every: int):
+    def _train_sklearn_regular(self):
+        """Train sklearn model with partial_fit."""
+
+        print("\nConverting training data to numpy...")
+        X = self.train_dataset["embeddings"][0 : len(self.train_dataset)]
+
+        print("\nConverting test data to numpy...")
+        y = self.train_dataset["labels"][0 : len(self.train_dataset)]
+
+        print("\nTraining...")
+        start = time.time()
+        print(start)
+        self.head.fit(X, y)
+        print(start - time.time())
+
+        print("\nEvaluation...")
+        final_train_score = self._evaluate_sklearn(self.train_dataset, 64)
+        final_test_score = self._evaluate_sklearn(self.test_dataset, 64)
+
+        print(
+            f"Train accuracy: {final_train_score:.4f}, Test accuracy: {final_test_score:.4f}"
+        )
+
+        # Log final metrics to wandb
+        if self.wandb:
+            self.wandb.log(
+                {
+                    "final_train_acc": final_train_score,
+                    "final_test_acc": final_test_score,
+                }
+            )
+
+        # Save model only if path provided
+        if self.model_save_path:
+            self.save_model()
+
+    def _train_sklearn_partial(self, epochs: int, batch_size: int, eval_every: int):
         """Train sklearn model with partial_fit."""
         train_dataloader = DataLoader(
             self.train_dataset,
