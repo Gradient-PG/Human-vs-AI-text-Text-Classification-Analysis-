@@ -1,0 +1,6 @@
+type: sklearn.svm.LinearSVC
+params:
+  random_state: 42
+  max_iter: 10000
+  dual: auto
+

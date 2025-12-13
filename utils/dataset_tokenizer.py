@@ -111,7 +111,7 @@ class DatasetTokenizer:
             batch_size: Batch size for tokenization
         """
         print(f"Loading data from {csv_path}")
-        df = pd.read_csv(csv_path)[:10]
+        df = pd.read_csv(csv_path)
         print(f"Loaded {len(df)} samples")
         
         df = self._preprocess_text(df, text_column)

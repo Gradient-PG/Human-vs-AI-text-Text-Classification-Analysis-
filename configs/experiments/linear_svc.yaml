@@ -1,10 +1,10 @@
-experiment_name: baseline
+experiment_name: linear_svc
 random_state: 42
 
 # Component references
 tokenizer: bert
 encoder: bert
-classifier: sgd
+classifier: linear_svc
 
 # Data settings
 dataset:
