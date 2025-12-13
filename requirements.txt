@@ -30,6 +30,6 @@ tqdm>=4.65.0
 pyyaml>=6.0.0
 scipy>=1.10.0  # For statistical analysis
 
-# Optional: Experiment tracking
-# wandb>=0.16.0  # Uncomment for Weights & Biases logging
+# Experiment tracking
+wandb>=0.16.0
 

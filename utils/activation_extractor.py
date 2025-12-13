@@ -1,0 +1,175 @@
+"""
+Activation extractor for BERT layers.
+Extracts hidden states from specified transformer layers for interpretability analysis.
+"""
+
+import torch
+from torch.utils.data import DataLoader
+from datasets import Dataset
+from pathlib import Path
+from tqdm import tqdm
+import numpy as np
+from typing import List, Dict
+
+
+class ActivationExtractor:
+    """
+    Extracts activations from specified BERT layers.
+    
+    Args:
+        encoder: The encoder model (BERT)
+        layers: List of layer indices to extract (e.g., [3, 6, 9, 12])
+        device: Device to run on ('cuda' or 'cpu')
+    """
+    
+    def __init__(
+        self, 
+        encoder, 
+        layers: List[int],
+        device: str = "cuda"
+    ):
+        self.encoder = encoder
+        self.layers = layers
+        self.device = device
+        self.encoder.to(device)
+        self.encoder.eval()
+        
+        # Enable output of hidden states
+        self.encoder.config.output_hidden_states = True
+        
+        print(f"Activation extractor initialized")
+        print(f"  Layers to extract: {layers}")
+        print(f"  Device: {device}")
+    
+    def extract_activations(
+        self,
+        dataset: Dataset,
+        batch_size: int = 64,
+        max_samples: int = None,
+        desc: str = "Extracting activations"
+    ) -> Dict[int, np.ndarray]:
+        """
+        Extract activations from specified layers.
+        
+        Args:
+            dataset: Tokenized dataset with 'input_ids', 'attention_mask', 'labels'
+            batch_size: Batch size for processing
+            max_samples: Maximum number of samples to process (None = all)
+            desc: Progress bar description
+            
+        Returns:
+            Dictionary mapping layer_idx -> activations array (N_samples, 768)
+            Labels array (N_samples,)
+        """
+        # Limit dataset if needed
+        if max_samples:
+            dataset = dataset.select(range(min(max_samples, len(dataset))))
+        
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+        
+        # Initialize storage for each layer
+        layer_activations = {layer: [] for layer in self.layers}
+        all_labels = []
+        
+        with torch.no_grad():
+            for batch in tqdm(dataloader, desc=desc):
+                input_ids = batch["input_ids"].to(self.device)
+                attention_mask = batch["attention_mask"].to(self.device)
+                labels = batch["labels"]
+                
+                # Get encoder output with hidden states
+                outputs = self.encoder(
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    output_hidden_states=True
+                )
+                
+                # Extract CLS token activations from specified layers
+                # hidden_states is tuple of (embeddings, layer1, layer2, ..., layer12)
+                # Index 0 is embeddings, layers are 1-indexed
+                for layer_idx in self.layers:
+                    # Get hidden state for this layer (batch_size, seq_len, hidden_size)
+                    layer_output = outputs.hidden_states[layer_idx]
+                    # Extract CLS token (position 0)
+                    cls_activations = layer_output[:, 0, :]
+                    layer_activations[layer_idx].append(cls_activations.cpu().numpy())
+                
+                all_labels.append(labels.numpy())
+        
+        # Concatenate all batches
+        for layer_idx in self.layers:
+            layer_activations[layer_idx] = np.vstack(layer_activations[layer_idx])
+        
+        labels_array = np.concatenate(all_labels)
+        
+        print(f"\n✓ Extracted activations from {len(self.layers)} layers")
+        print(f"  Shape per layer: {layer_activations[self.layers[0]].shape}")
+        print(f"  Total samples: {len(labels_array)}")
+        
+        return layer_activations, labels_array
+    
+    def extract_and_save(
+        self,
+        tokenized_dataset_path: str,
+        output_dir: str,
+        batch_size: int = 64,
+        max_samples: int = None,
+        split: str = "train"
+    ):
+        """
+        Extract activations and save to disk.
+        
+        Args:
+            tokenized_dataset_path: Path to tokenized dataset
+            output_dir: Directory to save activations
+            batch_size: Batch size for extraction
+            max_samples: Maximum samples to process
+            split: Dataset split to use ('train' or 'test')
+        """
+        from datasets import load_from_disk
+        
+        print(f"Loading tokenized dataset from {tokenized_dataset_path}...")
+        dataset_dict = load_from_disk(tokenized_dataset_path)
+        dataset = dataset_dict[split]
+        
+        print(f"\nExtracting activations from {split} split...")
+        activations, labels = self.extract_activations(
+            dataset=dataset,
+            batch_size=batch_size,
+            max_samples=max_samples,
+            desc=f"Extracting {split}"
+        )
+        
+        # Save activations
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        
+        for layer_idx, layer_acts in activations.items():
+            save_path = output_path / f"layer_{layer_idx}_activations.npy"
+            np.save(save_path, layer_acts)
+            print(f"  Saved layer {layer_idx}: {save_path}")
+        
+        # Save labels
+        labels_path = output_path / "labels.npy"
+        np.save(labels_path, labels)
+        print(f"  Saved labels: {labels_path}")
+        
+        # Save metadata
+        metadata = {
+            "layers": self.layers,
+            "n_samples": len(labels),
+            "n_ai": int((labels == 1).sum()),
+            "n_human": int((labels == 0).sum()),
+            "split": split,
+            "activation_shape": activations[self.layers[0]].shape
+        }
+        
+        import json
+        metadata_path = output_path / "metadata.json"
+        with open(metadata_path, 'w') as f:
+            json.dump(metadata, f, indent=2)
+        print(f"  Saved metadata: {metadata_path}")
+        
+        print(f"\n✓ All activations saved to {output_path}")
+
+
