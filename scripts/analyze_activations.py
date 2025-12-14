@@ -18,8 +18,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import stats
 from sklearn.metrics import roc_auc_score
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 from tqdm import tqdm
 import json
+import wandb
 
 
 def load_activations(input_dir: str):
@@ -57,10 +61,7 @@ def compute_neuron_statistics(activations: np.ndarray, labels: np.ndarray):
     """
     ai_mask = labels == 1
     human_mask = labels == 0
-    
     n_neurons = activations.shape[1]
-    n_ai = ai_mask.sum()
-    n_human = human_mask.sum()
     
     results = []
     
@@ -105,7 +106,7 @@ def compute_neuron_statistics(activations: np.ndarray, labels: np.ndarray):
 
 def identify_discriminative_neurons(stats_df: pd.DataFrame, alpha: float = 0.001, auc_threshold: float = 0.7):
     """
-    Identify discriminative neurons based on p-value and AUC thresholds.
+    Identify discriminative neurons based on p-value and AUC thresholds. Performs Bonferroni correction for multiple testing.
     
     Args:
         stats_df: DataFrame with neuron statistics
@@ -113,7 +114,7 @@ def identify_discriminative_neurons(stats_df: pd.DataFrame, alpha: float = 0.001
         auc_threshold: AUC threshold (>0.7 or <0.3 for discrimination)
     """
     n_tests = len(stats_df)
-    corrected_alpha = alpha / n_tests
+    corrected_alpha = alpha / n_tests # Bonferroni correction
     
     # Discriminative: significant AND strong effect
     stats_df['significant'] = stats_df['p_value'] < corrected_alpha
@@ -164,8 +165,6 @@ def analyze_layer(layer_idx: int, activations: np.ndarray, labels: np.ndarray,
 
 def create_wandb_visualizations(all_stats: dict, activations: dict, labels: np.ndarray, wandb_run):
     """Create and log visualizations to wandb."""
-    import wandb
-    
     layers = sorted(all_stats.keys())
     
     print(f"\n{'='*60}")
@@ -191,12 +190,12 @@ def create_wandb_visualizations(all_stats: dict, activations: dict, labels: np.n
     
     ax.set_xlabel('Layer', fontsize=12)
     ax.set_ylabel('Count of Discriminative Neurons', fontsize=12)
-    ax.set_title('Discriminative Neurons by Layer and Direction', fontsize=14, fontweight='bold')
+    ax.set_title('Discriminative Neurons by Layer and Direction', fontsize=14, fontweight='bold', pad=15)
     ax.set_xticks(x)
     ax.set_xticklabels([f'Layer {l}' for l in layers])
     ax.legend()
     ax.grid(axis='y', alpha=0.3)
-    plt.tight_layout()
+    plt.tight_layout(pad=1.5)
     
     wandb_run.log({"layer_wise_distribution": wandb.Image(fig)})
     plt.close()
@@ -218,13 +217,13 @@ def create_wandb_visualizations(all_stats: dict, activations: dict, labels: np.n
     
     ax.set_xlabel('Layer', fontsize=12)
     ax.set_ylabel('AUC', fontsize=12)
-    ax.set_title('AUC Distribution Across Layers', fontsize=14, fontweight='bold')
+    ax.set_title('AUC Distribution Across Layers', fontsize=14, fontweight='bold', pad=15)
     ax.set_xticks(range(len(layers)))
     ax.set_xticklabels([f'Layer {l}' for l in layers])
     ax.set_ylim(0, 1)
     ax.legend()
     ax.grid(alpha=0.3)
-    plt.tight_layout()
+    plt.tight_layout(pad=1.5)
     
     wandb_run.log({"auc_distributions": wandb.Image(fig)})
     plt.close()
@@ -260,19 +259,24 @@ def create_wandb_visualizations(all_stats: dict, activations: dict, labels: np.n
     
     heatmap_array = np.array(heatmap_data)
     
-    fig, ax = plt.subplots(figsize=(14, 8))
-    im = ax.imshow(heatmap_array, aspect='auto', cmap='RdYlBu_r', interpolation='nearest')
+    # Center colormap around 0
+    vmax = np.abs(heatmap_array).max()
+    vmin = -vmax
     
-    ax.set_xlabel('Samples (50 AI | 50 Human)', fontsize=12)
+    fig, ax = plt.subplots(figsize=(14, 8))
+    im = ax.imshow(heatmap_array, aspect='auto', cmap='RdYlBu_r', interpolation='nearest',
+                   vmin=vmin, vmax=vmax)
+    
+    ax.set_xlabel('Samples (50 AI | 50 Human)', fontsize=12, labelpad=15)
     ax.set_ylabel('Top 10 Neurons', fontsize=12)
-    ax.set_title('Activation Heatmap: Top 10 Discriminative Neurons', fontsize=14, fontweight='bold')
+    ax.set_title('Activation Heatmap: Top 10 Discriminative Neurons', fontsize=14, fontweight='bold', pad=15)
     ax.set_yticks(range(10))
     ax.set_yticklabels(heatmap_labels, fontsize=9)
     
     # Add vertical line separating AI/Human
-    ax.axvline(50, color='white', linewidth=2, linestyle='--')
-    ax.text(25, -0.5, 'AI', ha='center', fontsize=10, fontweight='bold')
-    ax.text(75, -0.5, 'Human', ha='center', fontsize=10, fontweight='bold')
+    ax.axvline(49.5, color='white', linewidth=2, linestyle='--')
+    ax.text(25, -1.2, 'AI', ha='center', fontsize=11, fontweight='bold')
+    ax.text(75, -1.2, 'Human', ha='center', fontsize=11, fontweight='bold')
     
     plt.colorbar(im, ax=ax, label='Activation Intensity')
     plt.tight_layout()
@@ -283,7 +287,7 @@ def create_wandb_visualizations(all_stats: dict, activations: dict, labels: np.n
     # Figure 4: Top 5 neurons box plots
     top5 = all_neurons_df.nlargest(5, 'auc_deviation')
     
-    fig, axes = plt.subplots(1, 5, figsize=(18, 4), sharey=True)
+    fig, axes = plt.subplots(1, 5, figsize=(18, 5), sharey=True)
     
     for idx, (_, neuron) in enumerate(top5.iterrows()):
         layer = int(neuron['layer'])
@@ -304,26 +308,24 @@ def create_wandb_visualizations(all_stats: dict, activations: dict, labels: np.n
             plt.setp(bp[element], color='black')
         
         ax.set_title(f"Layer {layer}, Neuron {neuron_idx}\nAUC={neuron['auc']:.3f}", 
-                    fontsize=10)
+                    fontsize=10, pad=10)
         ax.grid(axis='y', alpha=0.3)
         
         if idx == 0:
             ax.set_ylabel('Activation Value', fontsize=11)
     
     fig.suptitle('Top 5 Discriminative Neurons: Activation Distributions', 
-                fontsize=14, fontweight='bold', y=1.02)
-    plt.tight_layout()
+                fontsize=14, fontweight='bold')
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
     
     wandb_run.log({"top5_boxplots": wandb.Image(fig)})
     plt.close()
     
-    print("✓ All visualizations logged to wandb")
+    print("All visualizations logged to wandb")
 
 
 def create_wandb_tables(all_stats: dict, wandb_run):
     """Create and log summary tables to wandb."""
-    import wandb
-    
     layers = sorted(all_stats.keys())
     
     # Table 1: Per-layer summary
@@ -376,7 +378,331 @@ def create_wandb_tables(all_stats: dict, wandb_run):
         data=top_neurons_data
     )})
     
-    print("✓ All tables logged to wandb")
+    print("All tables logged to wandb")
+
+
+def _extract_neuron_features(all_stats: dict, activations: dict):
+    """Extract feature vectors and metadata for discriminative neurons."""
+    discriminative_neurons = []
+    neuron_metadata = []
+    
+    for layer in sorted(activations.keys()):
+        stats = all_stats[layer]
+        disc_mask = stats['discriminative'].values
+        disc_indices = np.where(disc_mask)[0]
+        
+        for neuron_idx in disc_indices:
+            neuron_stats = stats.iloc[neuron_idx]
+            
+            # Feature vector: 6 activation statistics
+            features = [
+                neuron_stats['ai_median'],
+                neuron_stats['human_median'],
+                neuron_stats['ai_q75'] - neuron_stats['ai_q25'],  # AI IQR
+                neuron_stats['human_q75'] - neuron_stats['human_q25'],  # Human IQR
+                neuron_stats['auc'],
+                neuron_stats['auc_deviation']
+            ]
+            
+            discriminative_neurons.append(features)
+            neuron_metadata.append({
+                'layer': layer,
+                'neuron_idx': neuron_idx,
+                'direction': neuron_stats['direction'],
+                'auc': neuron_stats['auc']
+            })
+    
+    return np.array(discriminative_neurons), neuron_metadata
+
+
+def _perform_clustering(X: np.ndarray, n_clusters: int):
+    """Standardize features and perform k-means clustering."""
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+    cluster_labels = kmeans.fit_predict(X_scaled)
+    
+    return X_scaled, cluster_labels, scaler, kmeans
+
+
+def _characterize_clusters(cluster_labels: np.ndarray, neuron_metadata: list, n_clusters: int):
+    """Analyze and characterize each cluster."""
+    cluster_summary = []
+    
+    for cluster_id in range(n_clusters):
+        mask = cluster_labels == cluster_id
+        cluster_neurons = [neuron_metadata[i] for i in range(len(neuron_metadata)) if mask[i]]
+        
+        # Compute characteristics
+        ai_pref_count = sum(1 for n in cluster_neurons if n['direction'] == 'AI-preferring')
+        human_pref_count = len(cluster_neurons) - ai_pref_count
+        mean_auc = np.mean([n['auc'] for n in cluster_neurons])
+        
+        # Layer distribution
+        layer_counts = {}
+        for n in cluster_neurons:
+            layer_counts[n['layer']] = layer_counts.get(n['layer'], 0) + 1
+        dominant_layer = max(layer_counts, key=layer_counts.get) if layer_counts else None
+        
+        # Classify cluster type
+        if mean_auc > 0.7:
+            cluster_type = "AI-specialists"
+        elif mean_auc < 0.3:
+            cluster_type = "Human-specialists"
+        else:
+            cluster_type = "Balanced discriminators"
+        
+        cluster_summary.append({
+            'cluster_id': cluster_id,
+            'size': len(cluster_neurons),
+            'type': cluster_type,
+            'ai_preferring': ai_pref_count,
+            'human_preferring': human_pref_count,
+            'mean_auc': mean_auc,
+            'dominant_layer': dominant_layer,
+            'layer_counts': layer_counts
+        })
+        
+        # Print summary
+        print(f"\nCluster {cluster_id}: {cluster_type}")
+        print(f"  Size: {len(cluster_neurons)} neurons")
+        print(f"  AI-preferring: {ai_pref_count}, Human-preferring: {human_pref_count}")
+        print(f"  Mean AUC: {mean_auc:.3f}")
+        print(f"  Dominant layer: {dominant_layer}")
+        print(f"  Layer distribution: {dict(sorted(layer_counts.items()))}")
+    
+    return cluster_summary
+
+
+def _get_cluster_colors(n_clusters: int):
+    """Generate enough colors for all clusters."""
+    base_colors = ['#ff6b6b', '#4ecdc4', '#9b59b6', '#f39c12', '#e74c3c', '#3498db', '#2ecc71', '#95a5a6']
+    return (base_colors * ((n_clusters // len(base_colors)) + 1))[:n_clusters]
+
+
+def _plot_cluster_overview(cluster_summary: list, cluster_labels: np.ndarray, neuron_metadata: list, 
+                           n_clusters: int, colors: list, wandb_run):
+    """Create overview plots: cluster sizes and AUC distributions."""
+    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+    
+    # Plot 1: Cluster sizes
+    ax = axes[0]
+    cluster_ids = [c['cluster_id'] for c in cluster_summary]
+    sizes = [c['size'] for c in cluster_summary]
+    types = [c['type'] for c in cluster_summary]
+    
+    bars = ax.bar(cluster_ids, sizes, color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
+    
+    for bar, size, cluster_type in zip(bars, sizes, types):
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2., height,
+                f'{int(size)}\n({cluster_type})',
+                ha='center', va='bottom', fontsize=9, fontweight='bold')
+    
+    ax.set_xlabel('Cluster ID', fontsize=13)
+    ax.set_ylabel('Number of Neurons', fontsize=13)
+    ax.set_title('Discriminative Neuron Clusters', fontsize=15, fontweight='bold', pad=15)
+    ax.set_xticks(cluster_ids)
+    ax.set_xticklabels([f'C{i}' for i in cluster_ids])
+    ax.grid(axis='y', alpha=0.3)
+    
+    # Plot 2: AUC distributions
+    ax = axes[1]
+    for cluster_id in range(n_clusters):
+        mask = cluster_labels == cluster_id
+        cluster_aucs = [neuron_metadata[i]['auc'] for i in range(len(neuron_metadata)) if mask[i]]
+        cluster_type = cluster_summary[cluster_id]['type']
+        ax.hist(cluster_aucs, bins=20, alpha=0.7, 
+                label=f'C{cluster_id}: {cluster_type}', 
+                color=colors[cluster_id], edgecolor='black', linewidth=0.5)
+    
+    ax.axvline(0.5, color='red', linestyle='--', linewidth=2, alpha=0.7, label='No effect')
+    ax.axvline(0.7, color='orange', linestyle=':', linewidth=2, alpha=0.7, label='Threshold')
+    ax.axvline(0.3, color='orange', linestyle=':', linewidth=2, alpha=0.7)
+    ax.set_xlabel('AUC Score', fontsize=13)
+    ax.set_ylabel('Count', fontsize=13)
+    ax.set_title('AUC Distribution by Cluster', fontsize=15, fontweight='bold', pad=15)
+    ax.legend(loc='upper right', fontsize=8)
+    ax.grid(alpha=0.3)
+    
+    plt.tight_layout(pad=2.0)
+    wandb_run.log({"cluster_analysis": wandb.Image(fig)})
+    plt.close()
+    
+    print(f"  ✓ Cluster overview logged to wandb")
+
+
+def _plot_layer_clusters_distribution(cluster_summary: list, cluster_labels: np.ndarray, neuron_metadata: list,
+                             activations: dict, n_clusters: int, colors: list, wandb_run):
+    """Plot cluster distribution across BERT layers."""
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    x = np.arange(len(sorted(activations.keys())))
+    width = 0.8 / n_clusters  # Adaptive width
+    
+    for idx, cluster_id in enumerate(range(n_clusters)):
+        mask = cluster_labels == cluster_id
+        cluster_neurons = [neuron_metadata[i] for i in range(len(neuron_metadata)) if mask[i]]
+        
+        layer_counts = {layer: 0 for layer in sorted(activations.keys())}
+        for n in cluster_neurons:
+            layer_counts[n['layer']] += 1
+        
+        counts = [layer_counts[layer] for layer in sorted(activations.keys())]
+        offset = width * (idx - n_clusters/2 + 0.5)
+        cluster_type = cluster_summary[cluster_id]['type']
+        
+        ax.bar(x + offset, counts, width, label=f'C{cluster_id}: {cluster_type}',
+               color=colors[cluster_id], alpha=0.8, edgecolor='black', linewidth=0.5)
+    
+    ax.set_xlabel('BERT Layer', fontsize=13)
+    ax.set_ylabel('Number of Discriminative Neurons', fontsize=13)
+    ax.set_title('Cluster Distribution Across BERT Layers', fontsize=15, fontweight='bold', pad=15)
+    ax.set_xticks(x)
+    ax.set_xticklabels([f'Layer {layer}' for layer in sorted(activations.keys())])
+    ax.legend(fontsize=9, ncol=2)
+    ax.grid(axis='y', alpha=0.3)
+    
+    plt.tight_layout(pad=1.5)
+    wandb_run.log({"cluster_layer_distribution": wandb.Image(fig)})
+    plt.close()
+    
+    print(f"  ✓ Cluster layer distribution logged to wandb")
+
+
+def _plot_clusters_pca_2d(X_scaled: np.ndarray, cluster_labels: np.ndarray, neuron_metadata: list,
+                 activations: dict, n_clusters: int, colors: list, wandb_run):
+    """Create 2D PCA visualization of clusters per layer."""
+    print(f"\n  Creating 2D cluster visualizations per layer...")
+    
+    # PCA for dimensionality reduction (6D → 2D)
+    pca = PCA(n_components=2)
+    X_2d = pca.fit_transform(X_scaled)
+    
+    explained_var = pca.explained_variance_ratio_
+    print(f"  PCA explained variance: {explained_var[0]:.1%} + {explained_var[1]:.1%} = {explained_var.sum():.1%}")
+    
+    # Create per-layer 2D scatter plots
+    layers_in_data = sorted(activations.keys())
+    n_layers = len(layers_in_data)
+    
+    fig, axes = plt.subplots(1, n_layers, figsize=(5.5*n_layers, 5.5), squeeze=False)
+    axes = axes[0]  # Get first row
+    
+    for idx, layer in enumerate(layers_in_data):
+        ax = axes[idx]
+        layer_mask = np.array([meta['layer'] == layer for meta in neuron_metadata])
+        
+        if layer_mask.sum() == 0:
+            ax.text(0.5, 0.5, f'No discriminative\nneurons in Layer {layer}',
+                   ha='center', va='center', transform=ax.transAxes, fontsize=12)
+            ax.set_title(f'Layer {layer}', fontsize=13, fontweight='bold', pad=10)
+            continue
+        
+        # Plot each cluster
+        for cluster_id in range(n_clusters):
+            cluster_mask = (cluster_labels == cluster_id) & layer_mask
+            
+            if cluster_mask.sum() > 0:
+                ax.scatter(X_2d[cluster_mask, 0], X_2d[cluster_mask, 1],
+                          c=colors[cluster_id], label=f'C{cluster_id}',
+                          alpha=0.7, s=80, edgecolors='black', linewidths=0.5)
+        
+        ax.set_xlabel(f'PC1 ({explained_var[0]:.1%})', fontsize=11)
+        ax.set_ylabel(f'PC2 ({explained_var[1]:.1%})', fontsize=11)
+        ax.set_title(f'Layer {layer}\n({layer_mask.sum()} neurons)', fontsize=13, fontweight='bold', pad=10)
+        ax.legend(fontsize=8, loc='best', ncol=2)
+        ax.grid(alpha=0.3)
+        ax.axhline(0, color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
+        ax.axvline(0, color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
+    
+    plt.suptitle('2D Cluster Visualization per Layer (PCA projection)', 
+                 fontsize=16, fontweight='bold')
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    wandb_run.log({"cluster_2d_per_layer": wandb.Image(fig)})
+    plt.close()
+    
+    # Feature importance
+    feature_names = ['AI_median', 'Human_median', 'AI_IQR', 'Human_IQR', 'AUC', 'AUC_dev']
+    pc1_importance = np.abs(pca.components_[0])
+    pc2_importance = np.abs(pca.components_[1])
+    
+    print(f"  Top PC1 feature: {feature_names[pc1_importance.argmax()]} ({pc1_importance.max():.2f})")
+    print(f"  Top PC2 feature: {feature_names[pc2_importance.argmax()]} ({pc2_importance.max():.2f})")
+    print(f"  ✓ 2D cluster visualizations logged to wandb")
+
+
+def cluster_analysis(activations: dict, labels: np.ndarray, all_stats: dict, wandb_run, n_clusters: int = 3):
+    """
+    Cluster discriminative neurons to identify functional groups.
+    
+    Args:
+        activations: Dict of layer activations
+        labels: Sample labels (0=Human, 1=AI)
+        all_stats: Dict of neuron statistics per layer
+        wandb_run: Wandb run object
+        n_clusters: Number of clusters
+    """
+    print(f"\n{'='*60}")
+    print(f"Clustering Analysis (k={n_clusters})")
+    print(f"{'='*60}")
+    
+    # Step 1: Extract features
+    X, neuron_metadata = _extract_neuron_features(all_stats, activations)
+    
+    if len(X) < n_clusters:
+        print(f"  ⚠ Only {len(X)} discriminative neurons found, skipping clustering")
+        return
+    
+    # Step 2: Perform clustering
+    X_scaled, cluster_labels, scaler, kmeans = _perform_clustering(X, n_clusters)
+    
+    # Step 3: Characterize clusters
+    cluster_summary = _characterize_clusters(cluster_labels, neuron_metadata, n_clusters)
+    
+    # Step 4: Generate colors
+    colors = _get_cluster_colors(n_clusters)
+    
+    # Step 5: Create visualizations
+    _plot_cluster_overview(cluster_summary, cluster_labels, neuron_metadata, n_clusters, colors, wandb_run)
+    _plot_layer_clusters_distribution(cluster_summary, cluster_labels, neuron_metadata, activations, n_clusters, colors, wandb_run)
+    _plot_clusters_pca_2d(X_scaled, cluster_labels, neuron_metadata, activations, n_clusters, colors, wandb_run)
+    
+    # Step 6: Log cluster summary table
+    cluster_table_data = []
+    for c in cluster_summary:
+        cluster_table_data.append([
+            f"Cluster {c['cluster_id']}",
+            c['type'],
+            c['size'],
+            c['ai_preferring'],
+            c['human_preferring'],
+            f"{c['mean_auc']:.3f}",
+            f"Layer {c['dominant_layer']}"
+        ])
+    
+    wandb_run.log({"cluster_summary": wandb.Table(
+        columns=["Cluster", "Type", "Size", "AI-preferring", "Human-preferring", "Mean AUC", "Dominant Layer"],
+        data=cluster_table_data
+    )})
+    
+    #Step 7: Log cluster metrics
+    wandb_run.log({
+        "n_clusters": n_clusters,
+        "largest_cluster_size": max(c['size'] for c in cluster_summary),
+        "smallest_cluster_size": min(c['size'] for c in cluster_summary),
+    })
+    
+    print(f"\n✓ Clustering analysis complete!")
+    print(f"  → Identified {n_clusters} distinct neuron groups")
+    print(f"  → Results logged to wandb")
+    
+    # TODO: Future extensions:
+    # - Try different clustering algorithms (hierarchical, DBSCAN)
+    # - Analyze within-cluster activation correlations
+    # - Identify prototype neurons for each cluster
+    # - Examine linguistic patterns per cluster
 
 
 def log_overall_metrics(all_stats: dict, wandb_run):
@@ -461,12 +787,11 @@ def main():
     args = parser.parse_args()
     
     # Fixed analysis parameters
-    ALPHA = 0.001  # Significance level (before Bonferroni)
+    ALPHA = 0.001  # Significance level (before Bonferroni)x
     AUC_THRESHOLD = 0.7  # AUC > 0.7 or < 0.3 for discrimination
     
     # Initialize wandb (mandatory)
     try:
-        import wandb
         wandb_run = wandb.init(
             project=args.wandb_project,
             entity=args.wandb_entity,
@@ -478,7 +803,7 @@ def main():
                 "effect_size": "auc"
             }
         )
-        print(f"✓ Weights & Biases initialized: {args.wandb_project}/{args.wandb_run_name}")
+        print(f"Weights & Biases initialized: {args.wandb_project}/{args.wandb_run_name}")
     except ImportError:
         print("ERROR: wandb not installed. Install with: pip install wandb")
         print("wandb is required for this analysis.")
@@ -518,10 +843,13 @@ def main():
     # Log overall metrics
     log_overall_metrics(all_stats, wandb_run)
     
+    # Cluster analysis (identify neuron groups)
+    cluster_analysis(activations, labels, all_stats, wandb_run, n_clusters=4)
+    
     wandb_run.finish()
     
     print("\n" + "=" * 80)
-    print("✓ ANALYSIS COMPLETE")
+    print("Analysis complete")
     print("=" * 80)
     print(f"\nResults:")
     print(f"  - CSV files: {args.input}/layer_X_neuron_stats.csv")
