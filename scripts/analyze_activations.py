@@ -121,7 +121,7 @@ def identify_discriminative_neurons(stats_df: pd.DataFrame, alpha: float = 0.001
     stats_df['strong_effect'] = (stats_df['auc'] > auc_threshold) | (stats_df['auc'] < (1 - auc_threshold))
     stats_df['discriminative'] = stats_df['significant'] & stats_df['strong_effect']
     
-    print(f"\nBonferroni corrected α = {corrected_alpha:.2e}")
+    print(f"\nBonferroni corrected alpha = {corrected_alpha:.2e}")
     print(f"AUC threshold: >{auc_threshold} or <{1-auc_threshold}")
     
     return stats_df, corrected_alpha
@@ -437,6 +437,8 @@ def _characterize_clusters(cluster_labels: np.ndarray, neuron_metadata: list, n_
         # Compute characteristics
         ai_pref_count = sum(1 for n in cluster_neurons if n['direction'] == 'AI-preferring')
         human_pref_count = len(cluster_neurons) - ai_pref_count
+        
+        median_auc = np.median([n['auc'] for n in cluster_neurons])
         mean_auc = np.mean([n['auc'] for n in cluster_neurons])
         
         # Layer distribution
@@ -445,10 +447,10 @@ def _characterize_clusters(cluster_labels: np.ndarray, neuron_metadata: list, n_
             layer_counts[n['layer']] = layer_counts.get(n['layer'], 0) + 1
         dominant_layer = max(layer_counts, key=layer_counts.get) if layer_counts else None
         
-        # Classify cluster type
-        if mean_auc > 0.7:
+        # Classify cluster type based on median AUC
+        if median_auc > 0.7:
             cluster_type = "AI-specialists"
-        elif mean_auc < 0.3:
+        elif median_auc < 0.3:
             cluster_type = "Human-specialists"
         else:
             cluster_type = "Balanced discriminators"
@@ -459,6 +461,7 @@ def _characterize_clusters(cluster_labels: np.ndarray, neuron_metadata: list, n_
             'type': cluster_type,
             'ai_preferring': ai_pref_count,
             'human_preferring': human_pref_count,
+            'median_auc': median_auc,
             'mean_auc': mean_auc,
             'dominant_layer': dominant_layer,
             'layer_counts': layer_counts
@@ -468,7 +471,7 @@ def _characterize_clusters(cluster_labels: np.ndarray, neuron_metadata: list, n_
         print(f"\nCluster {cluster_id}: {cluster_type}")
         print(f"  Size: {len(cluster_neurons)} neurons")
         print(f"  AI-preferring: {ai_pref_count}, Human-preferring: {human_pref_count}")
-        print(f"  Mean AUC: {mean_auc:.3f}")
+        print(f"  Median AUC: {median_auc:.3f} (mean: {mean_auc:.3f})")
         print(f"  Dominant layer: {dominant_layer}")
         print(f"  Layer distribution: {dict(sorted(layer_counts.items()))}")
     
@@ -509,11 +512,15 @@ def _plot_cluster_overview(cluster_summary: list, cluster_labels: np.ndarray, ne
     
     # Plot 2: AUC distributions
     ax = axes[1]
+    
+    # Use fixed bins from 0 to 1 with consistent width
+    bin_edges = np.linspace(0, 1, 21)  # 20 bins of equal width (0.05 each)
+    
     for cluster_id in range(n_clusters):
         mask = cluster_labels == cluster_id
         cluster_aucs = [neuron_metadata[i]['auc'] for i in range(len(neuron_metadata)) if mask[i]]
         cluster_type = cluster_summary[cluster_id]['type']
-        ax.hist(cluster_aucs, bins=20, alpha=0.7, 
+        ax.hist(cluster_aucs, bins=bin_edges, alpha=0.7, 
                 label=f'C{cluster_id}: {cluster_type}', 
                 color=colors[cluster_id], edgecolor='black', linewidth=0.5)
     
@@ -530,7 +537,7 @@ def _plot_cluster_overview(cluster_summary: list, cluster_labels: np.ndarray, ne
     wandb_run.log({"cluster_analysis": wandb.Image(fig)})
     plt.close()
     
-    print(f"  ✓ Cluster overview logged to wandb")
+    print(f"  Cluster overview logged to wandb")
 
 
 def _plot_layer_clusters_distribution(cluster_summary: list, cluster_labels: np.ndarray, neuron_metadata: list,
@@ -568,7 +575,7 @@ def _plot_layer_clusters_distribution(cluster_summary: list, cluster_labels: np.
     wandb_run.log({"cluster_layer_distribution": wandb.Image(fig)})
     plt.close()
     
-    print(f"  ✓ Cluster layer distribution logged to wandb")
+    print(f"  Cluster layer distribution logged to wandb")
 
 
 def _plot_clusters_pca_2d(X_scaled: np.ndarray, cluster_labels: np.ndarray, neuron_metadata: list,
@@ -576,7 +583,7 @@ def _plot_clusters_pca_2d(X_scaled: np.ndarray, cluster_labels: np.ndarray, neur
     """Create 2D PCA visualization of clusters per layer."""
     print(f"\n  Creating 2D cluster visualizations per layer...")
     
-    # PCA for dimensionality reduction (6D → 2D)
+    # PCA for dimensionality reduction (6D to 2D)
     pca = PCA(n_components=2)
     X_2d = pca.fit_transform(X_scaled)
     
@@ -617,7 +624,7 @@ def _plot_clusters_pca_2d(X_scaled: np.ndarray, cluster_labels: np.ndarray, neur
         ax.axhline(0, color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
         ax.axvline(0, color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
     
-    plt.suptitle('2D Cluster Visualization per Layer (PCA projection)', 
+    plt.suptitle(f'2D Cluster Visualization per Layer (PCA projection - explained variance: {explained_var.sum():.1%})', 
                  fontsize=16, fontweight='bold')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     wandb_run.log({"cluster_2d_per_layer": wandb.Image(fig)})
@@ -630,7 +637,7 @@ def _plot_clusters_pca_2d(X_scaled: np.ndarray, cluster_labels: np.ndarray, neur
     
     print(f"  Top PC1 feature: {feature_names[pc1_importance.argmax()]} ({pc1_importance.max():.2f})")
     print(f"  Top PC2 feature: {feature_names[pc2_importance.argmax()]} ({pc2_importance.max():.2f})")
-    print(f"  ✓ 2D cluster visualizations logged to wandb")
+    print(f"  2D cluster visualizations logged to wandb")
 
 
 def cluster_analysis(activations: dict, labels: np.ndarray, all_stats: dict, wandb_run, n_clusters: int = 3):
@@ -652,7 +659,7 @@ def cluster_analysis(activations: dict, labels: np.ndarray, all_stats: dict, wan
     X, neuron_metadata = _extract_neuron_features(all_stats, activations)
     
     if len(X) < n_clusters:
-        print(f"  ⚠ Only {len(X)} discriminative neurons found, skipping clustering")
+        print(f"  WARNING: Only {len(X)} discriminative neurons found, skipping clustering")
         return
     
     # Step 2: Perform clustering
@@ -678,12 +685,13 @@ def cluster_analysis(activations: dict, labels: np.ndarray, all_stats: dict, wan
             c['size'],
             c['ai_preferring'],
             c['human_preferring'],
+            f"{c['median_auc']:.3f}",
             f"{c['mean_auc']:.3f}",
             f"Layer {c['dominant_layer']}"
         ])
     
     wandb_run.log({"cluster_summary": wandb.Table(
-        columns=["Cluster", "Type", "Size", "AI-preferring", "Human-preferring", "Mean AUC", "Dominant Layer"],
+        columns=["Cluster", "Type", "Size", "AI-preferring", "Human-preferring", "Median AUC", "Mean AUC", "Dominant Layer"],
         data=cluster_table_data
     )})
     
@@ -694,9 +702,9 @@ def cluster_analysis(activations: dict, labels: np.ndarray, all_stats: dict, wan
         "smallest_cluster_size": min(c['size'] for c in cluster_summary),
     })
     
-    print(f"\n✓ Clustering analysis complete!")
-    print(f"  → Identified {n_clusters} distinct neuron groups")
-    print(f"  → Results logged to wandb")
+    print(f"\nClustering analysis complete!")
+    print(f"  Identified {n_clusters} distinct neuron groups")
+    print(f"  Results logged to wandb")
     
     # TODO: Future extensions:
     # - Try different clustering algorithms (hierarchical, DBSCAN)
@@ -750,9 +758,9 @@ def log_overall_metrics(all_stats: dict, wandb_run):
     print(f"{'='*60}")
     print(f"Total discriminative neurons: {total_disc} / {total_neurons} ({metrics['pct_discriminative']:.1f}%)")
     print(f"Most discriminative layer: Layer {most_disc_layer} ({layer_disc_counts[most_disc_layer]} neurons)")
-    print(f"Early layers (≤6): {early_disc} discriminative")
-    print(f"Late layers (>6): {late_disc} discriminative")
-    print(f"→ Interpretation: {'Semantic' if late_disc > early_disc else 'Syntactic'} features dominate")
+    print(f"Early layers (<= 6): {early_disc} discriminative")
+    print(f"Late layers (> 6): {late_disc} discriminative")
+    print(f"Interpretation: {'Semantic' if late_disc > early_disc else 'Syntactic'} features dominate")
 
 
 def main():
@@ -844,7 +852,7 @@ def main():
     log_overall_metrics(all_stats, wandb_run)
     
     # Cluster analysis (identify neuron groups)
-    cluster_analysis(activations, labels, all_stats, wandb_run, n_clusters=4)
+    cluster_analysis(activations, labels, all_stats, wandb_run, n_clusters=3)
     
     wandb_run.finish()
     
