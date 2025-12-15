@@ -8,10 +8,6 @@ import warnings
 
 class AiHumanPredictor:
     def __init__(self, tokenizer, encoder, model_path: str = None, device: str = "cpu"):
-        """
-        Predicts whether the text was human-written or ai-generated.
-        Returns 0 if human and 1 if AI
-        """
         self.tokenizer = tokenizer
         self.encoder = encoder.to(device)
         self.encoder.eval()
@@ -19,8 +15,13 @@ class AiHumanPredictor:
         self.device = device
         self.signed_weights_head = None
         self.feature_weights: bool = None
+        self.feature_bias: float = None
 
     def forward(self, text) -> float:
+        """
+        Predicts whether the text was human-written or ai-generated.
+        Returns 0 if human and 1 if AI
+        """
         tokens = self.tokenizer(
             text,
             return_tensors="pt",
@@ -34,20 +35,21 @@ class AiHumanPredictor:
                 tokens["input_ids"], attention_mask=tokens["attention_mask"]
             )
         embeddings = encoder_output.last_hidden_state[:, 0, :]
-        prediction = self.head.predict(embeddings.reshape(1, -1).cpu().numpy())
+        prediction = self.head.predict(embeddings.reshape(1, -1).cpu().numpy())[0]
         return prediction
 
     def load_head(self):
-        """Save trained model to disk."""
+        """Load trained model from disk."""
         with open(self.model_save_path, "rb") as f:
             head_candidate = pickle.load(f)
 
             if hasattr(head_candidate, "coef_"):
                 self.feature_weights = head_candidate.coef_.ravel()
+                self.feature_bias = head_candidate.intercept_
                 self.signed_weights_head = True
             elif hasattr(head_candidate, "feature_importances_"):
                 self.feature_weights = head_candidate.feature_importances_.ravel()
-                raise warnings.warn(
+                warnings.warn(
                     f"Warning: Model of type {type(head_candidate).__name__} does not have signed feature weights"
                 )
             else:
@@ -72,13 +74,17 @@ class AiHumanPredictor:
         self.encoder.zero_grad()
         # self.encoder.train() ideally should be used, but activates dropout which randomizes outputs
 
-        embeddings = self.encoder.embeddings.word_embeddings(
-            input_ids
-        )
+        embeddings = self.encoder.embeddings.word_embeddings(input_ids)
         embeddings = embeddings.detach()
         embeddings.requires_grad_(True)
         out = self.encoder(inputs_embeds=embeddings, attention_mask=mask)
         hs = out.last_hidden_state[0]
+
+        pad_embedding = self.encoder.embeddings.word_embeddings(
+            torch.tensor(0, device=self.device)
+        )  # 0 is the id of [PAD] encoding
+        obj = (hs[0, :] - pad_embedding).sum()
+
         obj = hs[0, :].sum()
         obj.backward()
         grads = embeddings.grad[0]
@@ -86,8 +92,12 @@ class AiHumanPredictor:
         self.encoder.eval()
 
         inv_vocab = {v: k for k, v in self.tokenizer.vocab.items()}
-        tokens = [inv_vocab[item.item()] for item in input_ids.ravel()]
-        importance = (grads.cpu().numpy() * self.feature_weights).mean(axis=1)
+        tokens = np.array([inv_vocab[item.item()] for item in input_ids.ravel()])
+
+        numpy_grads = grads.cpu().numpy()
+        importance = (numpy_grads * self.feature_weights).mean(axis=1)
+        scaled_bias = self.feature_bias * np.pow(importance,2).mean()
+        importance += scaled_bias * (importance != 0)
 
         return tokens, importance
 
@@ -98,12 +108,21 @@ class AiHumanPredictor:
         """
         tokens, importance = self.get_token_importance_by_gradients(text)
 
+        token_count = (tokens != "[PAD]").sum()
+
+        display_size = len(tokens)
+        while display_size / 2 > token_count and display_size >= 8:
+            display_size //= 2
+
+        tokens = tokens[:display_size]
+        importance = importance[:display_size]
+
         fig = px.imshow(
-            importance.reshape(16, -1),
+            importance.reshape(-1, 16),
             color_continuous_midpoint=0,
             color_continuous_scale="RdBu",
         )
-        fig.data[0].text = np.array(tokens).reshape(16, -1)
+        fig.data[0].text = np.array(tokens).reshape(-1, 16)
         fig.data[0].texttemplate = "%{text}"
 
         if file_path is None:
