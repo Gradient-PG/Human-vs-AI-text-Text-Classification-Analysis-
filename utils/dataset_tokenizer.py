@@ -29,7 +29,7 @@ class DatasetTokenizer:
         output_dir: str = "data/processed",
         max_length: int = 512,
         test_size: float = 0.2,
-        random_state: int = 42
+        random_state: int = 42,
     ):
         self.tokenizer_name = tokenizer_name
         self.output_dir = Path(output_dir)
@@ -39,35 +39,20 @@ class DatasetTokenizer:
 
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
 
-    def _preprocess_text(self, df: pd.DataFrame, text_column: str) -> pd.DataFrame:
-        """Basic text preprocessing."""
-        df[text_column] = df[text_column].apply(lambda x: x.lower().strip())
-        return df
-
-    def _split_data(
-        self,
-        df: pd.DataFrame,
-        label_column: str
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """Split data into train and test sets."""
-        train_df, test_df = train_test_split(
-            df,
-            test_size=self.test_size,
-            random_state=self.random_state,
-            stratify=df[label_column]
-        )
-        return train_df, test_df
+    def _preprocess_dataset(self, ds):
+        subset = ds.select_columns(["label", "text"])
+        cleaned = subset.map(
+            lambda x: {"text": x.lower().strip()}, input_columns="text"
+        ).rename_column("label", "labels")
+        return cleaned
 
     def _tokenize_dataset(
         self,
-        texts: list,
-        labels: list,
+        dataset: Dataset,
         batch_size: int = 1000,
-        desc: str = "Tokenizing"
+        desc: str = "Tokenizing",
     ) -> Dataset:
         """Tokenize texts and create HuggingFace Dataset."""
-        # Create dataset
-        dataset = Dataset.from_dict({"text": texts, "labels": labels})
 
         # Define tokenization function
         def tokenize_function(examples):
@@ -75,7 +60,7 @@ class DatasetTokenizer:
                 examples["text"],
                 padding="max_length",
                 truncation=True,
-                max_length=self.max_length
+                max_length=self.max_length,
             )
 
         # Tokenize in batches
@@ -84,22 +69,19 @@ class DatasetTokenizer:
             batched=True,
             batch_size=batch_size,
             remove_columns=["text"],
-            desc=desc
+            desc=desc,
         )
 
         tokenized_dataset.set_format(
-            type='torch',
-            columns=['input_ids', 'attention_mask', 'labels']
+            type="torch", columns=["input_ids", "attention_mask", "label"]
         )
 
         return tokenized_dataset
 
     def tokenize_and_save(
         self,
-        csv_path: str,
-        text_column: str = "text",
-        label_column: str = "generated",
-        batch_size: int = 1000
+        hf_base_dataset: Dataset,
+        batch_size: int = 1000,
     ):
         """
         Load CSV, tokenize, and save to disk.
@@ -110,35 +92,38 @@ class DatasetTokenizer:
             label_column: Name of the label column
             batch_size: Batch size for tokenization
         """
-        print(f"Loading data from {csv_path}")
-        df = pd.read_csv(csv_path)
-        print(f"Loaded {len(df)} samples")
+        print(f"Loaded {len(hf_base_dataset)} samples")
 
-        df = self._preprocess_text(df, text_column)
-
-        # Train/test split
-        train_df, test_df = self._split_data(df, label_column)
-        print(f"Train: {len(train_df)}, Test: {len(test_df)}")
+        train_ds = self._preprocess_dataset(hf_base_dataset["train"])
+        test_ds = self._preprocess_dataset(hf_base_dataset["test"])
+        valid_ds = self._preprocess_dataset(hf_base_dataset["validation"])
 
         # Tokenize train/test
-        train_dataset = self._tokenize_dataset(
-            train_df[text_column].tolist(),
-            train_df[label_column].tolist(),
+        train_tokens_dataset = self._tokenize_dataset(
+            train_ds,
             batch_size=batch_size,
-            desc="Tokenizing train"
+            desc="Tokenizing train",
         )
 
-        test_dataset = self._tokenize_dataset(
-            test_df[text_column].tolist(),
-            test_df[label_column].tolist(),
+        test_tokens_dataset = self._tokenize_dataset(
+            test_ds,
             batch_size=batch_size,
-            desc="Tokenizing test"
+            desc="Tokenizing test",
         )
 
-        dataset_dict = DatasetDict({
-            'train': train_dataset,
-            'test': test_dataset
-        })
+        valid_tokens_ds = self._tokenize_dataset(
+            valid_ds,
+            batch_size=batch_size,
+            desc="Tokenizing validation",
+        )
+
+        dataset_dict = DatasetDict(
+            {
+                "train": train_tokens_dataset,
+                "test": test_tokens_dataset,
+                "validation": valid_tokens_ds,
+            }
+        )
 
         output_path = self.output_dir / "tokenized_dataset"
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -146,4 +131,3 @@ class DatasetTokenizer:
 
         print(f"Saved to {output_path}")
         return output_path
-

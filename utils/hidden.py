@@ -1,0 +1,1 @@
+hf_api_key="replace this with hf api key with read acces to gated repository"
