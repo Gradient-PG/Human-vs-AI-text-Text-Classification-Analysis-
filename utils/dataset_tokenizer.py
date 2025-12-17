@@ -37,10 +37,13 @@ class DatasetTokenizer:
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
 
     def _preprocess_dataset(self, ds):
-        subset = ds.select_columns(["label", "text"])
-        cleaned = subset.map(
-            lambda x: {"text": x.lower().strip()}, input_columns="text"
-        )
+        def preprocessing_function(row):
+            row["text"] = row["text"].lower().strip()
+            if row["label"] == 0 and len(row["text"]) > 800:
+                row["text"] = row["text"][:-600]
+            return row
+
+        cleaned = ds.map(lambda x: preprocessing_function(x), batch_size=1000)
         return cleaned
 
     def _tokenize_dataset(
