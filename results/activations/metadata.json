@@ -6,8 +6,8 @@
     12
   ],
   "n_samples": 1000,
-  "n_ai": 333,
-  "n_human": 667,
+  "n_ai": 500,
+  "n_human": 500,
   "split": "test",
   "activation_shape": [
     1000,

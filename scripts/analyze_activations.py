@@ -437,8 +437,6 @@ def _characterize_clusters(cluster_labels: np.ndarray, neuron_metadata: list, n_
         # Compute characteristics
         ai_pref_count = sum(1 for n in cluster_neurons if n['direction'] == 'AI-preferring')
         human_pref_count = len(cluster_neurons) - ai_pref_count
-        
-        median_auc = np.median([n['auc'] for n in cluster_neurons])
         mean_auc = np.mean([n['auc'] for n in cluster_neurons])
         
         # Layer distribution
@@ -447,10 +445,10 @@ def _characterize_clusters(cluster_labels: np.ndarray, neuron_metadata: list, n_
             layer_counts[n['layer']] = layer_counts.get(n['layer'], 0) + 1
         dominant_layer = max(layer_counts, key=layer_counts.get) if layer_counts else None
         
-        # Classify cluster type based on median AUC
-        if median_auc > 0.7:
+        # Classify cluster type based on mean AUC
+        if mean_auc > 0.7:
             cluster_type = "AI-specialists"
-        elif median_auc < 0.3:
+        elif mean_auc < 0.3:
             cluster_type = "Human-specialists"
         else:
             cluster_type = "Balanced discriminators"
@@ -461,7 +459,6 @@ def _characterize_clusters(cluster_labels: np.ndarray, neuron_metadata: list, n_
             'type': cluster_type,
             'ai_preferring': ai_pref_count,
             'human_preferring': human_pref_count,
-            'median_auc': median_auc,
             'mean_auc': mean_auc,
             'dominant_layer': dominant_layer,
             'layer_counts': layer_counts
@@ -471,7 +468,7 @@ def _characterize_clusters(cluster_labels: np.ndarray, neuron_metadata: list, n_
         print(f"\nCluster {cluster_id}: {cluster_type}")
         print(f"  Size: {len(cluster_neurons)} neurons")
         print(f"  AI-preferring: {ai_pref_count}, Human-preferring: {human_pref_count}")
-        print(f"  Median AUC: {median_auc:.3f} (mean: {mean_auc:.3f})")
+        print(f"  Mean AUC: {mean_auc:.3f}")
         print(f"  Dominant layer: {dominant_layer}")
         print(f"  Layer distribution: {dict(sorted(layer_counts.items()))}")
     
@@ -480,7 +477,16 @@ def _characterize_clusters(cluster_labels: np.ndarray, neuron_metadata: list, n_
 
 def _get_cluster_colors(n_clusters: int):
     """Generate enough colors for all clusters."""
-    base_colors = ['#ff6b6b', '#4ecdc4', '#9b59b6', '#f39c12', '#e74c3c', '#3498db', '#2ecc71', '#95a5a6']
+    base_colors = [
+        "#1f77b4",  # blue (high contrast, primary)
+        "#d62728",  # red
+        "#2ca02c",  # green
+        "#ff7f0e",  # orange
+        "#9467bd",  # purple
+        "#8c564b",  # brown
+        "#17becf",  # cyan
+        "#7f7f7f",  # gray (neutral, for less important category)
+    ]
     return (base_colors * ((n_clusters // len(base_colors)) + 1))[:n_clusters]
 
 
@@ -685,13 +691,12 @@ def cluster_analysis(activations: dict, labels: np.ndarray, all_stats: dict, wan
             c['size'],
             c['ai_preferring'],
             c['human_preferring'],
-            f"{c['median_auc']:.3f}",
             f"{c['mean_auc']:.3f}",
             f"Layer {c['dominant_layer']}"
         ])
     
     wandb_run.log({"cluster_summary": wandb.Table(
-        columns=["Cluster", "Type", "Size", "AI-preferring", "Human-preferring", "Median AUC", "Mean AUC", "Dominant Layer"],
+        columns=["Cluster", "Type", "Size", "AI-preferring", "Human-preferring", "Mean AUC", "Dominant Layer"],
         data=cluster_table_data
     )})
     
@@ -852,7 +857,7 @@ def main():
     log_overall_metrics(all_stats, wandb_run)
     
     # Cluster analysis (identify neuron groups)
-    cluster_analysis(activations, labels, all_stats, wandb_run, n_clusters=3)
+    cluster_analysis(activations, labels, all_stats, wandb_run, n_clusters=5)
     
     wandb_run.finish()
     

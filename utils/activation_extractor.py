@@ -49,22 +49,38 @@ class ActivationExtractor:
         desc: str = "Extracting activations"
     ) -> Dict[int, np.ndarray]:
         """
-        Extract activations from specified layers.
-
+        Extract activations from specified layers with balanced class sampling.
+        
         Args:
             dataset: Tokenized dataset with 'input_ids', 'attention_mask', 'label'
             batch_size: Batch size for processing
-            max_samples: Maximum number of samples to process (None = all)
+            max_samples: Maximum number of samples to process (None = all), will be balanced 50/50
             desc: Progress bar description
 
         Returns:
             Dictionary mapping layer_idx -> activations array (N_samples, 768)
             Labels array (N_samples,)
         """
-        # Limit dataset if needed
+        from datasets import concatenate_datasets
+        
+        # Balance dataset if max_samples is specified
         if max_samples:
-            dataset = dataset.select(range(min(max_samples, len(dataset))))
-
+            # Split by class
+            ai_samples = dataset.filter(lambda x: x['labels'] == 1)
+            human_samples = dataset.filter(lambda x: x['labels'] == 0)
+            
+            # Calculate balanced split
+            samples_per_class = max_samples // 2
+            
+            # Take equal numbers from each class
+            ai_subset = ai_samples.shuffle(seed=42).select(range(min(samples_per_class, len(ai_samples))))
+            human_subset = human_samples.shuffle(seed=42).select(range(min(samples_per_class, len(human_samples))))
+            
+            # Combine and shuffle
+            dataset = concatenate_datasets([ai_subset, human_subset]).shuffle(seed=42)
+            
+            print(f"Balanced sampling: {len(ai_subset)} AI + {len(human_subset)} Human = {len(dataset)} total")
+        
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
         # Initialize storage for each layer
