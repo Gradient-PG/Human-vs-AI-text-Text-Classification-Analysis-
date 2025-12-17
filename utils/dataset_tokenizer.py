@@ -3,10 +3,7 @@ Dataset tokenizer utility for tokenizing raw text data.
 Handles train/test splitting and saves tokenized datasets to disk.
 """
 
-import pandas as pd
 from pathlib import Path
-from typing import Tuple
-from sklearn.model_selection import train_test_split
 from transformers import AutoTokenizer
 from datasets import Dataset, DatasetDict
 
@@ -43,7 +40,7 @@ class DatasetTokenizer:
         subset = ds.select_columns(["label", "text"])
         cleaned = subset.map(
             lambda x: {"text": x.lower().strip()}, input_columns="text"
-        ).rename_column("label", "labels")
+        )
         return cleaned
 
     def _tokenize_dataset(

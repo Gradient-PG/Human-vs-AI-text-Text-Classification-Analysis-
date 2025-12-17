@@ -11,6 +11,8 @@ from transformers import AutoModel
 from utils.dataset_tokenizer import DatasetTokenizer
 from utils.dataset_encoder import DatasetEncoder
 from utils.classifier_trainer import ClassifierTrainer
+from utils import hidden
+from datasets import load_dataset
 
 
 class TrainingPipeline:
@@ -77,10 +79,7 @@ class TrainingPipeline:
                 self.wandb.log({"tokenization": "cached"})
             return tokenized_path
 
-        print(f"\n=== Tokenizing dataset ===")
-        raw_csv = (
-            Path(self.config["paths"]["raw_data"]) / self.config["dataset"]["file"]
-        )
+        print("\n=== Tokenizing dataset ===")
 
         tokenizer = DatasetTokenizer(
             tokenizer_name=self.config["tokenizer_config"]["name"],
@@ -92,10 +91,12 @@ class TrainingPipeline:
 
         tokenizer.output_dir = tokenized_path.parent
 
+        ds = load_dataset(
+            "NicolaiSivesind/human-vs-machine", "wiki_labeled", token=hidden.hf_api_key
+        )
+
         tokenizer.tokenize_and_save(
-            csv_path=str(raw_csv),
-            text_column=self.config["dataset"]["text_column"],
-            label_column=self.config["dataset"]["label_column"],
+            ds,
             batch_size=self.config["tokenizer_config"]["batch_size"],
         )
 
@@ -129,7 +130,7 @@ class TrainingPipeline:
                 self.wandb.log({"encoding": "cached"})
             return encoded_path
 
-        print(f"\n=== Encoding dataset ===")
+        print("\n=== Encoding dataset ===")
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
         encoder_model = AutoModel.from_pretrained(self.config["encoder_config"]["name"])
@@ -163,7 +164,7 @@ class TrainingPipeline:
 
     def run_training(self, encoded_path: Path, save_model: bool = True):
         """Step 3: Train classifier"""
-        print(f"\n=== Training classifier ===")
+        print("\n=== Training classifier ===")
 
         classifier = self._instantiate_classifier()
 
@@ -189,10 +190,15 @@ class TrainingPipeline:
             eval_every=self.config["training"]["eval_every"],
         )
 
-        print(f"\n✓ Training complete!")
+        print("\n✓ Training complete!")
         return trainer
 
-    def run(self, force_retokenize: bool = False, force_reencode: bool = False, save_model: bool = True):
+    def run(
+        self,
+        force_retokenize: bool = False,
+        force_reencode: bool = False,
+        save_model: bool = True,
+    ):
         """Run full pipeline with smart caching"""
         print(f"=== Running training: {self.config['experiment_name']} ===\n")
         print(
@@ -213,4 +219,3 @@ class TrainingPipeline:
         trainer = self.run_training(encoded_path, save_model=save_model)
 
         return trainer
-
