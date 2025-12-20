@@ -63,11 +63,23 @@ class ActivationExtractor:
         """
         from datasets import concatenate_datasets
         
+        # #region agent log
+        import json
+        with open(r'd:\_gradient\Human-vs-AI-text-Text-Classification-Analysis-\.cursor\debug.log', 'a') as f:
+            f.write(json.dumps({"sessionId":"debug-session","runId":"initial","hypothesisId":"A,B,C","location":"activation_extractor.py:67","message":"Dataset info before filtering","data":{"column_names":dataset.column_names,"features":str(dataset.features),"num_rows":len(dataset),"max_samples":max_samples},"timestamp":int(__import__('time').time()*1000)})+'\n')
+        # #endregion
+        
         # Balance dataset if max_samples is specified
         if max_samples:
+            # #region agent log
+            with open(r'd:\_gradient\Human-vs-AI-text-Text-Classification-Analysis-\.cursor\debug.log', 'a') as f:
+                sample_item = dataset[0]
+                f.write(json.dumps({"sessionId":"debug-session","runId":"initial","hypothesisId":"A,D","location":"activation_extractor.py:75","message":"First dataset item keys","data":{"keys":list(sample_item.keys()),"has_label":('label' in sample_item),"has_labels":('labels' in sample_item)},"timestamp":int(__import__('time').time()*1000)})+'\n')
+            # #endregion
+            
             # Split by class
-            ai_samples = dataset.filter(lambda x: x['labels'] == 1)
-            human_samples = dataset.filter(lambda x: x['labels'] == 0)
+            ai_samples = dataset.filter(lambda x: x['label'] == 1)
+            human_samples = dataset.filter(lambda x: x['label'] == 0)
             
             # Calculate balanced split
             samples_per_class = max_samples // 2
@@ -79,6 +91,11 @@ class ActivationExtractor:
             # Combine and shuffle
             dataset = concatenate_datasets([ai_subset, human_subset]).shuffle(seed=42)
             
+            # #region agent log
+            with open(r'd:\_gradient\Human-vs-AI-text-Text-Classification-Analysis-\.cursor\debug.log', 'a') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"initial","hypothesisId":"C","location":"activation_extractor.py:95","message":"After balanced sampling","data":{"ai_count":len(ai_subset),"human_count":len(human_subset),"total":len(dataset),"column_names":dataset.column_names},"timestamp":int(__import__('time').time()*1000)})+'\n')
+            # #endregion
+            
             print(f"Balanced sampling: {len(ai_subset)} AI + {len(human_subset)} Human = {len(dataset)} total")
         
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
@@ -89,6 +106,13 @@ class ActivationExtractor:
 
         with torch.no_grad():
             for batch in tqdm(dataloader, desc=desc):
+                # #region agent log
+                if 'batch_logged' not in locals():
+                    with open(r'd:\_gradient\Human-vs-AI-text-Text-Classification-Analysis-\.cursor\debug.log', 'a') as f:
+                        f.write(json.dumps({"sessionId":"debug-session","runId":"initial","hypothesisId":"D","location":"activation_extractor.py:108","message":"First batch keys","data":{"batch_keys":list(batch.keys()),"has_label":('label' in batch),"has_labels":('labels' in batch)},"timestamp":int(__import__('time').time()*1000)})+'\n')
+                    batch_logged = True
+                # #endregion
+                
                 input_ids = batch["input_ids"].to(self.device)
                 attention_mask = batch["attention_mask"].to(self.device)
                 labels = batch["label"]
@@ -146,6 +170,13 @@ class ActivationExtractor:
 
         print(f"Loading tokenized dataset from {tokenized_dataset_path}...")
         dataset_dict = load_from_disk(tokenized_dataset_path)
+        
+        # #region agent log
+        import json
+        with open(r'd:\_gradient\Human-vs-AI-text-Text-Classification-Analysis-\.cursor\debug.log', 'a') as f:
+            f.write(json.dumps({"sessionId":"debug-session","runId":"initial","hypothesisId":"E","location":"activation_extractor.py:155","message":"Dataset dict loaded","data":{"splits":list(dataset_dict.keys()),"requested_split":split},"timestamp":int(__import__('time').time()*1000)})+'\n')
+        # #endregion
+        
         dataset = dataset_dict[split]
 
         print(f"\nExtracting activations from {split} split...")

@@ -13,12 +13,12 @@
     11,
     12
   ],
-  "n_samples": 1000,
-  "n_ai": 500,
-  "n_human": 500,
+  "n_samples": 3000,
+  "n_ai": 1500,
+  "n_human": 1500,
   "split": "test",
   "activation_shape": [
-    1000,
+    3000,
     768
   ]
 }
