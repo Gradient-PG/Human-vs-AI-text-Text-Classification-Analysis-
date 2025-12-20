@@ -39,7 +39,7 @@ def main():
         "--layers",
         type=int,
         nargs="+",
-        default=[3, 6, 9, 12],
+        default=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
         help="Layer indices to extract (1-12 for BERT-base)",
     )
     parser.add_argument(
