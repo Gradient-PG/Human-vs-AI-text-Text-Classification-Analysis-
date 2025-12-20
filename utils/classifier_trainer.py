@@ -4,13 +4,10 @@ Trains on pre-encoded datasets loaded from disk.
 """
 
 import pickle
-import torch
-import numpy as np
 from torch.utils.data import DataLoader
 from datasets import load_from_disk
 from pathlib import Path
 from tqdm import tqdm
-from typing import Union
 import time
 
 
@@ -56,7 +53,7 @@ class ClassifierTrainer:
 
         for batch in dataloader:
             X = batch["embeddings"].numpy()
-            y = batch["labels"].numpy()
+            y = batch["label"].numpy()
 
             y_pred = self.head.predict(X)
             total_correct += (y_pred == y).sum()
@@ -95,13 +92,18 @@ class ClassifierTrainer:
         X = self.train_dataset["embeddings"][0 : len(self.train_dataset)]
 
         print("\nConverting test data to numpy...")
-        y = self.train_dataset["labels"][0 : len(self.train_dataset)]
+        y = self.train_dataset["label"][0 : len(self.train_dataset)]
 
         print("\nTraining...")
+
         start = time.time()
-        print(start)
+        print(
+            f"Training started at: {time.strftime('%H:%M:%S %d-%m-%Y', time.localtime(start))}"
+        )
         self.head.fit(X, y)
-        print(start - time.time())
+        end = time.time()
+        elapsed_time = end - start
+        print(f"Training completed in: {elapsed_time:.2f} seconds")
 
         print("\nEvaluation...")
         final_train_score = self._evaluate_sklearn(self.train_dataset, 64)
@@ -143,7 +145,7 @@ class ClassifierTrainer:
 
             for i, batch in pbar:
                 X = batch["embeddings"].numpy()
-                y = batch["labels"].numpy()
+                y = batch["label"].numpy()
 
                 # Train step
                 self.head.partial_fit(X, y, classes=[0, 1])

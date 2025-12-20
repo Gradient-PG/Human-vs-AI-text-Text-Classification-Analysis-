@@ -93,7 +93,7 @@ def main():
     )
     
     print("\n" + "=" * 60)
-    print("✓ EXTRACTION COMPLETE")
+    print("EXTRACTION COMPLETE")
     print("=" * 60)
     print(f"\nNext step: python scripts/analyze_activations.py")
 
