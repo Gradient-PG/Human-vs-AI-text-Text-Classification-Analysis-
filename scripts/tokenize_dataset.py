@@ -28,7 +28,7 @@ from utils import hidden
 def main():
     # Configuration
     output_dir = "data/processed"
-    tokenizer_name = "distilbert-base-uncased"
+    tokenizer_name = "bert-base-uncased"
     max_length = 512
     test_size = 0.2
     batch_size = 1000

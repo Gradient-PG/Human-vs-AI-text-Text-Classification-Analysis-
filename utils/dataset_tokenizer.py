@@ -23,7 +23,7 @@ class DatasetTokenizer:
 
     def __init__(
         self,
-        tokenizer_name: str = "distilbert-base-uncased",
+        tokenizer_name: str = "bert-base-uncased",
         output_dir: str = "data/processed",
         max_length: int = 512,
         test_size: float = 0.2,
