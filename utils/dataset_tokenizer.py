@@ -41,7 +41,7 @@ class DatasetTokenizer:
         def preprocessing_function(row):
             row["text"] = row["text"].lower().strip()
             if row["label"] == 0 and len(row["text"]) > 800:
-                row["text"] = row["text"][:-600]
+                row["text"] = row["text"][:-400]
             return row
 
         cleaned = ds.map(lambda x: preprocessing_function(x), batch_size=1000)
