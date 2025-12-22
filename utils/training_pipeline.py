@@ -74,7 +74,7 @@ class TrainingPipeline:
         tokenized_path = self._get_tokenized_path()
 
         if not force and self._is_cached(tokenized_path):
-            print(f"✓ Using cached tokenized data: {tokenized_path}")
+            print(f"Using cached tokenized data: {tokenized_path}")
             if self.wandb:
                 self.wandb.log({"tokenization": "cached"})
             return tokenized_path
@@ -125,7 +125,7 @@ class TrainingPipeline:
         encoded_path = self._get_encoded_path()
 
         if not force and self._is_cached(encoded_path):
-            print(f"✓ Using cached encoded data: {encoded_path}")
+            print(f"Using cached encoded data: {encoded_path}")
             if self.wandb:
                 self.wandb.log({"encoding": "cached"})
             return encoded_path
@@ -190,7 +190,7 @@ class TrainingPipeline:
             eval_every=self.config["training"]["eval_every"],
         )
 
-        print("\n✓ Training complete!")
+        print("\nTraining complete!")
         return trainer
 
     def run(

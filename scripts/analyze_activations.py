@@ -163,6 +163,158 @@ def analyze_layer(layer_idx: int, activations: np.ndarray, labels: np.ndarray,
     return stats_df
 
 
+def plot_all_neurons_auc(all_stats: dict, wandb_run):
+    """
+    Plot AUC distribution for ALL analyzed neurons (not just discriminative).
+    Shows clear discrimination thresholds at 0.3 and 0.7.
+    """
+    print(f"\n{'='*60}")
+    print("Creating All Neurons AUC Plot")
+    print(f"{'='*60}")
+    
+    layers = sorted(all_stats.keys())
+    
+    # Collect all AUC values across all layers
+    all_aucs = []
+    layer_labels = []
+    
+    for layer in layers:
+        stats = all_stats[layer]
+        aucs = stats['auc'].values
+        all_aucs.extend(aucs)
+        layer_labels.extend([layer] * len(aucs))
+    
+    all_aucs = np.array(all_aucs)
+    layer_labels = np.array(layer_labels)
+    
+    # Count neurons in different categories
+    total_neurons = len(all_aucs)
+    discriminative_count = sum(all_stats[l]['discriminative'].sum() for l in layers)
+    ai_specialist_count = sum((all_aucs > 0.7).sum() for _ in [1])
+    human_specialist_count = sum((all_aucs < 0.3).sum() for _ in [1])
+    neutral_count = total_neurons - ai_specialist_count - human_specialist_count
+    
+    print(f"  Total neurons: {total_neurons}")
+    print(f"  Discriminative neurons: {discriminative_count} ({discriminative_count/total_neurons*100:.1f}%)")
+    print(f"  AI-specialists (AUC > 0.7): {ai_specialist_count} ({ai_specialist_count/total_neurons*100:.1f}%)")
+    print(f"  Human-specialists (AUC < 0.3): {human_specialist_count} ({human_specialist_count/total_neurons*100:.1f}%)")
+    print(f"  Neutral (0.3 ≤ AUC ≤ 0.7): {neutral_count} ({neutral_count/total_neurons*100:.1f}%)")
+    
+    # Create figure with 2 subplots
+    fig = plt.figure(figsize=(18, 7))
+    gs = fig.add_gridspec(1, 2, width_ratios=[2, 1], hspace=0.3, wspace=0.3)
+    
+    # ============================================================
+    # Plot 1: Scatter plot of all neurons by layer
+    # ============================================================
+    ax1 = fig.add_subplot(gs[0])
+    
+    # Create color map based on AUC value
+    colors_map = np.zeros((len(all_aucs), 3))
+    for i, auc in enumerate(all_aucs):
+        if auc > 0.7:
+            # AI-preferring: red gradient
+            intensity = (auc - 0.7) / 0.3  # 0.7 to 1.0
+            colors_map[i] = [1.0, 0.4 - 0.4*intensity, 0.4 - 0.4*intensity]  # Red
+        elif auc < 0.3:
+            # Human-preferring: cyan gradient
+            intensity = (0.3 - auc) / 0.3  # 0.0 to 0.3
+            colors_map[i] = [0.3 - 0.3*intensity, 0.8, 0.8]  # Cyan
+        else:
+            # Neutral: gray
+            colors_map[i] = [0.7, 0.7, 0.7]  # Gray
+    
+    # Add jitter to x-axis for better visibility
+    jitter = np.random.normal(0, 0.15, len(layer_labels))
+    x_positions = layer_labels + jitter
+    
+    # Plot neurons
+    scatter = ax1.scatter(x_positions, all_aucs, c=colors_map, alpha=0.6, s=20, 
+                         edgecolors='none', rasterized=True)
+    
+    # Add threshold lines
+    ax1.axhline(0.5, color='black', linestyle='-', linewidth=2.5, alpha=0.8, 
+                label='No effect (AUC = 0.5)', zorder=10)
+    ax1.axhline(0.7, color='#ff6b6b', linestyle='--', linewidth=2.5, alpha=0.9, 
+                label='AI discrimination threshold (AUC = 0.7)', zorder=10)
+    ax1.axhline(0.3, color='#4ecdc4', linestyle='--', linewidth=2.5, alpha=0.9, 
+                label='Human discrimination threshold (AUC = 0.3)', zorder=10)
+    
+    # Shade discrimination regions
+    ax1.fill_between([0, len(layers)+1], 0.7, 1.0, alpha=0.1, color='#ff6b6b', 
+                     label='AI-specialist region')
+    ax1.fill_between([0, len(layers)+1], 0.0, 0.3, alpha=0.1, color='#4ecdc4', 
+                     label='Human-specialist region')
+    
+    ax1.set_xlabel('BERT Layer', fontsize=14, fontweight='bold')
+    ax1.set_ylabel('AUC Score', fontsize=14, fontweight='bold')
+    ax1.set_title(f'AUC Distribution: All {total_neurons} Analyzed Neurons', 
+                  fontsize=16, fontweight='bold', pad=15)
+    ax1.set_xticks(layers)
+    ax1.set_xticklabels([f'L{l}' for l in layers])
+    ax1.set_xlim(min(layers) - 0.5, max(layers) + 0.5)
+    ax1.set_ylim(-0.02, 1.02)
+    ax1.legend(loc='upper left', fontsize=10, framealpha=0.95)
+    ax1.grid(axis='y', alpha=0.3, linestyle=':', linewidth=1)
+    
+    # ============================================================
+    # Plot 2: Overall histogram
+    # ============================================================
+    ax2 = fig.add_subplot(gs[1])
+    
+    # Create histogram with color-coded bars
+    bins = np.linspace(0, 1, 41)  # 40 bins
+    counts, bin_edges = np.histogram(all_aucs, bins=bins)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    
+    # Color each bar based on its position
+    bar_colors = []
+    for bc in bin_centers:
+        if bc > 0.7:
+            bar_colors.append('#ff6b6b')  # Red for AI
+        elif bc < 0.3:
+            bar_colors.append('#4ecdc4')  # Cyan for Human
+        else:
+            bar_colors.append('#999999')  # Gray for neutral
+    
+    ax2.bar(bin_centers, counts, width=0.024, color=bar_colors, alpha=0.8, 
+            edgecolor='black', linewidth=0.5)
+    
+    # Add threshold lines
+    ax2.axvline(0.5, color='black', linestyle='-', linewidth=2.5, alpha=0.8, zorder=10)
+    ax2.axvline(0.7, color='#ff6b6b', linestyle='--', linewidth=2.5, alpha=0.9, zorder=10)
+    ax2.axvline(0.3, color='#4ecdc4', linestyle='--', linewidth=2.5, alpha=0.9, zorder=10)
+    
+    # Add text annotations
+    max_count = counts.max()
+    ax2.text(0.85, max_count * 0.95, f'AI\n{ai_specialist_count}', 
+             ha='center', va='top', fontsize=11, fontweight='bold', 
+             bbox=dict(boxstyle='round', facecolor='#ff6b6b', alpha=0.3))
+    ax2.text(0.15, max_count * 0.95, f'Human\n{human_specialist_count}', 
+             ha='center', va='top', fontsize=11, fontweight='bold',
+             bbox=dict(boxstyle='round', facecolor='#4ecdc4', alpha=0.3))
+    ax2.text(0.5, max_count * 0.95, f'Neutral\n{neutral_count}', 
+             ha='center', va='top', fontsize=11, fontweight='bold',
+             bbox=dict(boxstyle='round', facecolor='#999999', alpha=0.3))
+    
+    ax2.set_xlabel('AUC Score', fontsize=14, fontweight='bold')
+    ax2.set_ylabel('Neuron Count', fontsize=14, fontweight='bold')
+    ax2.set_title('Overall Distribution', fontsize=16, fontweight='bold', pad=15)
+    ax2.set_xlim(-0.02, 1.02)
+    ax2.grid(axis='y', alpha=0.3, linestyle=':', linewidth=1)
+    
+    plt.suptitle('Complete Neuron Analysis: AUC Scores Across All Layers', 
+                 fontsize=18, fontweight='bold', y=0.98)
+    
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    
+    # Log to wandb
+    wandb_run.log({"all_neurons_auc_distribution": wandb.Image(fig)})
+    plt.close()
+    
+    print(f"  All neurons AUC plot logged to wandb")
+
+
 def create_wandb_visualizations(all_stats: dict, activations: dict, labels: np.ndarray, wandb_run):
     """Create and log visualizations to wandb."""
     layers = sorted(all_stats.keys())
@@ -846,6 +998,9 @@ def main():
         csv_path = output_path / f"layer_{layer_idx}_neuron_stats.csv"
         stats_df.to_csv(csv_path, index=False)
         print(f"  Saved statistics: {csv_path}")
+    
+    # Plot all neurons AUC distribution (comprehensive view)
+    plot_all_neurons_auc(all_stats, wandb_run)
     
     # Create visualizations and log to wandb
     create_wandb_visualizations(all_stats, activations, labels, wandb_run)

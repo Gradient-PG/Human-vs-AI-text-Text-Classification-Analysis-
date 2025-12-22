@@ -6,6 +6,7 @@ Handles train/test splitting and saves tokenized datasets to disk.
 from pathlib import Path
 from transformers import AutoTokenizer
 from datasets import Dataset, DatasetDict
+import pandas as pd
 
 
 class DatasetTokenizer:
@@ -22,7 +23,7 @@ class DatasetTokenizer:
 
     def __init__(
         self,
-        tokenizer_name: str = "distilbert-base-uncased",
+        tokenizer_name: str = "bert-base-uncased",
         output_dir: str = "data/processed",
         max_length: int = 512,
         test_size: float = 0.2,
@@ -40,7 +41,7 @@ class DatasetTokenizer:
         def preprocessing_function(row):
             row["text"] = row["text"].lower().strip()
             if row["label"] == 0 and len(row["text"]) > 800:
-                row["text"] = row["text"][:-600]
+                row["text"] = row["text"][:-400]
             return row
 
         cleaned = ds.map(lambda x: preprocessing_function(x), batch_size=1000)
@@ -73,10 +74,38 @@ class DatasetTokenizer:
         )
 
         tokenized_dataset.set_format(
-            type="torch", columns=["input_ids", "attention_mask", "label"]
+            type="torch", columns=["input_ids", "attention_mask", "label", "title_id"]
         )
 
         return tokenized_dataset
+
+    def add_title_ids(self, ds):
+        """
+        Converts titles to their ids, in order to detect duplicates further in the pipeline. Requires entire datasetdict,
+        to create a global id across test train and validation
+        """
+        train_titles = (
+            pd.Series(ds["train"]["title"]).drop_duplicates().reset_index(drop=True)
+        )
+        test_titles = (
+            pd.Series(ds["test"]["title"]).drop_duplicates().reset_index(drop=True)
+        )
+        validation_titles = (
+            pd.Series(ds["validation"]["title"])
+            .drop_duplicates()
+            .reset_index(drop=True)
+        )
+
+        titles = pd.concat([train_titles, test_titles, validation_titles])
+
+        title_id_map = {v: k for k, v in titles.items()}
+
+        def map_title_to_id(example):
+            example["title_id"] = title_id_map[example["title"]]
+            return example
+
+        ds = ds.map(map_title_to_id)
+        return ds
 
     def tokenize_and_save(
         self,
@@ -93,6 +122,8 @@ class DatasetTokenizer:
             batch_size: Batch size for tokenization
         """
         print(f"Loaded {len(hf_base_dataset)} samples")
+
+        hf_base_dataset = self.add_title_ids(hf_base_dataset)
 
         train_ds = self._preprocess_dataset(hf_base_dataset["train"])
         test_ds = self._preprocess_dataset(hf_base_dataset["test"])

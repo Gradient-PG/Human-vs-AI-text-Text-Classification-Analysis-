@@ -43,7 +43,7 @@ def main():
         try:
             pipeline = TrainingPipeline(exp_name)
             pipeline.run(save_model=True)
-            results[exp_name] = "✓ Success"
+            results[exp_name] = "Success"
         except Exception as e:
             print(f"✗ {exp_name} failed: {e}")
             results[exp_name] = f"✗ Failed: {e}"
@@ -55,7 +55,7 @@ def main():
     for exp_name, status in results.items():
         print(f"{exp_name:25s} {status}")
     print("=" * 80)
-    print("\n✓ Models saved to models/ directory")
+    print("\nModels saved to models/ directory")
     print("  Load them with AiHumanPredictor in notebooks!")
 
 

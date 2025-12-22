@@ -66,8 +66,8 @@ class ActivationExtractor:
         # Balance dataset if max_samples is specified
         if max_samples:
             # Split by class
-            ai_samples = dataset.filter(lambda x: x['labels'] == 1)
-            human_samples = dataset.filter(lambda x: x['labels'] == 0)
+            ai_samples = dataset.filter(lambda x: x['label'] == 1)
+            human_samples = dataset.filter(lambda x: x['label'] == 0)
             
             # Calculate balanced split
             samples_per_class = max_samples // 2
@@ -118,7 +118,7 @@ class ActivationExtractor:
 
         labels_array = np.concatenate(all_labels)
 
-        print(f"\n✓ Extracted activations from {len(self.layers)} layers")
+        print(f"\nExtracted activations from {len(self.layers)} layers")
         print(f"  Shape per layer: {layer_activations[self.layers[0]].shape}")
         print(f"  Total samples: {len(labels_array)}")
 
@@ -186,6 +186,6 @@ class ActivationExtractor:
             json.dump(metadata, f, indent=2)
         print(f"  Saved metadata: {metadata_path}")
 
-        print(f"\n✓ All activations saved to {output_path}")
+        print(f"\nAll activations saved to {output_path}")
 
 

@@ -61,12 +61,14 @@ class DatasetEncoder:
 
         all_embeddings = []
         all_labels = []
+        all_title_ids = []
 
         with torch.no_grad():
             for batch in tqdm(dataloader, desc=desc):
                 input_ids = batch["input_ids"].to(self.device)
                 attention_mask = batch["attention_mask"].to(self.device)
                 labels = batch["label"]
+                title_ids = batch["title_id"]
 
                 # Get encoder output
                 output = self.encoder(
@@ -85,16 +87,19 @@ class DatasetEncoder:
 
                 all_embeddings.append(embeddings.cpu().numpy())
                 all_labels.append(labels.numpy())
+                all_title_ids.append(title_ids.numpy())
 
         # Concatenate all batches
         embeddings_array = np.vstack(all_embeddings)
         labels_array = np.concatenate(all_labels)
+        title_ids_array = np.concat(all_title_ids)
 
         # Create new dataset
         encoded_dataset = Dataset.from_dict(
             {
                 "embeddings": embeddings_array,
                 "label": labels_array,
+                "title_ids": title_ids_array,
             }
         )
 
