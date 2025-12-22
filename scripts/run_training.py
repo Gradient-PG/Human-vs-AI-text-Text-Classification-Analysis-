@@ -65,7 +65,7 @@ def main():
                 name=args.wandb_run_name,
                 config={},  # Will be updated with full config in pipeline
             )
-            print(f"✓ Weights & Biases logging enabled: {args.wandb_project}")
+            print(f"Weights & Biases logging enabled: {args.wandb_project}")
         except ImportError:
             print("⚠ wandb not installed. Install with: pip install wandb")
             print("  Continuing without wandb logging...")

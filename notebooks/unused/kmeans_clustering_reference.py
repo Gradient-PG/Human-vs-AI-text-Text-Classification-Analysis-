@@ -36,7 +36,7 @@ optimal_k = k_range[np.argmax(silhouette_scores)]
 best_silhouette = max(silhouette_scores)
 
 print("-" * 60)
-print(f"✓ Optimal K: {optimal_k} (Silhouette Score: {best_silhouette:.4f})")
+print(f"Optimal K: {optimal_k} (Silhouette Score: {best_silhouette:.4f})")
 
 # Visualize the scores
 fig, axes = plt.subplots(1, 2, figsize=(14, 5))
@@ -63,7 +63,7 @@ plt.tight_layout()
 plt.savefig('../results/figures/neuron_optimal_k_selection.png', dpi=300, bbox_inches='tight')
 plt.show()
 
-print("\n✓ K selection plot saved to results/figures/neuron_optimal_k_selection.png")
+print("\nK selection plot saved to results/figures/neuron_optimal_k_selection.png")
 
 # Apply K-means with optimal K to cluster neurons
 n_clusters = optimal_k
