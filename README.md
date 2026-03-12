@@ -68,7 +68,8 @@ An interpretability study analyzing frozen BERT to understand *which* neurons dr
 ├── data/
 │   └── processed/                 # Tokenized dataset cache (auto-generated)
 │
-├── requirements.txt
+├── pyproject.toml                 # Project dependencies and configuration
+├── requirements.txt               # Legacy (backward compatibility)
 └── utils/hidden.py                # HuggingFace API key (git-ignored)
 ```
 
@@ -78,9 +79,53 @@ An interpretability study analyzing frozen BERT to understand *which* neurons dr
 
 ### Setup
 
+This project uses [uv](https://github.com/astral-sh/uv) for fast, reliable Python package management.
+
+#### Install uv
+
+**Windows (PowerShell):**
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+**macOS/Linux:**
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Or install via pip:
+```bash
+pip install uv
+```
+
+#### Create Environment and Install Dependencies
+
+```bash
+# Create a virtual environment and install all dependencies
+uv sync
+
+# Activate the virtual environment
+# Windows:
+.venv\Scripts\activate
+# macOS/Linux:
+source .venv/bin/activate
+```
+
+**For GPU support (recommended, 10x faster):**
+```bash
+# After uv sync, install PyTorch with CUDA support
+uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+```
+
+<details>
+<summary>Alternative: Using pip (legacy method)</summary>
+
 ```bash
 pip install -r requirements.txt
 ```
+
+Note: The project is migrating to `uv`. The `requirements.txt` is kept for backward compatibility but may be removed in future versions.
+</details>
 
 ### Step 1 — Tokenize the dataset
 
@@ -122,6 +167,48 @@ Open the notebooks in order:
 
 All pre-computed data is ready; notebooks can be run immediately without steps 1–3.
 
+```bash
+# Launch Jupyter
+jupyter notebook
+
+# Or with uv
+uv run jupyter notebook
+```
+
+---
+
+## Common Commands
+
+### Package Management
+```bash
+# Add a new package
+uv add package-name
+
+# Remove a package
+uv remove package-name
+
+# Update all packages
+uv sync --upgrade
+
+# Use pip-style commands
+uv pip install package-name
+uv pip list
+uv pip show package-name
+```
+
+### Running Scripts
+```bash
+# Run without activating venv (recommended)
+uv run python scripts/tokenize_dataset.py
+uv run python scripts/extract_activations.py --layers 1 2 3 4 5 6 7 8 9 10 11 12 --samples 10000
+uv run python scripts/analyze_activations.py
+
+# Or activate venv first (traditional way)
+.venv\Scripts\activate  # Windows
+source .venv/bin/activate  # macOS/Linux
+python scripts/analyze_activations.py
+```
+
 ---
 
 ## Statistical Method
@@ -142,10 +229,20 @@ All pre-computed data is ready; notebooks can be run immediately without steps 1
 
 ## Tech Stack
 
+**Package Management**: [uv](https://github.com/astral-sh/uv) — blazing fast Python package installer and resolver  
 **Core**: PyTorch, HuggingFace Transformers  
 **Analysis**: NumPy, Pandas, SciPy, scikit-learn  
 **Clustering/Visualization**: UMAP, matplotlib, seaborn  
 **Experiment tracking**: Weights & Biases (optional)
+
+### Why uv?
+
+This project has migrated to `uv` for dependency management, offering:
+- **10-100x faster** than pip for package installation
+- **Deterministic builds** with `uv.lock` (optional to commit)
+- **Automatic virtual environment management**
+- **Better dependency resolution** avoiding conflicts
+- **Drop-in pip replacement** — all `pip` commands work with `uv pip`
 
 ---
 
