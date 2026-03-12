@@ -1,6 +1,0 @@
-name: bert-base-uncased
-max_length: 512
-padding: max_length
-truncation: true
-batch_size: 1000
-

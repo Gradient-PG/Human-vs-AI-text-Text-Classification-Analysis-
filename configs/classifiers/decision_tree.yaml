@@ -1,8 +1,0 @@
-type: sklearn.tree.DecisionTreeClassifier
-params:
-  random_state: 42
-  max_depth: 50  
-  min_samples_split: 200
-  min_samples_leaf: 100  
-  max_features: sqrt  
-  splitter: best  

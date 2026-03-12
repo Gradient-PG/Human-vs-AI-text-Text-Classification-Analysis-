@@ -1,13 +1,11 @@
 """
-Utility modules for the Human vs AI Text Classification project.
+Utility modules for the Human vs AI Text Interpretability project.
 """
 
+from .activation_extractor import ActivationExtractor
 from .dataset_tokenizer import DatasetTokenizer
-from .dataset_encoder import DatasetEncoder
-from .classifier_trainer import ClassifierTrainer
 
 __all__ = [
+    "ActivationExtractor",
     "DatasetTokenizer",
-    "DatasetEncoder",
-    "ClassifierTrainer",
 ]
