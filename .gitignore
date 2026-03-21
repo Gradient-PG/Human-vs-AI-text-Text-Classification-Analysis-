@@ -177,6 +177,7 @@ results/metrics/*.json
 results/activations/*.npy
 results/activations/*.pkl
 
+results/*
 # IDE
 .vscode/
 .idea/

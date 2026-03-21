@@ -5,9 +5,9 @@ Uses Mann-Whitney U test and AUC (with Bonferroni correction) to score each neur
 Saves per-layer statistics CSVs that are consumed by the analysis notebooks.
 
 Usage:
-    python scripts/analyze_activations.py
-    python scripts/analyze_activations.py --input results/activations
-    python scripts/analyze_activations.py --wandb-project human-vs-ai  (optional)
+    uv run scripts/analyze_activations.py
+    uv run scripts/analyze_activations.py --input results/activations
+    uv run scripts/analyze_activations.py --wandb-project human-vs-ai  (optional)
 """
 
 import argparse
@@ -212,8 +212,8 @@ def main():
     parser.add_argument(
         "--input",
         type=str,
-        default="results/activations",
-        help="Directory containing extracted activations (default: results/activations)",
+        default="results/activations_raid",
+        help="Directory containing extracted activations (default: results/activations_raid)",
     )
     parser.add_argument(
         "--alpha",

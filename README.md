@@ -5,9 +5,22 @@ An interpretability study analyzing frozen BERT to understand *which* neurons dr
 ## Overview
 
 **Model**: Frozen `bert-base-uncased` (12 layers, 768 neurons/layer = 9,216 total neurons)  
-**Dataset**: `NicolaiSivesind/human-vs-machine` — `wiki_labeled` split (~300K samples, 50% human / 50% AI, GPT-3 generated)  
-**Analysis subset**: 10,000 samples (5,000 AI + 5,000 human), balanced  
 **Scope**: No fine-tuning. All analysis is on frozen model weights. CLS token activations only.
+
+**Dataset**: [RAID](https://huggingface.co/datasets/liamdugan/raid) ([paper](https://arxiv.org/abs/2405.07940), ACL 2024) — the benchmark ships as large CSV splits; this repo streams a configurable subset per AI model vs human.
+
+**Why RAID only (migration)**: The previous workflow used `NicolaiSivesind/human-vs-machine` via `scripts/tokenize_dataset.py`. That path was removed in favour of RAID, which covers more generators, domains, and adversarial settings. If you still have a tokenized copy of the old dataset on disk, you can point `extract_activations.py --tokenized-path` at it, but the repository no longer ships scripts or defaults for that dataset.
+
+**Migration (short)**:
+
+| Old step | RAID equivalent |
+|---|---|
+| `uv run scripts/tokenize_dataset.py` | `uv run scripts/tokenize_raid.py --model gpt4` (or use `run_raid_pipeline.py`) |
+| `data/processed/tokenized_dataset/` | `data/processed/raid_{model}/` |
+| `results/activations/` | `results/activations_raid_{model}/` or `results/activations_raid` |
+| Multi-model analysis | `uv run scripts/run_raid_pipeline.py` then `uv run scripts/analyze_raid_models.py` |
+
+**Analysis subset (results below)**: 10,000 samples (5,000 AI + 5,000 human), balanced, from RAID.
 
 ### Classification Baseline
 
@@ -26,7 +39,7 @@ An interpretability study analyzing frozen BERT to understand *which* neurons dr
 | Middle (5–8) | 308 |
 | Late (9–12) | 604 |
 
-**Three-cluster architecture** (hierarchical clustering + UMAP, silhouette-optimal K=3):
+**Three-cluster architecture** (example: hierarchical clustering on a 2D embedding, silhouette-optimal K=3):
 
 | Cluster | n | Interpretation |
 |---|---|---|
@@ -45,31 +58,36 @@ An interpretability study analyzing frozen BERT to understand *which* neurons dr
 
 ```
 ├── scripts/
-│   ├── tokenize_dataset.py        # Step 1: tokenize the HF dataset
-│   ├── extract_activations.py     # Step 2: extract CLS activations (all 12 layers)
-│   └── analyze_activations.py     # Step 3: Mann-Whitney U + AUC, saves per-layer CSVs
+│   ├── tokenize_raid.py           # Load & tokenize a RAID subset (one AI model vs human)
+│   ├── extract_activations.py     # Extract CLS activations (all 12 layers)
+│   ├── analyze_activations.py     # Mann-Whitney U + AUC, per-layer CSVs
+│   ├── run_raid_pipeline.py       # Full pipeline for each AI model vs human
+│   └── analyze_raid_models.py     # CLI → raid_analysis package (figures + clustering)
+│
+├── raid_analysis/                 # Multi-model neuron + clustering analysis (refactored)
+│   ├── dim_reduction.py           # PCA / UMAP strategies
+│   ├── clustering.py              # Ward+silhouette, Ward+gap, KMeans strategies
+│   ├── pipeline.py
+│   └── ...
 │
 ├── utils/
-│   ├── activation_extractor.py    # ActivationExtractor class (layer-wise CLS extraction)
-│   └── dataset_tokenizer.py       # DatasetTokenizer class
+│   ├── activation_extractor.py
+│   ├── dataset_tokenizer.py
+│   └── raid_loader.py
 │
 ├── notebooks/
-│   ├── neurons_analysis.ipynb     # Statistical analysis & figures (Sections A–C)
-│   └── neuron_clustering.ipynb    # UMAP + hierarchical clustering
+│   ├── neurons_analysis.ipynb
+│   └── neuron_clustering.ipynb
 │
 ├── results/
-│   ├── activations/               # Pre-computed data (load directly in notebooks)
-│   │   ├── layer_{1-12}_activations.npy   # Raw CLS activations (10,000 × 768)
-│   │   ├── layer_{1-12}_neuron_stats.csv  # Per-neuron statistics
-│   │   ├── labels.npy                     # Sample labels (0=Human, 1=AI)
-│   │   └── metadata.json                  # Extraction config
-│   └── figures/                   # Publication-ready plots
+│   ├── activations_raid_*/        # Per-model activations + neuron stats (after pipeline)
+│   └── analysis/                  # analyze_raid_models.py outputs (per model)
 │
 ├── data/
-│   └── processed/                 # Tokenized dataset cache (auto-generated)
+│   └── processed/raid_*/          # Tokenized RAID subsets
 │
-├── pyproject.toml                 # Project dependencies and configuration
-├── requirements.txt               # Legacy (backward compatibility)
+├── pyproject.toml
+├── requirements.txt
 └── utils/hidden.py                # HuggingFace API key (git-ignored)
 ```
 
@@ -127,51 +145,91 @@ pip install -r requirements.txt
 Note: The project is migrating to `uv`. The `requirements.txt` is kept for backward compatibility but may be removed in future versions.
 </details>
 
-### Step 1 — Tokenize the dataset
+### Pipeline — RAID subset (single model)
+
+#### Step 1 — Load & tokenize
 
 ```bash
-python scripts/tokenize_dataset.py
+uv run scripts/tokenize_raid.py --model gpt4 --max-samples 10000
 ```
 
-Saves tokenized dataset to `data/processed/AI_Human/tokenized/bert-base-uncased/`.
+Saves under `data/processed/raid_gpt4/` (or `--dataset-name`). Requires RAID CSVs from `uv run scripts/download_raid.py` first.
 
-### Step 2 — Extract CLS activations
+#### Step 2 — Extract CLS activations
 
 ```bash
-python scripts/extract_activations.py --layers 1 2 3 4 5 6 7 8 9 10 11 12 --samples 10000
+uv run scripts/extract_activations.py \
+    --tokenized-path data/processed/raid_gpt4 \
+    --output results/activations_raid_gpt4 \
+    --samples 10000
 ```
 
-Saves `layer_{1-12}_activations.npy` and `labels.npy` to `results/activations/`.  
-**Skip this step** — pre-computed results are already in `results/activations/`.
-
-### Step 3 — Compute neuron statistics
+#### Step 3 — Neuron statistics
 
 ```bash
-python scripts/analyze_activations.py
+uv run scripts/analyze_activations.py --input results/activations_raid_gpt4
 ```
-
-Runs Mann-Whitney U + AUC per neuron, applies Bonferroni correction, and saves per-layer CSV files.  
-**Skip this step** — pre-computed CSVs are already in `results/activations/`.
 
 Optional wandb tracking:
 ```bash
-python scripts/analyze_activations.py --wandb-project my-project
+uv run scripts/analyze_activations.py --input results/activations_raid_gpt4 --wandb-project my-project
 ```
 
-### Step 4 — Explore in notebooks
+### Multi-model comparison (model X vs human)
 
-Open the notebooks in order:
-
-1. **`notebooks/neurons_analysis.ipynb`** — neuron discovery, layer distribution, statistical validation
-2. **`notebooks/neuron_clustering.ipynb`** — UMAP + hierarchical clustering, three-cluster architecture
-
-All pre-computed data is ready; notebooks can be run immediately without steps 1–3.
+Runs tokenize → extract → analyze for each AI model against human.
 
 ```bash
-# Launch Jupyter
-jupyter notebook
+uv run scripts/run_raid_pipeline.py
 
-# Or with uv
+uv run scripts/run_raid_pipeline.py --models gpt4 chatgpt mistral-chat
+uv run scripts/run_raid_pipeline.py --models gpt4 --samples 5000
+```
+
+Output layout:
+
+```
+data/processed/raid_gpt4/
+results/activations_raid_gpt4/
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--models` | all 11 AI models | Models vs human |
+| `--samples` | 1,000 | Total samples per model (balanced 50/50), stratified across domains |
+| `--domains` | all six | Restrict RAID domains |
+| `--batch-size` | 1,000 | Tokenization batch size |
+| `--extract-batch-size` | 64 | BERT forward batch size |
+| `--seed` | 42 | Random seed |
+
+### Multi-model neuron + clustering analysis
+
+After activations exist under `results/activations_raid_*`, run:
+
+```bash
+uv run scripts/analyze_raid_models.py
+uv run scripts/analyze_raid_models.py --models gpt4 chatgpt
+uv run scripts/analyze_raid_models.py --dim-reduction umap
+uv run scripts/analyze_raid_models.py --dim-reduction pca umap
+uv run scripts/analyze_raid_models.py --exemplars
+```
+
+| Flag | Description |
+|---|---|
+| `--dim-reduction pca` | PCA embedding (default if the flag is omitted) |
+| `--dim-reduction umap` | UMAP embedding (correlation metric) |
+| `--dim-reduction pca umap` | Run clustering for both; outputs split under `results/analysis/{model}/pca/` and `.../umap/` |
+
+With a **single** embedding, outputs go to `results/analysis/{model}/`. With **multiple**, the first listed method also writes neuron-level figures and optional exemplars; later methods write embedding + clustering only under their subfolder.
+
+### Explore in notebooks
+
+1. **`notebooks/neurons_analysis.ipynb`** — neuron discovery and validation  
+2. **`notebooks/neuron_clustering.ipynb`** — embedding + clustering exploration  
+
+Point notebook paths at `results/activations_raid_*` (or your chosen folder).
+
+```bash
 uv run jupyter notebook
 ```
 
@@ -181,32 +239,18 @@ uv run jupyter notebook
 
 ### Package Management
 ```bash
-# Add a new package
 uv add package-name
-
-# Remove a package
 uv remove package-name
-
-# Update all packages
 uv sync --upgrade
-
-# Use pip-style commands
 uv pip install package-name
-uv pip list
-uv pip show package-name
 ```
 
 ### Running Scripts
 ```bash
-# Run without activating venv (recommended)
-uv run python scripts/tokenize_dataset.py
-uv run python scripts/extract_activations.py --layers 1 2 3 4 5 6 7 8 9 10 11 12 --samples 10000
-uv run python scripts/analyze_activations.py
-
-# Or activate venv first (traditional way)
-.venv\Scripts\activate  # Windows
-source .venv/bin/activate  # macOS/Linux
-python scripts/analyze_activations.py
+uv run scripts/tokenize_raid.py --model gpt4
+uv run scripts/extract_activations.py --tokenized-path data/processed/raid_gpt4 --output results/activations_raid_gpt4
+uv run scripts/analyze_activations.py --input results/activations_raid_gpt4
+uv run scripts/analyze_raid_models.py --dim-reduction pca
 ```
 
 ---
@@ -215,40 +259,35 @@ python scripts/analyze_activations.py
 
 **Per-neuron analysis** across all 9,216 neurons (12 layers × 768):
 
-1. **Mann-Whitney U Test** — tests whether AI vs human activation distributions differ significantly
-2. **AUC effect size** — AUC > 0.7 → AI-preferring; AUC < 0.3 → human-preferring
-3. **Bonferroni correction** — α′ = 0.001 / 9,216 = 1.09×10⁻⁷ per layer
-4. **Cohen's d** — computed as supplementary effect size
+1. **Mann-Whitney U Test** — tests whether AI vs human activation distributions differ significantly  
+2. **AUC effect size** — AUC > 0.7 → AI-preferring; AUC < 0.3 → human-preferring  
+3. **Bonferroni correction** — α′ = 0.001 / 9,216 = 1.09×10⁻⁷ per layer  
+4. **Cohen's d** — supplementary effect size  
 
-**Clustering:**
-- UMAP with correlation distance reduces each neuron's 10,000-sample activation profile to 2D
-- Hierarchical clustering (Ward linkage) on the UMAP embedding
-- Silhouette analysis selects optimal K (K=3)
+**Clustering (multi-model script)**:
+
+- **2D embedding** — PCA (default), UMAP (`--dim-reduction umap`), or both (`--dim-reduction pca umap`), then per-axis scaling for distance-based methods  
+- **Strategies** — Ward linkage with silhouette or merge-gap cut; KMeans with silhouette sweep (see `raid_analysis/clustering.py`)  
 
 ---
 
 ## Tech Stack
 
-**Package Management**: [uv](https://github.com/astral-sh/uv) — blazing fast Python package installer and resolver  
+**Package Management**: [uv](https://github.com/astral-sh/uv)  
 **Core**: PyTorch, HuggingFace Transformers  
 **Analysis**: NumPy, Pandas, SciPy, scikit-learn  
-**Clustering/Visualization**: UMAP, matplotlib, seaborn  
+**Clustering / viz**: UMAP (optional embedding), matplotlib, seaborn  
 **Experiment tracking**: Weights & Biases (optional)
 
 ### Why uv?
 
-This project has migrated to `uv` for dependency management, offering:
-- **10-100x faster** than pip for package installation
-- **Deterministic builds** with `uv.lock` (optional to commit)
-- **Automatic virtual environment management**
-- **Better dependency resolution** avoiding conflicts
-- **Drop-in pip replacement** — all `pip` commands work with `uv pip`
+This project uses `uv` for dependency management: fast installs, lockfile support, and reliable resolution.
 
 ---
 
 ## References
 
-- [HuggingFace dataset: NicolaiSivesind/human-vs-machine](https://huggingface.co/datasets/NicolaiSivesind/human-vs-machine)
-- [BERT: Pre-training of Deep Bidirectional Transformers](https://arxiv.org/abs/1810.04805)
-- [UMAP: Uniform Manifold Approximation and Projection](https://umap-learn.readthedocs.io/)
+- [RAID benchmark](https://arxiv.org/abs/2405.07940) (ACL 2024) — [HuggingFace](https://huggingface.co/datasets/liamdugan/raid) · [GitHub](https://github.com/liamdugan/raid)  
+- [BERT](https://arxiv.org/abs/1810.04805)  
+- [UMAP](https://umap-learn.readthedocs.io/)  
 - [Mann-Whitney U test](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.mannwhitneyu.html)

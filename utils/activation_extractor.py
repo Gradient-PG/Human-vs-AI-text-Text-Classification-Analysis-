@@ -3,6 +3,8 @@ Activation extractor for BERT layers.
 Extracts hidden states from specified transformer layers for interpretability analysis.
 """
 
+import json
+
 import torch
 from torch.utils.data import DataLoader
 from datasets import Dataset
@@ -33,9 +35,6 @@ class ActivationExtractor:
         self.device = device
         self.encoder.to(device)
         self.encoder.eval()
-
-        # Enable output of hidden states
-        self.encoder.config.output_hidden_states = True
 
         print(f"Activation extractor initialized")
         print(f"  Layers to extract: {layers}")
@@ -93,23 +92,22 @@ class ActivationExtractor:
                 attention_mask = batch["attention_mask"].to(self.device)
                 labels = batch["label"]
 
-                # Get encoder output with hidden states
                 outputs = self.encoder(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
                     output_hidden_states=True
                 )
 
-                # Extract CLS token activations from specified layers
-                # hidden_states is tuple of (embeddings, layer1, layer2, ..., layer12)
-                # Index 0 is embeddings, layers are 1-indexed
+                # hidden_states: (embeddings, layer1, …, layer12) — layers are 1-indexed.
+                # [:, 0, :] selects the CLS token but returns a non-contiguous VIEW
+                # into the full (batch, seq_len, hidden) tensor.  .numpy() on that
+                # view would keep the entire tensor alive in memory.  .contiguous()
+                # copies just the (batch, hidden) slice into its own storage.
                 for layer_idx in self.layers:
-                    # Get hidden state for this layer (batch_size, seq_len, hidden_size)
-                    layer_output = outputs.hidden_states[layer_idx]
-                    # Extract CLS token (position 0)
-                    cls_activations = layer_output[:, 0, :]
-                    layer_activations[layer_idx].append(cls_activations.cpu().numpy())
+                    cls = outputs.hidden_states[layer_idx][:, 0, :].contiguous()
+                    layer_activations[layer_idx].append(cls.cpu().numpy())
 
+                del outputs
                 all_labels.append(labels.numpy())
 
         # Concatenate all batches
@@ -170,17 +168,15 @@ class ActivationExtractor:
         np.save(labels_path, labels)
         print(f"  Saved labels: {labels_path}")
 
-        # Save metadata
         metadata = {
             "layers": self.layers,
             "n_samples": len(labels),
             "n_ai": int((labels == 1).sum()),
             "n_human": int((labels == 0).sum()),
             "split": split,
-            "activation_shape": activations[self.layers[0]].shape
+            "activation_shape": list(activations[self.layers[0]].shape),
         }
 
-        import json
         metadata_path = output_path / "metadata.json"
         with open(metadata_path, 'w') as f:
             json.dump(metadata, f, indent=2)
