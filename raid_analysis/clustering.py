@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, Sequence
 
 import numpy as np
 from scipy.cluster.hierarchy import fcluster, linkage
@@ -162,3 +162,56 @@ def default_clustering_strategies() -> list[ClusteringStrategy]:
         WardGapStrategy(),
         KMeansSilhouetteStrategy(),
     ]
+
+
+CLUSTERING_STRATEGY_IDS = ("ward_silhouette", "ward_gap", "kmeans")
+
+
+def clustering_strategies_from_names(names: Sequence[str]) -> list[ClusteringStrategy]:
+    """
+    Instantiate strategies from stable ids (CLI / config).
+
+    ``names`` entries must be among :data:`CLUSTERING_STRATEGY_IDS`.
+    """
+    factory = {
+        "ward_silhouette": WardSilhouetteStrategy,
+        "ward_gap": WardGapStrategy,
+        "kmeans": KMeansSilhouetteStrategy,
+    }
+    out: list[ClusteringStrategy] = []
+    for raw in names:
+        key = raw.strip().lower()
+        if key not in factory:
+            raise ValueError(
+                f"Unknown clustering strategy {raw!r}. "
+                f"Choose from: {', '.join(CLUSTERING_STRATEGY_IDS)}"
+            )
+        out.append(factory[key]())
+    return out
+
+
+def run_clustering_strategies(
+    embedding: np.ndarray,
+    strategies: Sequence[ClusteringStrategy] | None = None,
+) -> list[ClusteringResult]:
+    """
+    Run each strategy on the same point cloud.
+
+    **Input ``embedding``**: array of shape ``(n_points, n_features)`` — one row per
+    point. In neuron analysis this is usually a 2D PCA/UMAP of neurons *or* a
+    standardized trait matrix; algorithms only see this matrix (plus Ward’s
+    internal linkage when applicable).
+
+    Ward-based strategies share one :class:`WardLinkageContext` so linkage is
+    computed once per embedding.
+    """
+    strategies = list(strategies or default_clustering_strategies())
+    needs_ward = any(isinstance(s, (WardSilhouetteStrategy, WardGapStrategy)) for s in strategies)
+    ward_ctx: WardLinkageContext | None = None
+    if needs_ward:
+        ward_ctx = WardLinkageContext.from_embedding(embedding)
+    results: list[ClusteringResult] = []
+    for strategy in strategies:
+        w = ward_ctx if isinstance(strategy, (WardSilhouetteStrategy, WardGapStrategy)) else None
+        results.append(strategy.run(embedding, ward=w))
+    return results

@@ -219,8 +219,9 @@ uv run scripts/analyze_raid_models.py --exemplars
 | `--dim-reduction pca` | PCA embedding (default if the flag is omitted) |
 | `--dim-reduction umap` | UMAP embedding (correlation metric) |
 | `--dim-reduction pca umap` | Run clustering for both; outputs split under `results/analysis/{model}/pca/` and `.../umap/` |
+| `--traits-clustering` | Also build a neuron×trait matrix (stats + activation moments), cluster in that space, save `traits_matrix.csv`, and plot trait clusters on **both** activation PCA and UMAP (the non-primary embedding is computed with default UMAP/PCA so you always get two overlays). Runs once on the first `--dim-reduction` pass when multiple are given. |
 
-With a **single** embedding, outputs go to `results/analysis/{model}/`. With **multiple**, the first listed method also writes neuron-level figures and optional exemplars; later methods write embedding + clustering only under their subfolder.
+With a **single** embedding, outputs go to `results/analysis/{model}/`. With **multiple**, the first listed method also writes neuron-level figures, optional exemplars, and trait-based outputs; later methods write embedding + clustering only under their subfolder.
 
 ### Explore in notebooks
 

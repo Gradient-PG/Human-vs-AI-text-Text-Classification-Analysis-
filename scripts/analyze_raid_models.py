@@ -12,6 +12,8 @@ Usage:
     uv run scripts/analyze_raid_models.py --models gpt4 chatgpt
     uv run scripts/analyze_raid_models.py --dim-reduction umap
     uv run scripts/analyze_raid_models.py --dim-reduction pca umap
+    uv run scripts/analyze_raid_models.py --traits-clustering
+    uv run scripts/analyze_raid_models.py --clustering ward_silhouette ward_gap
     uv run scripts/analyze_raid_models.py --models gpt4 --exemplars
 """
 
@@ -25,7 +27,8 @@ matplotlib.use("Agg")
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from raid_analysis import get_dim_reduction
+from raid_analysis import clustering_strategies_from_names, get_dim_reduction
+from raid_analysis.clustering import CLUSTERING_STRATEGY_IDS
 from raid_analysis.pipeline import analyze_model
 from utils.raid_loader import ALL_RAID_MODELS, slug
 
@@ -78,6 +81,22 @@ def main():
         help="Also extract cluster exemplar texts (requires tokenized dataset; "
         "uses Ward+silhouette clusters from the first dim reduction only)",
     )
+    parser.add_argument(
+        "--traits-clustering",
+        action="store_true",
+        help="Also cluster neurons in standardized trait space (stats + activation moments); "
+        "save traits_matrix.csv and overlay trait clusters on activation PCA & UMAP figures",
+    )
+    parser.add_argument(
+        "--clustering",
+        nargs="+",
+        default=None,
+        metavar="METHOD",
+        choices=CLUSTERING_STRATEGY_IDS,
+        help="Which clustering strategies to run on the embedding (and on traits if --traits-clustering). "
+        "ward_silhouette: Ward + optimal K by silhouette; ward_gap: Ward + merge-gap K; "
+        "kmeans: KMeans + silhouette K. Default: all three.",
+    )
     args = parser.parse_args()
 
     models = args.models or ALL_RAID_MODELS
@@ -103,7 +122,16 @@ def main():
     print(f"  Dim reduction(s): {', '.join(names)}")
     if multi_dim:
         print(f"  (outputs under each model: {' / '.join(dim_kinds)}/ )")
-    print(f"  Exemplars:        {args.exemplars}")
+    print(f"  Exemplars:         {args.exemplars}")
+    print(f"  Traits clustering: {args.traits_clustering}")
+    clustering_kinds = _dedupe_preserve_order(list(args.clustering)) if args.clustering else None
+    clustering_strategies = (
+        clustering_strategies_from_names(clustering_kinds) if clustering_kinds else None
+    )
+    if clustering_kinds:
+        print(f"  Clustering:        {', '.join(clustering_kinds)}")
+    else:
+        print("  Clustering:        (default: ward_silhouette, ward_gap, kmeans)")
 
     results: dict[tuple[str, str], bool] = {}
     for model in models:
@@ -121,8 +149,10 @@ def main():
                 run_exemplars=exemplars_here,
                 split=args.split,
                 dim_reduction=dim_red,
+                clustering_strategies=clustering_strategies,
                 output_subdir=out_sub,
                 skip_neuron_analysis=skip_neuron,
+                traits_clustering=args.traits_clustering and not skip_neuron,
             )
             results[(model, kind)] = ok
 
