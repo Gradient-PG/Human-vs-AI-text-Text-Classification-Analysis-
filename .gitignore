@@ -81,7 +81,7 @@ profile_default/
 ipython_config.py
 
 # pyenv
-.python-version
+# .python-version  # Now tracked for uv
 
 # pipenv
 Pipfile.lock
@@ -91,6 +91,10 @@ poetry.lock
 
 # pdm
 .pdm.toml
+
+# uv
+.venv/
+uv.lock  # Optional: commit this for reproducible builds
 
 # PEP 582
 __pypackages__/
@@ -173,6 +177,7 @@ results/metrics/*.json
 results/activations/*.npy
 results/activations/*.pkl
 
+results/*
 # IDE
 .vscode/
 .idea/

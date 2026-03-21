@@ -1,251 +1,293 @@
-# Human vs AI Text Classification Analysis
+# Discriminative Neuron Clustering in BERT for AI-Generated Text Detection
 
-A research system for distinguishing human-written from AI-generated text using frozen BERT embeddings, with comprehensive neuron-level interpretability analysis.
+An interpretability study analyzing frozen BERT to understand *which* neurons drive the detection of AI-generated text, and *how* they are functionally organized.
 
-## 📋 Overview
+## Overview
 
-**Two-part research pipeline:**
-1. **Classification**: Frozen BERT → Lightweight sklearn classifiers (>95% accuracy)
-2. **Interpretability**: Statistical analysis of 9,216 neurons across all 12 BERT layers
+**Model**: Frozen `bert-base-uncased` (12 layers, 768 neurons/layer = 9,216 total neurons)  
+**Scope**: No fine-tuning. All analysis is on frozen model weights. CLS token activations only.
 
-**Key Features:**
-- ✅ Config-driven experiments with automatic caching
-- ✅ Comprehensive neuron analysis (Mann-Whitney U + AUC + Cohen's d)
-- ✅ Hierarchical clustering of discriminative neurons
-- ✅ Publication-ready visualizations and statistical validation
-- ✅ Wandb integration for experiment tracking
+**Dataset**: [RAID](https://huggingface.co/datasets/liamdugan/raid) ([paper](https://arxiv.org/abs/2405.07940), ACL 2024) — the benchmark ships as large CSV splits; this repo streams a configurable subset per AI model vs human.
 
-## 🎯 Research Findings
+**Why RAID only (migration)**: The previous workflow used `NicolaiSivesind/human-vs-machine` via `scripts/tokenize_dataset.py`. That path was removed in favour of RAID, which covers more generators, domains, and adversarial settings. If you still have a tokenized copy of the old dataset on disk, you can point `extract_activations.py --tokenized-path` at it, but the repository no longer ships scripts or defaults for that dataset.
 
-**Main Discovery**: 1,350 discriminative neurons (14.6%) identified across BERT layers
+**Migration (short)**:
 
-**Key Results:**
-- **Late layers (9-12)** contain 44.7% of discriminative neurons → semantic processing dominates
-- **Balanced detection**: 688 AI-preferring vs 662 human-preferring neurons (1.04:1 ratio)
-- **Strong effects**: 84.3% of discriminative neurons have |Cohen's d| > 0.8
-- **Three functional clusters**: Human specialists (distributed), early AI detectors, late AI detectors
+| Old step | RAID equivalent |
+|---|---|
+| `uv run scripts/tokenize_dataset.py` | `uv run scripts/tokenize_raid.py --model gpt4` (or use `run_raid_pipeline.py`) |
+| `data/processed/tokenized_dataset/` | `data/processed/raid_{model}/` |
+| `results/activations/` | `results/activations_raid_{model}/` or `results/activations_raid` |
+| Multi-model analysis | `uv run scripts/run_raid_pipeline.py` then `uv run scripts/analyze_raid_models.py` |
 
-**Statistical Validation:**
-- All neurons survive Bonferroni correction (α = 0.001, adjusted α' = 1.09×10⁻⁷)
+**Analysis subset (results below)**: 10,000 samples (5,000 AI + 5,000 human), balanced, from RAID.
+
+### Classification Baseline
+
+98% accuracy is achievable using frozen BERT CLS activations + sklearn classifiers (Linear SVC, Random Forest). This is treated as a known baseline — the paper's contribution is the interpretability analysis of the discriminative neurons, not the classification performance.
+
+### Core Findings
+
+**1,350 of 9,216 neurons (14.6%) are discriminative:**
+- 688 AI-preferring (AUC > 0.7)
+- 662 human-preferring (AUC < 0.3)
+- Layer distribution is U-shaped — early and late layers dominate; peak at layer 11
+
+| Layer group | Neurons |
+|---|---|
+| Early (1–4) | 438 |
+| Middle (5–8) | 308 |
+| Late (9–12) | 604 |
+
+**Three-cluster architecture** (example: hierarchical clustering on a 2D embedding, silhouette-optimal K=3):
+
+| Cluster | n | Interpretation |
+|---|---|---|
+| Cluster 0 | 689 | Human detection signal — distributed across all layers |
+| Cluster 1 | 268 | Early AI detection — surface/syntactic features (layers 1–4) |
+| Cluster 2 | 393 | Late AI detection — semantic patterns (layers 10–12) |
+
+**Statistical validation:**
+- All discriminative neurons survive Bonferroni correction (α = 0.001, adjusted α′ = 1.09×10⁻⁷)
+- 84.3% have large effects (|Cohen's d| > 0.8), mean |d| = 0.967
 - Median p-value: 8.68×10⁻³⁴
-- Low redundancy: mean correlation = 0.146
-
-## 🗂️ Project Structure
-
-```
-Human-vs-AI-text-Text-Classification-Analysis-/
-│
-├── configs/                          # YAML-based experiment configs
-│   ├── experiments/                  # Complete pipeline configs
-│   ├── tokenizers/                   # BERT tokenizer settings
-│   ├── encoders/                     # Frozen BERT encoder settings
-│   └── classifiers/                  # sklearn classifier configs (SGD, LogReg, etc.)
-│
-├── data/
-│   ├── raw/AI_Human.csv             # Kaggle dataset
-│   └── processed/                    # Auto-cached tokenized/encoded data
-│
-├── models/                           # Trained classifiers (.pkl files)
-│
-├── scripts/
-│   ├── run_training.py              # 🚀 Main training pipeline
-│   ├── train_all_classifiers.py     # Batch training script
-│   ├── extract_activations.py       # 🔬 Extract neuron activations (all 12 layers)
-│   ├── analyze_activations.py       # 🔬 Statistical analysis (deprecated, use notebooks)
-│   ├── tokenize_dataset.py          # Standalone tokenization
-│   ├── encode_dataset.py            # Standalone encoding
-│   └── train_classifier.py          # Standalone training
-│
-├── utils/                            # Core utilities
-│   ├── dataset_tokenizer.py         # Tokenization logic
-│   ├── dataset_encoder.py           # Encoding logic
-│   ├── classifier_trainer.py        # sklearn training wrapper
-│   ├── activation_extractor.py      # Layer activation extraction
-│   └── training_pipeline.py         # End-to-end pipeline orchestration
-│
-├── notebooks/                        # 📊 Analysis & visualization
-│   ├── neurons_analysis.ipynb       # Statistical analysis of discriminative neurons
-│   ├── neuron_clustering.ipynb      # Hierarchical clustering & UMAP visualization
-│   └── dataset_analysis.ipynb       # Dataset exploration
-│
-├── results/
-│   ├── activations/                 # Neuron data (all 12 layers, 3000 samples)
-│   │   ├── layer_{1-12}_activations.npy      # Raw activation matrices
-│   │   ├── layer_{1-12}_neuron_stats.csv     # Per-neuron statistics
-│   │   └── metadata.json                      # Analysis metadata
-│   └── figures/                     # Publication-ready plots
-│
-└── requirements.txt
-```
-
-## 🚀 Quick Start
-
-### 1. Setup
-
-```bash
-pip install -r requirements.txt
-
-# Download dataset from Kaggle and place at: data/raw/AI_Human.csv
-# https://www.kaggle.com/datasets/shanegerami/ai-vs-human-text
-```
-
-### 2. Train Classifier
-
-```bash
-# Run complete pipeline (auto-caches tokenization/encoding)
-python scripts/run_training.py sgd
-
-# With wandb tracking (optional)
-python scripts/run_training.py sgd --wandb-project my-project
-```
-
-**What happens:**
-1. Tokenize → `data/processed/AI_Human/tokenized/bert-base-uncased/`
-2. Encode (frozen BERT) → `data/processed/AI_Human/encoded/bert_bert/`
-3. Train SGD classifier → logs metrics
-
-**Subsequent runs:** Only step 3 re-runs (steps 1-2 cached)
-
-## 📝 Configuration
-
-Experiments use YAML files in `configs/experiments/`. See existing configs and `configs/README.md` for examples.
-
-## 📊 Dataset
-
-**Source:** [Kaggle - AI vs Human Text](https://www.kaggle.com/datasets/shanegerami/ai-vs-human-text)
-
-- **Task**: Binary classification (0 = Human, 1 = AI-generated)
-- **Split**: 80/20 train/test (stratified)
-- **Preprocessing**: BERT tokenization, max 512 tokens, CLS token pooling
-- **Analysis subset**: 3,000 samples (1,500 AI + 1,500 Human) for neuron analysis
-
-## 🛠️ Tech Stack
-
-**Core**: PyTorch, HuggingFace Transformers, scikit-learn  
-**Analysis**: NumPy, Pandas, SciPy, UMAP, matplotlib, seaborn  
-**Tracking**: Wandb (optional)
-
-## 🔬 Neuron Analysis Pipeline
-
-**Comprehensive interpretability study** of all 9,216 neurons across BERT's 12 layers.
-
-### Quick Start
-
-```bash
-# 1. Train classifier (creates tokenized dataset)
-python scripts/run_training.py sgd
-
-# 2. Extract activations from all 12 layers (~10 min, 3000 samples)
-python scripts/extract_activations.py --layers 1 2 3 4 5 6 7 8 9 10 11 12 --samples 3000
-
-# 3. Run analysis notebooks (recommended over deprecated analyze_activations.py)
-# Open: notebooks/neurons_analysis.ipynb
-# Open: notebooks/neuron_clustering.ipynb
-```
-
-### Statistical Method
-
-**Per-neuron analysis** (9,216 neurons = 12 layers × 768 neurons):
-
-1. **Mann-Whitney U Test**: Tests if AI vs Human activation distributions differ
-   - Significance level: α = 0.001
-   - Bonferroni correction: α' = 1.09×10⁻⁷ (for 9,216 tests)
-
-2. **Effect Sizes**:
-   - **AUC** (Area Under ROC): Discriminative power (0.5 = random, 0/1 = perfect)
-   - **Cohen's d**: Magnitude of difference (|d| > 0.8 = large effect)
-
-3. **Discriminative Neuron Criteria**:
-   - `p < α'` (survives Bonferroni correction)
-   - `AUC > 0.7` (AI-preferring) OR `AUC < 0.3` (Human-preferring)
-
-### Analysis Notebooks
-
-#### `neurons_analysis.ipynb` - Statistical Analysis
-**Outputs:**
-- Table 1: Summary statistics (1,350 discriminative neurons)
-- Figure 1: Layer-wise distribution (percentage & AI:Human ratio)
-- Figure 2: Top-10 neuron activation boxplots
-- Figure 3: Mean activation scatter (AI vs Human)
-- Statistical validation table (effect sizes, p-values, correlations)
-
-**Key Findings:**
-- 14.6% of neurons are discriminative
-- Late layers (9-12): 604 neurons (44.7% of discriminative)
-- Peak: Layer 11 with 181 discriminative neurons
-- Mean |Cohen's d| = 0.967 (very large effects)
-
-#### `neuron_clustering.ipynb` - Functional Organization
-**Outputs:**
-- UMAP visualization (layers & preference)
-- Hierarchical clustering dendrogram
-- Silhouette analysis (optimal K=3)
-- Cluster characterization tables
-
-**Discovered Clusters:**
-- **Cluster 0** (n=689, 51%): Human specialists, distributed across all layers
-- **Cluster 1** (n=212, 16%): Early AI detectors (90.6% from layers 1-4)
-- **Cluster 2** (n=449, 33%): Late AI detectors (56% from layers 10-12)
-
-### Data Files
-
-**Activation Data**: `results/activations/`
-- `layer_{1-12}_activations.npy` - Raw activation matrices (3000 samples × 768 neurons)
-- `layer_{1-12}_neuron_stats.csv` - Per-neuron statistics (AUC, p-value, Cohen's d, etc.)
-- `labels.npy` - Sample labels (0=Human, 1=AI)
-- `metadata.json` - Analysis configuration
-
-**Figures**: `results/figures/`
-- `figure{1-3}_*.png` - Statistical analysis plots
-- `neuron_umap_*.png` - UMAP visualizations
-- `neuron_dendrogram_cut.png` - Hierarchical clustering
-- `neuron_silhouette_scores.png` - Cluster validation
-
-### Quick Inspection
-
-```python
-import pandas as pd
-import numpy as np
-
-# Load neuron statistics for layer 12
-df = pd.read_csv('results/activations/layer_12_neuron_stats.csv')
-
-# Top discriminative neuron
-top = df.nlargest(1, 'auc_deviation').iloc[0]
-print(f"Layer 12, Neuron {top['neuron_idx']}: AUC={top['auc']:.3f}, Cohen's d={top['cohens_d']:.2f}")
-
-# Count discriminative neurons
-disc = df[df['discriminative']]
-print(f"Discriminative: {len(disc)}/768 ({len(disc)/768*100:.1f}%)")
-print(f"AI-preferring: {(disc['auc'] > 0.7).sum()}")
-print(f"Human-preferring: {(disc['auc'] < 0.3).sum()}")
-```
-
-## 📈 Results Summary
-
-### Classification Performance
-- **SGD Classifier**: >95% accuracy on test set
-- **Multiple classifiers tested**: Logistic Regression, Random Forest, Decision Tree, Linear SVC
-- **Key insight**: Frozen BERT embeddings are highly discriminative
-
-### Neuron Analysis Highlights
-- **1,350 discriminative neurons** identified (14.6% of 9,216 total)
-- **Balanced bidirectionality**: 688 AI-preferring vs 662 Human-preferring (1.04:1)
-- **Layer distribution**: U-shaped pattern (early and late layers dominate)
-- **Effect sizes**: 84.3% have large effects (|Cohen's d| > 0.8)
-- **Functional organization**: 3 distinct clusters with specialized roles
-
-## 📚 References
-
-- [HuggingFace Transformers](https://huggingface.co/docs/transformers)
-- [Dataset: Kaggle AI vs Human Text](https://www.kaggle.com/datasets/shanegerami/ai-vs-human-text)
-- [UMAP: Uniform Manifold Approximation and Projection](https://umap-learn.readthedocs.io/)
-- [scikit-learn](https://scikit-learn.org/)
-
-## 📄 License
-
-MIT License - Free for research and education
 
 ---
 
-**Status:** ✅ Research Complete | **Last Updated:** December 2024
+## Project Structure
+
+```
+├── scripts/
+│   ├── tokenize_raid.py           # Load & tokenize a RAID subset (one AI model vs human)
+│   ├── extract_activations.py     # Extract CLS activations (all 12 layers)
+│   ├── analyze_activations.py     # Mann-Whitney U + AUC, per-layer CSVs
+│   ├── run_raid_pipeline.py       # Full pipeline for each AI model vs human
+│   └── analyze_raid_models.py     # CLI → raid_analysis package (figures + clustering)
+│
+├── raid_analysis/                 # Multi-model neuron + clustering analysis (refactored)
+│   ├── dim_reduction.py           # PCA / UMAP strategies
+│   ├── clustering.py              # Ward+silhouette, Ward+gap, KMeans strategies
+│   ├── pipeline.py
+│   └── ...
+│
+├── utils/
+│   ├── activation_extractor.py
+│   ├── dataset_tokenizer.py
+│   └── raid_loader.py
+│
+├── notebooks/
+│   ├── neurons_analysis.ipynb
+│   └── neuron_clustering.ipynb
+│
+├── results/
+│   ├── activations_raid_*/        # Per-model activations + neuron stats (after pipeline)
+│   └── analysis/                  # analyze_raid_models.py outputs (per model)
+│
+├── data/
+│   └── processed/raid_*/          # Tokenized RAID subsets
+│
+├── pyproject.toml
+├── requirements.txt
+└── utils/hidden.py                # HuggingFace API key (git-ignored)
+```
+
+---
+
+## Reproducing the Analysis
+
+### Setup
+
+This project uses [uv](https://github.com/astral-sh/uv) for fast, reliable Python package management.
+
+#### Install uv
+
+**Windows (PowerShell):**
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+**macOS/Linux:**
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Or install via pip:
+```bash
+pip install uv
+```
+
+#### Create Environment and Install Dependencies
+
+```bash
+# Create a virtual environment and install all dependencies
+uv sync
+
+# Activate the virtual environment
+# Windows:
+.venv\Scripts\activate
+# macOS/Linux:
+source .venv/bin/activate
+```
+
+**For GPU support (recommended, 10x faster):**
+```bash
+# After uv sync, install PyTorch with CUDA support
+uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+```
+
+<details>
+<summary>Alternative: Using pip (legacy method)</summary>
+
+```bash
+pip install -r requirements.txt
+```
+
+Note: The project is migrating to `uv`. The `requirements.txt` is kept for backward compatibility but may be removed in future versions.
+</details>
+
+### Pipeline — RAID subset (single model)
+
+#### Step 1 — Load & tokenize
+
+```bash
+uv run scripts/tokenize_raid.py --model gpt4 --max-samples 10000
+```
+
+Saves under `data/processed/raid_gpt4/` (or `--dataset-name`). Requires RAID CSVs from `uv run scripts/download_raid.py` first.
+
+#### Step 2 — Extract CLS activations
+
+```bash
+uv run scripts/extract_activations.py \
+    --tokenized-path data/processed/raid_gpt4 \
+    --output results/activations_raid_gpt4 \
+    --samples 10000
+```
+
+#### Step 3 — Neuron statistics
+
+```bash
+uv run scripts/analyze_activations.py --input results/activations_raid_gpt4
+```
+
+Optional wandb tracking:
+```bash
+uv run scripts/analyze_activations.py --input results/activations_raid_gpt4 --wandb-project my-project
+```
+
+### Multi-model comparison (model X vs human)
+
+Runs tokenize → extract → analyze for each AI model against human.
+
+```bash
+uv run scripts/run_raid_pipeline.py
+
+uv run scripts/run_raid_pipeline.py --models gpt4 chatgpt mistral-chat
+uv run scripts/run_raid_pipeline.py --models gpt4 --samples 5000
+```
+
+Output layout:
+
+```
+data/processed/raid_gpt4/
+results/activations_raid_gpt4/
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--models` | all 11 AI models | Models vs human |
+| `--samples` | 1,000 | Total samples per model (balanced 50/50), stratified across domains |
+| `--domains` | all six | Restrict RAID domains |
+| `--batch-size` | 1,000 | Tokenization batch size |
+| `--extract-batch-size` | 64 | BERT forward batch size |
+| `--seed` | 42 | Random seed |
+
+### Multi-model neuron + clustering analysis
+
+After activations exist under `results/activations_raid_*`, run:
+
+```bash
+uv run scripts/analyze_raid_models.py
+uv run scripts/analyze_raid_models.py --models gpt4 chatgpt
+uv run scripts/analyze_raid_models.py --dim-reduction umap
+uv run scripts/analyze_raid_models.py --dim-reduction pca umap
+uv run scripts/analyze_raid_models.py --exemplars
+```
+
+| Flag | Description |
+|---|---|
+| `--dim-reduction pca` | PCA embedding (default if the flag is omitted) |
+| `--dim-reduction umap` | UMAP embedding (correlation metric) |
+| `--dim-reduction pca umap` | Run clustering for both; outputs split under `results/analysis/{model}/pca/` and `.../umap/` |
+
+With a **single** embedding, outputs go to `results/analysis/{model}/`. With **multiple**, the first listed method also writes neuron-level figures and optional exemplars; later methods write embedding + clustering only under their subfolder.
+
+### Explore in notebooks
+
+1. **`notebooks/neurons_analysis.ipynb`** — neuron discovery and validation  
+2. **`notebooks/neuron_clustering.ipynb`** — embedding + clustering exploration  
+
+Point notebook paths at `results/activations_raid_*` (or your chosen folder).
+
+```bash
+uv run jupyter notebook
+```
+
+---
+
+## Common Commands
+
+### Package Management
+```bash
+uv add package-name
+uv remove package-name
+uv sync --upgrade
+uv pip install package-name
+```
+
+### Running Scripts
+```bash
+uv run scripts/tokenize_raid.py --model gpt4
+uv run scripts/extract_activations.py --tokenized-path data/processed/raid_gpt4 --output results/activations_raid_gpt4
+uv run scripts/analyze_activations.py --input results/activations_raid_gpt4
+uv run scripts/analyze_raid_models.py --dim-reduction pca
+```
+
+---
+
+## Statistical Method
+
+**Per-neuron analysis** across all 9,216 neurons (12 layers × 768):
+
+1. **Mann-Whitney U Test** — tests whether AI vs human activation distributions differ significantly  
+2. **AUC effect size** — AUC > 0.7 → AI-preferring; AUC < 0.3 → human-preferring  
+3. **Bonferroni correction** — α′ = 0.001 / 9,216 = 1.09×10⁻⁷ per layer  
+4. **Cohen's d** — supplementary effect size  
+
+**Clustering (multi-model script)**:
+
+- **2D embedding** — PCA (default), UMAP (`--dim-reduction umap`), or both (`--dim-reduction pca umap`), then per-axis scaling for distance-based methods  
+- **Strategies** — Ward linkage with silhouette or merge-gap cut; KMeans with silhouette sweep (see `raid_analysis/clustering.py`)  
+
+---
+
+## Tech Stack
+
+**Package Management**: [uv](https://github.com/astral-sh/uv)  
+**Core**: PyTorch, HuggingFace Transformers  
+**Analysis**: NumPy, Pandas, SciPy, scikit-learn  
+**Clustering / viz**: UMAP (optional embedding), matplotlib, seaborn  
+**Experiment tracking**: Weights & Biases (optional)
+
+### Why uv?
+
+This project uses `uv` for dependency management: fast installs, lockfile support, and reliable resolution.
+
+---
+
+## References
+
+- [RAID benchmark](https://arxiv.org/abs/2405.07940) (ACL 2024) — [HuggingFace](https://huggingface.co/datasets/liamdugan/raid) · [GitHub](https://github.com/liamdugan/raid)  
+- [BERT](https://arxiv.org/abs/1810.04805)  
+- [UMAP](https://umap-learn.readthedocs.io/)  
+- [Mann-Whitney U test](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.mannwhitneyu.html)
