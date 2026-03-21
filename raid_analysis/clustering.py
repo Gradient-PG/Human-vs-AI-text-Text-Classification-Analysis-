@@ -1,4 +1,4 @@
-"""Clustering strategies on the 2D neuron embedding."""
+"""Clustering strategies on a feature matrix (e.g. full neuron activations or traits)."""
 
 from __future__ import annotations
 
@@ -198,9 +198,9 @@ def run_clustering_strategies(
     Run each strategy on the same point cloud.
 
     **Input ``embedding``**: array of shape ``(n_points, n_features)`` — one row per
-    point. In neuron analysis this is usually a 2D PCA/UMAP of neurons *or* a
-    standardized trait matrix; algorithms only see this matrix (plus Ward’s
-    internal linkage when applicable).
+    point. In neuron analysis the pipeline uses a column-standardized full
+    activation matrix here; trait runs use a standardized trait matrix.
+    Algorithms only see this matrix (plus Ward’s internal linkage when applicable).
 
     Ward-based strategies share one :class:`WardLinkageContext` so linkage is
     computed once per embedding.

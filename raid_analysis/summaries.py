@@ -110,7 +110,6 @@ def clustering_summary_text(
     extra_header_lines: list | None = None,
 ) -> str:
     is_disc = neurons_df["discriminative"].values
-    global_disc_frac = is_disc.mean()
     n_total = len(neurons_df)
     n_disc = int(is_disc.sum())
 
@@ -139,12 +138,11 @@ def clustering_summary_text(
         n_cn = len(cn)
         n_cn_disc = len(cn_disc)
         disc_frac = n_cn_disc / n_cn if n_cn > 0 else 0.0
-        enrichment = disc_frac / global_disc_frac if global_disc_frac > 0 else 0.0
 
         lines += [
             "",
             f"Cluster {cid}: {n_cn} neurons  ({n_cn_disc} discriminative, "
-            f"enrichment = {enrichment:.2f}x)",
+            f"{disc_frac * 100:.1f}% of cluster)",
             "-" * 80,
             "  Layer distribution:",
         ]

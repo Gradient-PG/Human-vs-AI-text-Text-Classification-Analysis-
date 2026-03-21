@@ -211,6 +211,8 @@ uv run scripts/analyze_raid_models.py
 uv run scripts/analyze_raid_models.py --models gpt4 chatgpt
 uv run scripts/analyze_raid_models.py --dim-reduction umap
 uv run scripts/analyze_raid_models.py --dim-reduction pca umap
+uv run scripts/analyze_raid_models.py --traits-clustering
+uv run scripts/analyze_raid_models.py --clustering ward_silhouette kmeans
 uv run scripts/analyze_raid_models.py --exemplars
 ```
 
@@ -218,8 +220,9 @@ uv run scripts/analyze_raid_models.py --exemplars
 |---|---|
 | `--dim-reduction pca` | PCA embedding (default if the flag is omitted) |
 | `--dim-reduction umap` | UMAP embedding (correlation metric) |
-| `--dim-reduction pca umap` | Run clustering for both; outputs split under `results/analysis/{model}/pca/` and `.../umap/` |
-| `--traits-clustering` | Also build a neuron×trait matrix (stats + activation moments), cluster in that space, save `traits_matrix.csv`, and plot trait clusters on **both** activation PCA and UMAP (the non-primary embedding is computed with default UMAP/PCA so you always get two overlays). Runs once on the first `--dim-reduction` pass when multiple are given. |
+| `--dim-reduction pca umap` | Run analysis for both; outputs split under `results/analysis/{model}/pca/` and `.../umap/` |
+| `--clustering` | Subset of strategies (default: all). Choices: `ward_silhouette`, `ward_gap`, `kmeans`. Applies to **full-activation** clustering and, if enabled, **trait-space** clustering. |
+| `--traits-clustering` | Also build `traits_matrix.csv` (per-neuron test stats + Cohen's d, plus pooled/class mean activations), run the same strategies on standardized traits, and plot trait clusters on **both** activation PCA and UMAP (the non-primary 2D embedding is computed so you always get two overlays). Runs once on the first `--dim-reduction` pass when multiple are given. |
 
 With a **single** embedding, outputs go to `results/analysis/{model}/`. With **multiple**, the first listed method also writes neuron-level figures, optional exemplars, and trait-based outputs; later methods write embedding + clustering only under their subfolder.
 
@@ -267,8 +270,9 @@ uv run scripts/analyze_raid_models.py --dim-reduction pca
 
 **Clustering (multi-model script)**:
 
-- **2D embedding** — PCA (default), UMAP (`--dim-reduction umap`), or both (`--dim-reduction pca umap`), then per-axis scaling for distance-based methods  
-- **Strategies** — Ward linkage with silhouette or merge-gap cut; KMeans with silhouette sweep (see `raid_analysis/clustering.py`)  
+- **Full activation space** — Each neuron is a row; clustering uses a **column-standardized** `(n_neurons × n_samples)` matrix. The 2D PCA/UMAP from `--dim-reduction` is **only for figures** (those coordinates are per-axis standardized after reduction for readable plots).  
+- **Strategies** — Same three algorithms for activations and (optionally) traits: Ward + silhouette K, Ward + merge-gap K, KMeans + silhouette K (`raid_analysis/clustering.py`; choose subsets with `--clustering`).  
+- **Trait space (optional, `--traits-clustering`)** — Second pass on a standardized neuron×trait matrix (`raid_analysis/traits.py`); cluster labels are drawn on activation PCA and UMAP for comparison.  
 
 ---
 

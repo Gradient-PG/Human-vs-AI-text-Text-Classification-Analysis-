@@ -73,18 +73,20 @@ def main():
         choices=("pca", "umap"),
         default=["pca"],
         metavar="METHOD",
-        help="One or more 2D embeddings before clustering: pca (default) and/or umap. "
-        "Multiple methods each get a subfolder under each model when more than one is given.",
+        help="One or more 2D embeddings for visualization only (PCA / UMAP). "
+        "Neuron clustering uses the full activation matrix; multiple methods each get a "
+        "subfolder under each model when more than one is given.",
     )
     parser.add_argument(
         "--exemplars", action="store_true",
         help="Also extract cluster exemplar texts (requires tokenized dataset; "
-        "uses Ward+silhouette clusters from the first dim reduction only)",
+        "uses Ward+silhouette cluster ids from the first --dim-reduction output only "
+        "to avoid duplicate exemplar files)",
     )
     parser.add_argument(
         "--traits-clustering",
         action="store_true",
-        help="Also cluster neurons in standardized trait space (stats + activation moments); "
+        help="Also cluster neurons in standardized trait space (stats + simple activation summaries); "
         "save traits_matrix.csv and overlay trait clusters on activation PCA & UMAP figures",
     )
     parser.add_argument(
@@ -93,7 +95,7 @@ def main():
         default=None,
         metavar="METHOD",
         choices=CLUSTERING_STRATEGY_IDS,
-        help="Which clustering strategies to run on the embedding (and on traits if --traits-clustering). "
+        help="Which clustering strategies to run on full activations (and on traits if --traits-clustering). "
         "ward_silhouette: Ward + optimal K by silhouette; ward_gap: Ward + merge-gap K; "
         "kmeans: KMeans + silhouette K. Default: all three.",
     )

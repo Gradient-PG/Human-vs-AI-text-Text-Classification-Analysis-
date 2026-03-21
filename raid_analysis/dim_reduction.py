@@ -1,4 +1,4 @@
-"""Dimensionality reduction strategies for 2D neuron embedding (PCA or UMAP)."""
+"""Dimensionality reduction strategies for 2D neuron embedding visualization (PCA or UMAP)."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ class DimReductionSpec:
 
 
 class DimReductionStrategy(ABC):
-    """Reduce neuron feature rows to 2D for visualization and clustering."""
+    """Reduce neuron feature rows to 2D for visualization (clustering uses full ``X_neurons`` in the pipeline)."""
 
     @property
     @abstractmethod
@@ -36,12 +36,12 @@ class DimReductionStrategy(ABC):
             X_neurons: (n_neurons, n_samples) — one row per neuron.
 
         Returns:
-            embedding: (n_neurons, 2), standardized for distance-based clustering.
+            embedding: (n_neurons, 2), standardized per axis for readable plots.
         """
 
 
 class PCAReduction(DimReductionStrategy):
-    """PCA to 2 components, then per-axis standardization (matches prior behaviour)."""
+    """PCA to 2 components, then per-axis standardization for plotting."""
 
     def __init__(self, random_state: int = 42):
         self._random_state = random_state
@@ -61,7 +61,7 @@ class PCAReduction(DimReductionStrategy):
 
 
 class UMAPReduction(DimReductionStrategy):
-    """UMAP with correlation metric on neuron rows; output standardized for clustering."""
+    """UMAP with correlation metric on neuron rows; output standardized for plotting."""
 
     def __init__(
         self,

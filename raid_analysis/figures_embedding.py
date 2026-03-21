@@ -82,10 +82,12 @@ def fig_full_space_clustering(
 ) -> plt.Figure:
     is_disc = neurons_df["discriminative"].values
     auc = neurons_df["auc"].values
+    auc_deviation = neurons_df["auc_deviation"].values
     layers = neurons_df["layer"].values
 
     ai_mask = is_disc & (auc > 0.5)
     hu_mask = is_disc & (auc <= 0.5)
+    non_disc_mask = ~is_disc
 
     unique_sorted = sorted(set(cluster_labels))
     has_noise = -1 in unique_sorted
@@ -110,9 +112,9 @@ def fig_full_space_clustering(
     ax_auc = fig.add_subplot(gs[0, 1])
     ax_disc = fig.add_subplot(gs[0, 2])
     ax_layer = fig.add_subplot(gs[1, 0])
-    ax_enrich = fig.add_subplot(gs[1, 1])
-    ax_hidden = fig.add_subplot(gs[1, 2])
-    ax_hidden.axis("off")
+    gs_right = gs[1, 1:].subgridspec(2, 1, height_ratios=[1.0, 1.15], hspace=0.42)
+    ax_strength = fig.add_subplot(gs_right[0, 0])
+    ax_dir = fig.add_subplot(gs_right[1, 0])
 
     point_colors = np.array([cluster_colors[k] for k in cluster_labels])
 
@@ -193,31 +195,63 @@ def fig_full_space_clustering(
     ax_layer.set_ylim(0, 1.05)
     ax_layer.grid(axis="y", alpha=0.3)
 
-    global_frac = is_disc.mean()
-    enrichments = []
+    bar_cols = [cluster_colors[c] for c in real_ids]
+    mean_strength = []
     for c in real_ids:
         mask_c = cluster_labels == c
-        frac_c = is_disc[mask_c].mean() if mask_c.sum() > 0 else 0.0
-        enrichments.append(frac_c / global_frac if global_frac > 0 else 0.0)
+        disc_in_c = mask_c & is_disc
+        if disc_in_c.any():
+            mean_strength.append(float(auc_deviation[disc_in_c].mean()))
+        else:
+            mean_strength.append(0.0)
+    bars_s = ax_strength.bar(
+        x_pos, mean_strength, bar_width,
+        color=bar_cols, edgecolor="black", linewidth=0.7,
+    )
+    ymax_s = max(mean_strength) if mean_strength else 0.0
+    y_top = max(0.06, ymax_s * 1.2) if ymax_s > 0 else 0.06
+    for bar, val in zip(bars_s, mean_strength):
+        if val > 1e-9:
+            pad = 0.02 * y_top
+            ax_strength.text(
+                bar.get_x() + bar.get_width() / 2, bar.get_height() + pad,
+                f"{val:.3f}", ha="center", va="bottom", fontsize=9, fontweight="bold",
+            )
+    ax_strength.set_xticks(x_pos)
+    ax_strength.set_xticklabels([f"Cluster {c}" for c in real_ids], fontsize=10)
+    ax_strength.set_ylabel("Mean AUC deviation from 0.5\n(discriminative neurons only)",
+                           fontsize=10)
+    ax_strength.set_title(
+        f"Discriminative Strength by Cluster — {method} [{model}]",
+        fontsize=13, fontweight="bold",
+    )
+    ax_strength.grid(axis="y", alpha=0.3)
+    ax_strength.set_ylim(0, y_top)
 
-    bar_cols = [cluster_colors[c] for c in real_ids]
-    bars = ax_enrich.bar(x_pos, enrichments, bar_width,
-                         color=bar_cols, edgecolor="black", linewidth=0.7)
-    ax_enrich.axhline(1.0, color="black", linewidth=1.5, linestyle="--",
-                      label="No enrichment (ratio = 1)")
-    for bar, val in zip(bars, enrichments):
-        ax_enrich.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.03,
-                       f"{val:.2f}x", ha="center", va="bottom", fontsize=9,
-                       fontweight="bold")
-    ax_enrich.set_xticks(x_pos)
-    ax_enrich.set_xticklabels([f"Cluster {c}" for c in real_ids], fontsize=10)
-    ax_enrich.set_ylabel("Enrichment ratio  (cluster disc. % / global disc. %)",
-                         fontsize=10)
-    ax_enrich.set_title(f"Discrimination Enrichment — {method} [{model}]",
-                        fontsize=13, fontweight="bold")
-    ax_enrich.legend(fontsize=9)
-    ax_enrich.grid(axis="y", alpha=0.3)
-    ax_enrich.set_ylim(bottom=0)
+    dir_labels = ["Non-discriminative", "Human-preferring", "AI-preferring"]
+    dir_colors = ["#aaaaaa", "#3498db", "#e74c3c"]
+    dir_masks = [non_disc_mask, hu_mask, ai_mask]
+    bottoms_dir = np.zeros(n_bars)
+    for d_label, d_col, d_mask in zip(dir_labels, dir_colors, dir_masks):
+        fracs_d = np.array(
+            [((cluster_labels == c) & d_mask).sum() / max((cluster_labels == c).sum(), 1)
+             for c in real_ids]
+        )
+        ax_dir.bar(
+            x_pos, fracs_d, bar_width, bottom=bottoms_dir,
+            color=d_col, label=d_label, edgecolor="white", linewidth=0.5,
+        )
+        bottoms_dir += fracs_d
+    ax_dir.set_xticks(x_pos)
+    ax_dir.set_xticklabels([f"Cluster {c}" for c in real_ids], fontsize=10)
+    ax_dir.set_ylabel("Fraction of neurons in cluster", fontsize=11)
+    ax_dir.set_title(
+        f"Discriminative Direction Mix — {method} [{model}]",
+        fontsize=13, fontweight="bold",
+    )
+    ax_dir.legend(fontsize=9, loc="upper right", framealpha=0.9)
+    ax_dir.set_ylim(0, 1.05)
+    ax_dir.grid(axis="y", alpha=0.3)
 
     fig.suptitle(f"{method} Cluster Analysis — {model}  (K={n_real})",
                  fontsize=15, fontweight="bold", y=1.01)
