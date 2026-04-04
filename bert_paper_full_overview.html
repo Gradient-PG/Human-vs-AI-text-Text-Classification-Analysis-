@@ -1,0 +1,1672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BERT Discriminative Neurons — Full Project Overview</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300;1,9..144,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0c0e0d;
+  --surface: #131613;
+  --surface2: #181b18;
+  --surface3: #1d211d;
+  --border: #232623;
+  --border-bright: #2e322e;
+  --accent: #a8c96e;
+  --accent-dim: #5e7a32;
+  --accent-glow: rgba(168,201,110,0.07);
+  --accent-glow2: rgba(168,201,110,0.13);
+  --text: #e4e8e1;
+  --text-2: #96a494;
+  --text-3: #566055;
+  --warn: #d4a853;
+  --warn-dim: rgba(212,168,83,0.07);
+  --drop: #c96e6e;
+  --drop-dim: rgba(201,110,110,0.07);
+  --blue: #6ea4c9;
+  --blue-dim: rgba(110,164,201,0.07);
+  --pawel: #a8c96e;
+  --pawel-dim: rgba(168,201,110,0.09);
+  --milosz: #6ea4c9;
+  --milosz-dim: rgba(110,164,201,0.09);
+  --joint: #c9a06e;
+  --joint-dim: rgba(201,160,110,0.09);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  line-height: 1.75;
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.022) 2px, rgba(0,0,0,0.022) 4px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(12,14,13,0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 44px;
+  overflow-x: auto;
+}
+
+nav a {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  text-decoration: none;
+  padding: 0 14px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+nav a:first-child { border-left: 1px solid var(--border); }
+nav a:hover { color: var(--accent); }
+
+/* ── LAYOUT ── */
+.wrap {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 80px 32px 120px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── HEADER ── */
+header {
+  padding: 40px 0 48px;
+  border-bottom: 1px solid var(--border-bright);
+  margin-bottom: 64px;
+}
+
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.eyebrow::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--accent-dim), transparent);
+  max-width: 240px;
+}
+
+h1 {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(26px, 4vw, 44px);
+  font-weight: 300;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  color: var(--text);
+  margin-bottom: 22px;
+}
+h1 em { color: var(--accent); font-style: italic; }
+
+.meta-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.pill {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 2px;
+  border: 1px solid var(--border-bright);
+  color: var(--text-2);
+}
+
+.pill.confirmed {
+  background: var(--accent-glow2);
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+.pill.deadline {
+  background: var(--drop-dim);
+  border-color: rgba(201,110,110,0.3);
+  color: var(--drop);
+}
+
+.abstract {
+  max-width: 720px;
+  font-family: 'Fraunces', serif;
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.8;
+  color: var(--text-2);
+  font-style: italic;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── SECTION SCAFFOLDING ── */
+section { margin-bottom: 72px; }
+
+.section-label {
+  font-size: 9px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.section-label::before {
+  content: '';
+  width: 28px;
+  height: 1px;
+  background: var(--accent-dim);
+  flex-shrink: 0;
+}
+
+h2 {
+  font-family: 'Syne', sans-serif;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 22px;
+  letter-spacing: -0.01em;
+}
+
+h3 {
+  font-family: 'Syne', sans-serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+p {
+  color: var(--text-2);
+  margin-bottom: 12px;
+  font-size: 12.5px;
+  line-height: 1.8;
+}
+
+code {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 1px 5px;
+  border-radius: 2px;
+  color: var(--accent);
+}
+
+/* ── TAGS ── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 2px;
+  font-weight: 500;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.tg-green    { background: var(--accent-glow); color: var(--accent); border: 1px solid rgba(168,201,110,0.25); }
+.tg-blue     { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(110,164,201,0.25); }
+.tg-warn     { background: var(--warn-dim); color: var(--warn); border: 1px solid rgba(212,168,83,0.3); }
+.tg-drop     { background: var(--drop-dim); color: var(--drop); border: 1px solid rgba(201,110,110,0.3); }
+.tg-muted    { background: transparent; color: var(--text-3); border: 1px solid var(--border-bright); }
+.tg-pawel    { background: var(--pawel-dim); color: var(--pawel); border: 1px solid rgba(168,201,110,0.3); }
+.tg-milosz   { background: var(--milosz-dim); color: var(--milosz); border: 1px solid rgba(110,164,201,0.3); }
+.tg-joint    { background: var(--joint-dim); color: var(--joint); border: 1px solid rgba(201,160,110,0.3); }
+
+/* ── STAT GRID ── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.stat {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 16px 18px;
+  border-radius: 2px;
+}
+
+.stat .num {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.stat .lbl {
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+/* ── CARD ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 20px 24px;
+  margin-bottom: 14px;
+  position: relative;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px 0 0 2px;
+}
+
+.card.warn::before  { background: var(--warn); }
+.card.drop::before  { background: var(--drop); }
+.card.blue::before  { background: var(--blue); }
+.card.muted::before { background: var(--border-bright); }
+.card.joint::before { background: var(--joint); }
+
+/* ── NOTICE ── */
+.notice {
+  background: var(--warn-dim);
+  border: 1px solid rgba(212,168,83,0.2);
+  border-left: 3px solid var(--warn);
+  padding: 12px 16px;
+  border-radius: 2px;
+  font-size: 12px;
+  color: var(--warn);
+  margin-bottom: 16px;
+  line-height: 1.65;
+}
+
+.notice.drop {
+  background: var(--drop-dim);
+  border-color: rgba(201,110,110,0.2);
+  border-left-color: var(--drop);
+  color: var(--drop);
+}
+
+/* ── DIRECTION BLOCK ── */
+.direction {
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.dir-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 22px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.dir-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+  min-width: 30px;
+}
+
+.dir-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+}
+
+.dir-body {
+  padding: 20px 22px;
+  background: var(--bg);
+}
+
+/* ── EXPERIMENT CARD ── */
+.exp {
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.exp-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.exp-id {
+  font-family: 'Syne', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-3);
+  letter-spacing: 0.12em;
+  min-width: 34px;
+  flex-shrink: 0;
+}
+
+.exp-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+}
+
+.exp-body {
+  padding: 18px 20px;
+  background: var(--bg);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+@media (max-width: 680px) { .exp-body { grid-template-columns: 1fr; } }
+.exp-body.full { grid-template-columns: 1fr; }
+
+.exp-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+.exp-meta-item {
+  padding: 7px 14px;
+  border-right: 1px solid var(--border);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.exp-meta-item .ml { color: var(--text-3); text-transform: uppercase; }
+.exp-meta-item .mv { color: var(--text-2); }
+
+/* ── METHOD LIST ── */
+.methods { margin-top: 10px; }
+
+.method {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: flex-start;
+}
+.method:last-child { border-bottom: none; }
+
+.method-name {
+  font-size: 11.5px;
+  color: var(--text);
+  font-weight: 500;
+  min-width: 150px;
+  flex-shrink: 0;
+}
+
+.method-desc {
+  font-size: 11.5px;
+  color: var(--text-2);
+  line-height: 1.65;
+}
+
+/* ── OUTCOMES ── */
+.outcomes { margin-top: 10px; }
+
+.outcome {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: flex-start;
+}
+.outcome:last-child { border-bottom: none; }
+
+.o-letter {
+  font-family: 'Syne', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-3);
+  padding-top: 1px;
+}
+
+.o-text {
+  font-size: 11.5px;
+  color: var(--text-2);
+  line-height: 1.65;
+}
+.o-text strong { color: var(--text); font-weight: 500; }
+.o-interp {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-3);
+  font-size: 11px;
+  font-style: italic;
+}
+
+/* ── DROPPED LIST ── */
+.dropped-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.dropped-item {
+  font-size: 11px;
+  color: var(--drop);
+  background: var(--drop-dim);
+  border: 1px solid rgba(201,110,110,0.2);
+  padding: 3px 9px;
+  border-radius: 2px;
+  text-decoration: line-through;
+  text-decoration-color: rgba(201,110,110,0.4);
+}
+
+/* ── DEP GRAPH ── */
+.dep-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 28px 24px;
+  overflow-x: auto;
+}
+
+.dep-tree { min-width: 540px; }
+
+.dep-root {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--drop-dim);
+  border: 1px solid rgba(201,110,110,0.3);
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--drop);
+  letter-spacing: 0.04em;
+  margin-bottom: 0;
+}
+
+.dep-free {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  background: var(--accent-glow);
+  border: 1px solid rgba(168,201,110,0.35);
+  border-radius: 2px;
+  font-size: 11px;
+  color: var(--accent);
+  margin-bottom: 10px;
+  letter-spacing: 0.03em;
+}
+
+.dep-children {
+  padding-left: 24px;
+  position: relative;
+  margin-top: 2px;
+}
+.dep-children::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 0;
+  bottom: 22px;
+  width: 1px;
+  background: var(--border-bright);
+}
+
+.dep-row {
+  display: flex;
+  align-items: center;
+  padding: 3px 0;
+  position: relative;
+}
+.dep-row::before {
+  content: '';
+  width: 15px;
+  height: 1px;
+  background: var(--border-bright);
+  flex-shrink: 0;
+}
+
+.dep-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 11px;
+  border-radius: 2px;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+.dep-node.p  { border-color: rgba(168,201,110,0.25); color: var(--pawel); background: var(--pawel-dim); }
+.dep-node.m  { border-color: rgba(110,164,201,0.25); color: var(--milosz); background: var(--milosz-dim); }
+.dep-node.c  { border-style: dashed; color: var(--text-3); }
+.dep-node.free-node { border-color: rgba(168,201,110,0.4); color: var(--accent); }
+
+.dep-aside { margin-left: 12px; font-size: 10px; color: var(--text-3); font-style: italic; }
+
+/* ── OPEN QUESTIONS ── */
+.q-list { counter-reset: q; list-style: none; }
+
+.q-list li {
+  counter-increment: q;
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.7;
+}
+.q-list li:last-child { border-bottom: none; }
+.q-list li::before {
+  content: counter(q, decimal-leading-zero);
+  font-family: 'Syne', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-3);
+  padding-top: 2px;
+}
+
+/* ── OPEN DECISIONS ── */
+.decision {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: flex-start;
+}
+.decision:last-child { border-bottom: none; }
+.decision-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-3);
+  padding-top: 2px;
+}
+.decision-text { font-size: 12px; color: var(--text-2); line-height: 1.7; }
+.decision-text strong { color: var(--text); font-weight: 500; }
+
+/* ── TIMELINE ── */
+.timeline { display: flex; flex-direction: column; gap: 0; }
+
+.tl-row {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 0;
+  position: relative;
+}
+
+.tl-week {
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 10px 14px 10px 0;
+  border-right: 1px solid var(--border-bright);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.tl-content {
+  padding: 8px 0 8px 18px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  position: relative;
+  min-height: 40px;
+}
+.tl-content::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border-bright);
+}
+.tl-now .tl-content::before { background: var(--accent); box-shadow: 0 0 8px var(--accent-dim); }
+.tl-critical .tl-content::before { background: var(--drop); }
+
+.tl-label { font-size: 11.5px; color: var(--text-2); align-self: center; }
+
+/* ── LEGEND ── */
+.legend {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  margin-top: 6px;
+}
+.leg-item { display: flex; align-items: center; gap: 7px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-2); }
+.leg-sw { width: 10px; height: 10px; border-radius: 1px; flex-shrink: 0; }
+
+/* ── INFRA GRID ── */
+.infra-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+.infra-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 14px 16px;
+}
+.infra-item .i-label { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+.infra-item .i-val { font-size: 12px; color: var(--text); }
+
+/* ── ANIMATIONS ── */
+section { animation: fadeUp 0.4s ease both; }
+section:nth-child(1) { animation-delay: 0.04s; }
+section:nth-child(2) { animation-delay: 0.09s; }
+section:nth-child(3) { animation-delay: 0.14s; }
+section:nth-child(4) { animation-delay: 0.19s; }
+section:nth-child(5) { animation-delay: 0.24s; }
+section:nth-child(6) { animation-delay: 0.29s; }
+section:nth-child(7) { animation-delay: 0.34s; }
+section:nth-child(8) { animation-delay: 0.39s; }
+section:nth-child(9) { animation-delay: 0.44s; }
+section:nth-child(10) { animation-delay: 0.49s; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+hr { border: none; border-top: 1px solid var(--border); margin: 48px 0; }
+
+footer {
+  margin-top: 80px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--text-3);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  letter-spacing: 0.07em;
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#overview">Overview</a>
+  <a href="#findings">Findings</a>
+  <a href="#directions">Directions</a>
+  <a href="#experiments">Experiments</a>
+  <a href="#deps">Dependencies</a>
+  <a href="#decisions">Open Decisions</a>
+  <a href="#excluded">Excluded</a>
+  <a href="#infra">Infrastructure</a>
+  <a href="#timeline">Timeline</a>
+  <a href="#questions">Open Questions</a>
+</nav>
+
+<div class="wrap">
+
+<!-- ══ HEADER ══════════════════════════════════════════════════════ -->
+<header>
+  <div class="eyebrow">Paweł Blicharz &amp; Miłosz Grunwald · 2026</div>
+  <h1>Discriminative Neurons in <em>BERT</em><br>for AI-Generated Text Detection</h1>
+  <div class="meta-pills">
+    <span class="pill confirmed">bert-base-uncased ✓ confirmed</span>
+    <span class="pill">RAID Benchmark · 11 generators · 8 domains</span>
+    <span class="pill">Mechanistic Interpretability</span>
+    <span class="pill">EMNLP 2026 ARR</span>
+    <span class="pill deadline">Deadline: May 25, 2026</span>
+  </div>
+  <p class="abstract">
+    Rather than asking whether BERT can detect AI-generated text — it can, trivially —
+    this paper asks which neurons are responsible for that discrimination, whether they
+    causally drive the classification, whether they generalize across generators, and
+    whether "AI-ness" is encoded as a geometrically clean linear direction in CLS activation space.
+  </p>
+</header>
+
+<!-- ══ §01 STUDY OVERVIEW ═══════════════════════════════════════════ -->
+<section id="overview">
+  <div class="section-label">01 — Study Overview</div>
+  <h2>What This Study Is Doing</h2>
+
+  <p>A mechanistic interpretability study of a frozen BERT-base-uncased model in the context of AI-generated text detection. The model is not fine-tuned — its frozen CLS token activations are the subject of analysis. A lightweight sklearn classifier is trained on top of those activations; the paper is about understanding the activations, not improving the classifier.</p>
+
+  <div class="card">
+    <h3>Core Research Question</h3>
+    <p style="color:var(--text); margin-bottom:0;">
+      Which neurons in BERT-base-uncased CLS token activations systematically discriminate
+      AI-generated from human-written text, what is their causal role in classification,
+      do they generalize across generators, and is the detection signal geometrically linear?
+    </p>
+  </div>
+
+  <div class="card blue">
+    <h3>Dataset: RAID Benchmark</h3>
+    <p>Dugan et al., ACL 2024. 11 AI generators across 8 domains. Replaced an earlier <code>wiki_labeled</code> GPT-3 dataset that produced trivially separable results — two perfectly pure clusters — and was therefore not scientifically interesting.</p>
+    <p style="margin-bottom:0;">The shift to RAID introduced real complexity: generators vary in difficulty, neuron counts differ per generator, and the old findings did not reproduce.</p>
+  </div>
+
+  <div class="card">
+    <h3>Why Mechanistic, Not Behavioral</h3>
+    <p style="margin-bottom:0;">High accuracy with frozen BERT + sklearn is a known, non-novel result (Linear SVC reaches ~98.8% on similar benchmarks). The paper is not about building a better detector. It is about understanding what is happening inside an existing one — which specific neurons drive the decision, and why.</p>
+  </div>
+</section>
+
+<!-- ══ §02 CONFIRMED FINDINGS ════════════════════════════════════════ -->
+<section id="findings">
+  <div class="section-label">02 — Confirmed Findings</div>
+  <h2>What Has Been Established (RAID-Grounded)</h2>
+
+  <div class="notice">
+    ⚠ All findings below are on RAID data with BERT-base-uncased. Numbers from the old wiki_labeled / GPT-3 dataset
+    (1,350 discriminative neurons, U-shaped layer distribution, three-cluster architecture) are invalidated and fully dropped.
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat">
+      <span class="num">9,216</span>
+      <span class="lbl">Total neurons analyzed<br>12 layers × 768</span>
+    </div>
+    <div class="stat">
+      <span class="num">Varies</span>
+      <span class="lbl">Discriminative neurons<br>differs per generator</span>
+    </div>
+    <div class="stat">
+      <span class="num">11</span>
+      <span class="lbl">RAID generators<br>analyzed</span>
+    </div>
+    <div class="stat">
+      <span class="num">~1:1</span>
+      <span class="lbl">AI-preferring :<br>human-preferring ratio</span>
+    </div>
+    <div class="stat">
+      <span class="num">3.25<span style="font-size:14px;">×10⁻⁷</span></span>
+      <span class="lbl">Bonferroni-adjusted α<br>(per-neuron threshold)</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Stable Confirmed Results</h3>
+    <div class="methods">
+      <div class="method">
+        <span class="method-name">Balanced bidirectionality</span>
+        <span class="method-desc">Roughly equal numbers of AI-preferring neurons (AUC &gt; 0.7) and human-preferring neurons (AUC &lt; 0.3). Pattern appears stable across generators.</span>
+      </div>
+      <div class="method">
+        <span class="method-name">UMAP / PCA separation</span>
+        <span class="method-desc">Discriminative neurons form distinct non-overlapping regions in dimensionality-reduced space. PCA is the primary visualization; UMAP with fixed seed is secondary.</span>
+      </div>
+      <div class="method">
+        <span class="method-name">Per-generator variation</span>
+        <span class="method-desc">Different generators produce different counts of discriminative neurons. This is expected and is itself an interesting result — detection difficulty varies by generator at the mechanistic level.</span>
+      </div>
+      <div class="method">
+        <span class="method-name">Statistical pipeline</span>
+        <span class="method-desc">AUC-ROC per neuron + two-sided Mann-Whitney U test + Bonferroni correction (adjusted α ≈ 3.25×10⁻⁷). Threshold: AUC &lt; 0.3 or &gt; 0.7. Applied per generator separately.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card drop">
+    <h3>Fully Dropped / Invalidated</h3>
+    <div class="dropped-list">
+      <span class="dropped-item">~1,350 discriminative neurons</span>
+      <span class="dropped-item">U-shaped layer distribution</span>
+      <span class="dropped-item">Three-cluster architecture</span>
+      <span class="dropped-item">Cluster 0 / 1 / 2 structure</span>
+      <span class="dropped-item">98% accuracy headline</span>
+      <span class="dropped-item">wiki_labeled dataset</span>
+      <span class="dropped-item">DistilBERT</span>
+    </div>
+    <p style="margin-top:14px; font-size:12px;">Three-cluster finding could not be reproduced on RAID — almost certainly an artifact of the old dataset's extreme separability. DistilBERT replaced by BERT-base-uncased (confirmed). Accuracy headline dropped because it is a known, non-novel result.</p>
+  </div>
+</section>
+
+<!-- ══ §03 RESEARCH DIRECTIONS ═══════════════════════════════════════ -->
+<section id="directions">
+  <div class="section-label">03 — Research Directions</div>
+  <h2>Active Research Directions</h2>
+
+  <div class="legend" style="margin-bottom:20px;">
+    <div class="leg-item"><span class="leg-sw" style="background:var(--pawel);"></span> Paweł</div>
+    <div class="leg-item"><span class="leg-sw" style="background:var(--milosz);"></span> Miłosz</div>
+    <div class="leg-item"><span class="leg-sw" style="background:var(--joint);"></span> Joint / Conditional</div>
+  </div>
+
+  <!-- D1 -->
+  <div class="direction">
+    <div class="dir-header">
+      <span class="dir-num">D1</span>
+      <span class="dir-title">Causal Validation</span>
+      <span class="tag tg-green">Primary</span>
+      <span class="tag tg-green">Load-bearing</span>
+      <span class="tag tg-pawel">Paweł (D1a, D1b)</span>
+      <span class="tag tg-milosz">Miłosz (D1c)</span>
+    </div>
+    <div class="dir-body">
+      <p>The core contribution. Upgrades the paper from "these neurons correlate with detection" to "these neurons causally drive it." Without causal experiments, the paper is descriptive and reviewers will flag it. This is what makes the paper mechanistically interpretable, not merely statistical.</p>
+      <p style="margin-bottom:0;"><strong style="color:var(--text);">Framing question:</strong> Does the Enkhbayar (2025) paradox hold here? In GPT-2 (generative), discriminative neurons were causally <em>unnecessary</em>. Does this counterintuitive result appear in a classifier setting, or do BERT's neurons actually drive the output? Either answer is a clean publishable result.</p>
+    </div>
+  </div>
+
+  <!-- D2 -->
+  <div class="direction">
+    <div class="dir-header">
+      <span class="dir-num">D2</span>
+      <span class="dir-title">Cross-Generator Generalization</span>
+      <span class="tag tg-green">Co-primary</span>
+      <span class="tag tg-blue">Most novel</span>
+      <span class="tag tg-pawel">Paweł (D2a)</span>
+      <span class="tag tg-milosz">Miłosz (D2b, D2c)</span>
+    </div>
+    <div class="dir-body">
+      <p>The most novel angle. Cross-generator <em>accuracy</em> generalization is heavily studied (RAID, M4, EAGLE, RADAR). Nobody has characterized which specific neurons generalize and which are generator-specific at the mechanistic level. Either result is publishable and directly interpretable.</p>
+      <p style="margin-bottom:0;">D2c (Miłosz): hypothesis that generators with similar properties activate similar neurons — text from smaller/same-family models leaves similar traces in BERT. Requires a concrete generator property table before implementation (model size is partially unavailable — use model family, instruction-tuned vs base, open vs closed as proxies).</p>
+    </div>
+  </div>
+
+  <!-- D3 -->
+  <div class="direction">
+    <div class="dir-header">
+      <span class="dir-num">D3</span>
+      <span class="dir-title">Linear Representation Validation</span>
+      <span class="tag tg-muted">Supporting</span>
+      <span class="tag tg-muted">Cheap add-on</span>
+    </div>
+    <div class="dir-body">
+      <p>Tests whether "AI-ness" is encoded as a clean linear direction in CLS activation space. If the neurons that most align with this direction are the same ones flagged discriminative by the statistical pipeline, that is a geometric explanation for <em>why</em> they are discriminative — they are not just statistically different, they literally encode the distinguishing concept as a directional axis.</p>
+      <p style="margin-bottom:0;">Almost entirely free computationally — operates on existing CLS activations. Run via autoresearcher in background while D1 is the primary focus. Do not let D3 expand and compete with D1 for implementation time.</p>
+    </div>
+  </div>
+
+  <!-- CT -->
+  <div class="direction" style="border-color:rgba(212,168,83,0.25);">
+    <div class="dir-header" style="background:var(--surface);">
+      <span class="dir-num" style="color:var(--warn);">CT</span>
+      <span class="dir-title">Cross-Generator Transfer Test</span>
+      <span class="tag tg-warn">Conditional</span>
+      <span class="tag tg-joint">Joint</span>
+    </div>
+    <div class="dir-body">
+      <p>Train classifier using only generator-A discriminative neurons, test on generator-B texts. Tests whether neurons that overlap across generators (D2a Jaccard) actually <em>do the work</em> across generators. The causal complement to D2a's correlational overlap measure.</p>
+      <p style="margin-bottom:0;"><strong style="color:var(--text);">Condition:</strong> Only if D1a + D2a are both complete by approximately April 18–20. Decide go/no-go at that checkpoint. The strongest single experiment in the paper if time permits.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ §04 EXPERIMENTS ═══════════════════════════════════════════════ -->
+<section id="experiments">
+  <div class="section-label">04 — Experiment Plan</div>
+  <h2>All Experiments in Detail</h2>
+
+  <!-- STEP 0 -->
+  <div class="card drop" style="margin-bottom:28px;">
+    <h3>⬛ Step 0 — Foundation (Hard Blocker)</h3>
+    <p>Run AUC-ROC + Mann-Whitney U + Bonferroni (α ≈ 3.25×10⁻⁷) for <strong>all 11 RAID generators</strong>. Threshold: AUC &lt; 0.3 or &gt; 0.7. Status: pipeline exists, not all generators complete. Owner: Paweł. Estimated: 0.5–1 day. Output: 11 discriminative neuron sets saved to disk.</p>
+    <p style="margin-bottom:0; color:var(--accent); font-size:12px;">Partial exception: D3a (mean difference vector) can run immediately on existing labeled CLS activations — start this now while Step 0 is in progress.</p>
+  </div>
+
+  <!-- D1a -->
+  <div class="exp">
+    <div class="exp-head">
+      <span class="exp-id">D1a</span>
+      <span class="exp-title">Ablation Study (Zero + Mean)</span>
+      <span class="tag tg-green">Primary</span>
+      <span class="tag tg-pawel">Paweł</span>
+    </div>
+    <div class="exp-body">
+      <div>
+        <h3>What &amp; How</h3>
+        <div class="methods">
+          <div class="method">
+            <span class="method-name">Zero ablation</span>
+            <span class="method-desc">Set discriminative neuron values to 0. More disruptive — introduces out-of-distribution activations. Sanity check variant.</span>
+          </div>
+          <div class="method">
+            <span class="method-name">Mean ablation</span>
+            <span class="method-desc">Set to the dataset mean activation per neuron. Keeps activations in-distribution. Primary reported variant.</span>
+          </div>
+          <div class="method">
+            <span class="method-name">Random baseline</span>
+            <span class="method-desc">Ablate equal count of random neurons. 5 seeds, report mean ± std. Required — without this, any accuracy drop is uninterpretable.</span>
+          </div>
+        </div>
+        <p style="margin-top:10px; font-size:12px;">Run per-generator (11 data points) then aggregate. Implement via forward-pass hooks on frozen BERT.</p>
+      </div>
+      <div>
+        <h3>Possible Outcomes</h3>
+        <div class="outcomes">
+          <div class="outcome">
+            <span class="o-letter">A</span>
+            <span class="o-text">
+              <strong>Neurons are necessary.</strong> Discriminative ablation drops accuracy significantly; random baseline does not.
+              <span class="o-interp">Expected. Contradicts the Enkhbayar paradox in a classifier setting. Main result of D1.</span>
+            </span>
+          </div>
+          <div class="outcome">
+            <span class="o-letter">B</span>
+            <span class="o-text">
+              <strong>Paradox holds — neurons are redundant.</strong> Discriminative and random ablation have similar impact.
+              <span class="o-interp">Surprising, still publishable. Detection signal is distributed; BERT compensates. Paper reframes around explaining the paradox.</span>
+            </span>
+          </div>
+          <div class="outcome">
+            <span class="o-letter">C</span>
+            <span class="o-text">
+              <strong>Generator-specific pattern.</strong> Necessary for some generators, redundant for others.
+              <span class="o-interp">Most nuanced. Connects to D2c — generator difficulty may predict whether neurons are causally necessary.</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="exp-meta">
+      <div class="exp-meta-item"><span class="ml">Effort</span><span class="mv">~2 days</span></div>
+      <div class="exp-meta-item"><span class="ml">Requires</span><span class="mv" style="color:var(--drop);">Step 0</span></div>
+      <div class="exp-meta-item"><span class="ml">Blocks</span><span class="mv">Transfer test CT</span></div>
+    </div>
+  </div>
+
+  <!-- D1b -->
+  <div class="exp">
+    <div class="exp-head">
+      <span class="exp-id">D1b</span>
+      <span class="exp-title">Activation Patching</span>
+      <span class="tag tg-green">Primary</span>
+      <span class="tag tg-pawel">Paweł</span>
+    </div>
+    <div class="exp-body">
+      <div>
+        <h3>What &amp; How</h3>
+        <p>Tests <em>sufficiency</em>. Take a human-text input, run forward pass, substitute discriminative neuron activations with values from a matched AI-text input. Observe whether the classifier flips to AI.</p>
+        <p>Matching: random pairing within same RAID domain. Report both continuous logit shift (preferred) and binary prediction flip.</p>
+        <p style="font-size:12px; color:var(--warn);">Design decision: confirm matching strategy with Miłosz before implementing.</p>
+      </div>
+      <div>
+        <h3>Possible Outcomes</h3>
+        <div class="outcomes">
+          <div class="outcome">
+            <span class="o-letter">A</span>
+            <span class="o-text">
+              <strong>Reliable classifier flip.</strong> Patching discriminative activations reliably pushes logit toward AI.
+              <span class="o-interp">Neurons are sufficient. Combined with D1a necessity → double-sided causal claim. Ideal result.</span>
+            </span>
+          </div>
+          <div class="outcome">
+            <span class="o-letter">B</span>
+            <span class="o-text">
+              <strong>Weak or no flip.</strong> Logit does not shift reliably.
+              <span class="o-interp">Neurons not sufficient alone — detection requires context from other neurons. Qualifies the causal claim; report as distributed mechanism.</span>
+            </span>
+          </div>
+          <div class="outcome">
+            <span class="o-letter">C</span>
+            <span class="o-text">
+              <strong>Asymmetry with D1a.</strong> Necessary but not sufficient, or vice versa.
+              <span class="o-interp">Publishable nuance. Absence matters more than presence, or the reverse. Worth analyzing.</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="exp-meta">
+      <div class="exp-meta-item"><span class="ml">Effort</span><span class="mv">~2–3 days</span></div>
+      <div class="exp-meta-item"><span class="ml">Requires</span><span class="mv" style="color:var(--drop);">Step 0</span></div>
+      <div class="exp-meta-item"><span class="ml">Parallel with</span><span class="mv">D1a</span></div>
+      <div class="exp-meta-item"><span class="ml">Decide first</span><span class="mv">Matching strategy</span></div>
+    </div>
+  </div>
+
+  <!-- D1c -->
+  <div class="exp">
+    <div class="exp-head">
+      <span class="exp-id">D1c</span>
+      <span class="exp-title">Integrated Gradients</span>
+      <span class="tag tg-green">Primary</span>
+      <span class="tag tg-milosz">Miłosz</span>
+    </div>
+    <div class="exp-body">
+      <div>
+        <h3>What &amp; How</h3>
+        <p>Gradient-based attribution without modifying activations. Integrates gradient of classifier output w.r.t. neuron activations along path from zero baseline to actual input. Identifies which neurons most contributed to each specific classification decision.</p>
+        <p>Aggregate IG scores over AI-text and human-text samples separately. Then compare high-IG neurons against the AUC-flagged discriminative set from Step 0.</p>
+      </div>
+      <div>
+        <h3>Possible Outcomes</h3>
+        <div class="outcomes">
+          <div class="outcome">
+            <span class="o-letter">A</span>
+            <span class="o-text">
+              <strong>IG agrees with statistical pipeline.</strong> High IG-attribution ≈ AUC-flagged neurons.
+              <span class="o-interp">Cross-method validation. Two independent methods (distribution shift vs. gradient attribution) identify the same set. Strong methodological argument.</span>
+            </span>
+          </div>
+          <div class="outcome">
+            <span class="o-letter">B</span>
+            <span class="o-text">
+              <strong>IG and AUC diverge.</strong>
+              <span class="o-interp">Statistical neurons differ in distributions; IG neurons are causally active during decisions. Divergence means the model's "active" mechanism ≠ its statistically distinguishable neurons. Report and explain.</span>
+            </span>
+          </div>
+          <div class="outcome">
+            <span class="o-letter">C</span>
+            <span class="o-text">
+              <strong>IG agrees with D1a ablation but not AUC.</strong>
+              <span class="o-interp">Suggests ablation and IG are consistent causal measures; AUC captures correlational neurons that aren't causally active. Useful for the paper's methodological comparison.</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="exp-meta">
+      <div class="exp-meta-item"><span class="ml">Effort</span><span class="mv">~2 days</span></div>
+      <div class="exp-meta-item"><span class="ml">Requires</span><span class="mv" style="color:var(--drop);">Step 0 (for comparison)</span></div>
+      <div class="exp-meta-item"><span class="ml">Parallel with</span><span class="mv">D1a, D1b</span></div>
+    </div>
+  </div>
+
+  <!-- D2a -->
+  <div class="exp">
+    <div class="exp-head">
+      <span class="exp-id">D2a</span>
+      <span class="exp-title">Jaccard Similarity Matrix</span>
+      <span class="tag tg-green">Co-primary</span>
+      <span class="tag tg-pawel">Paweł</span>
+    </div>
+    <div class="exp-body">
+      <div>
+        <h3>What &amp; How</h3>
+        <p>For each pair of the 11 RAID generators, compute Jaccard similarity: <code>|A ∩ B| / |A ∪ B|</code>. Produces an 11×11 symmetric matrix — the headline figure for D2. Visualize as a heatmap.</p>
+        <p>Additionally identify "core" neurons appearing in ≥N generator sets (e.g. ≥8 of 11) as candidates for a universal AI-detection signal. Nearly free once Step 0 is done — pure set arithmetic.</p>
+      </div>
+      <div>
+        <h3>Possible Outcomes</h3>
+        <div class="outcomes">
+          <div class="outcome">
+            <span class="o-letter">A</span>
+            <span class="o-text">
+              <strong>High Jaccard — large shared core.</strong>
+              <span class="o-interp">Universal mechanistic signal. BERT has learned a general detector. Pairs with CT: if shared neurons also transfer, the claim is strongly grounded.</span>
+            </span>
+          </div>
+          <div class="outcome">
+            <span class="o-letter">B</span>
+            <span class="o-text">
+              <strong>Low Jaccard — generator-specific.</strong>
+              <span class="o-interp">Explains why cross-generator detector transfer fails at the mechanistic level. Directly actionable interpretability finding.</span>
+            </span>
+          </div>
+          <div class="outcome">
+            <span class="o-letter">C</span>
+            <span class="o-text">
+              <strong>Family-clustered structure.</strong> High overlap within model families, low across.
+              <span class="o-interp">Most interesting. Mechanistic evidence that "AI-ness" is family-specific. Directly motivates D2c generator properties analysis.</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="exp-meta">
+      <div class="exp-meta-item"><span class="ml">Effort</span><span class="mv">~1 day</span></div>
+      <div class="exp-meta-item"><span class="ml">Requires</span><span class="mv" style="color:var(--drop);">Step 0 (all 11)</span></div>
+      <div class="exp-meta-item"><span class="ml">Blocks</span><span class="mv">Transfer test CT</span></div>
+      <div class="exp-meta-item"><span class="ml">Output</span><span class="mv">11×11 heatmap — key paper figure</span></div>
+    </div>
+  </div>
+
+  <!-- D2b -->
+  <div class="exp">
+    <div class="exp-head">
+      <span class="exp-id">D2b</span>
+      <span class="exp-title">Layer Distribution Histogram</span>
+      <span class="tag tg-muted">Supporting</span>
+      <span class="tag tg-milosz">Miłosz</span>
+    </div>
+    <div class="exp-body">
+      <div>
+        <h3>What &amp; How</h3>
+        <p>For each generator, histogram of discriminative neuron counts by layer (1–12 for BERT-base-uncased). Compare distributions across generators. Replaces the invalidated U-shaped distribution claim from the old dataset.</p>
+        <p>Early layers encode syntactic patterns; late layers encode semantic/contextual information. The layer distribution tells you at what depth of representation the discriminative signal lives.</p>
+      </div>
+      <div>
+        <h3>Possible Outcomes</h3>
+        <div class="outcomes">
+          <div class="outcome">
+            <span class="o-letter">A</span>
+            <span class="o-text">
+              <strong>Consistent distribution across generators.</strong>
+              <span class="o-interp">Detection operates at the same representational depth regardless of generator. Characterize which layers dominate using Tenney et al.'s known layer-function mapping.</span>
+            </span>
+          </div>
+          <div class="outcome">
+            <span class="o-letter">B</span>
+            <span class="o-text">
+              <strong>Generator-specific layer patterns.</strong>
+              <span class="o-interp">Different generators leave traces at different levels of abstraction. Early = syntactic artifacts; late = semantic patterns. Most interesting outcome from D2b. Pair with D3b CAV-per-layer if that is run.</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="exp-meta">
+      <div class="exp-meta-item"><span class="ml">Effort</span><span class="mv">~1 day</span></div>
+      <div class="exp-meta-item"><span class="ml">Requires</span><span class="mv" style="color:var(--drop);">Step 0</span></div>
+      <div class="exp-meta-item"><span class="ml">Parallel with</span><span class="mv">D1, D2a</span></div>
+    </div>
+  </div>
+
+  <!-- D2c -->
+  <div class="exp">
+    <div class="exp-head">
+      <span class="exp-id">D2c</span>
+      <span class="exp-title">Generator Properties vs. Activation Distances</span>
+      <span class="tag tg-muted">Supporting</span>
+      <span class="tag tg-milosz">Miłosz</span>
+    </div>
+    <div class="exp-body">
+      <div>
+        <h3>What &amp; How</h3>
+        <p>Hypothesis: generators with similar properties activate similar neurons — their per-generator mean CLS activation vectors (restricted to discriminative neurons) will be geometrically close.</p>
+        <p>Method: compute mean CLS vector per generator → pairwise cosine distances → correlate with generator property distances.</p>
+        <div class="notice" style="margin-top:10px;">Requires generator property table before implementation. Model size unavailable for GPT-4. Use: model family (OpenAI / Anthropic / open-source), instruction-tuned vs. base, open vs. closed weights.</div>
+      </div>
+      <div>
+        <h3>Possible Outcomes</h3>
+        <div class="outcomes">
+          <div class="outcome">
+            <span class="o-letter">A</span>
+            <span class="o-text">
+              <strong>Property distance correlates with activation distance.</strong>
+              <span class="o-interp">BERT's mechanism captures architectural properties of the generator. Explains why some generators are harder to detect. Strong supporting finding.</span>
+            </span>
+          </div>
+          <div class="outcome">
+            <span class="o-letter">B</span>
+            <span class="o-text">
+              <strong>No correlation with any tested property.</strong>
+              <span class="o-interp">Null result — still informative. Signal is content/domain-driven rather than model-architecture-driven.</span>
+            </span>
+          </div>
+          <div class="outcome">
+            <span class="o-letter">C</span>
+            <span class="o-text">
+              <strong>Distance pattern matches D2a Jaccard clustering.</strong>
+              <span class="o-interp">D2a and D2c tell the same story from different angles. Convergent validity — activation vector distance is the continuous version of discrete Jaccard overlap.</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="exp-meta">
+      <div class="exp-meta-item"><span class="ml">Effort</span><span class="mv">~2 days</span></div>
+      <div class="exp-meta-item"><span class="ml">Requires</span><span class="mv" style="color:var(--drop);">Step 0</span></div>
+      <div class="exp-meta-item"><span class="ml">Also requires</span><span class="mv" style="color:var(--warn);">Property table (decide first)</span></div>
+      <div class="exp-meta-item"><span class="ml">Reads with</span><span class="mv">D2a</span></div>
+    </div>
+  </div>
+
+  <!-- D3a -->
+  <div class="exp">
+    <div class="exp-head">
+      <span class="exp-id">D3a</span>
+      <span class="exp-title">Mean Difference Vector + LR Weight Alignment</span>
+      <span class="tag tg-muted">Supporting</span>
+      <span class="tag tg-green">Run now — no Step 0 needed</span>
+    </div>
+    <div class="exp-body">
+      <div>
+        <h3>What &amp; How</h3>
+        <div class="methods">
+          <div class="method">
+            <span class="method-name">Mean diff vector</span>
+            <span class="method-desc">Compute μ_AI and μ_human (mean CLS activations per class). <code>d = μ_AI − μ_human</code>. Rank neurons by |d_i| — their contribution to the AI-ness direction.</span>
+          </div>
+          <div class="method">
+            <span class="method-name">LR weight alignment</span>
+            <span class="method-desc">Train logistic regression on full CLS activations. Weight vector w is the optimized AI-ness direction. Check: are high |w_i| neurons the same as AUC-flagged discriminative neurons? Measure via Spearman rank correlation between |w_i| and AUC scores, and top-k intersection.</span>
+          </div>
+        </div>
+        <p style="color:var(--accent); font-size:12px; margin-top:10px;">Run immediately — operates on existing activations. ~1 hour.</p>
+      </div>
+      <div>
+        <h3>Possible Outcomes</h3>
+        <div class="outcomes">
+          <div class="outcome">
+            <span class="o-letter">A</span>
+            <span class="o-text">
+              <strong>Strong alignment — linear structure confirmed.</strong>
+              <span class="o-interp">Two independent methods (statistical AUC vs. geometric direction) identify the same neurons. Geometric explanation for why they are discriminative: they encode the AI-ness concept as a clean directional axis.</span>
+            </span>
+          </div>
+          <div class="outcome">
+            <span class="o-letter">B</span>
+            <span class="o-text">
+              <strong>Poor overlap — signal is distributed.</strong>
+              <span class="o-interp">AI-ness encoded in a subspace that cuts diagonally across neuron axes. Individual neuron analysis misses the structure. Mention as limitation; note DAS/DII as future work.</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="exp-meta">
+      <div class="exp-meta-item"><span class="ml">Effort</span><span class="mv">~1 hour</span></div>
+      <div class="exp-meta-item"><span class="ml">Requires</span><span class="mv" style="color:var(--accent);">Nothing — run now</span></div>
+      <div class="exp-meta-item"><span class="ml">Alignment check needs</span><span class="mv">Step 0</span></div>
+    </div>
+  </div>
+
+  <!-- D3b -->
+  <div class="exp">
+    <div class="exp-head">
+      <span class="exp-id">D3b</span>
+      <span class="exp-title">CAV Per Layer</span>
+      <span class="tag tg-muted">Nice-to-have</span>
+    </div>
+    <div class="exp-body">
+      <div>
+        <h3>What &amp; How</h3>
+        <p>Concept Activation Vector (TCAV, Kim et al. 2018). Train linear classifier at each of BERT's 12 layers on intermediate CLS activations. Weight vector is the CAV — linear direction for AI-ness at that depth. Requires new forward-pass hooks for all 12 layers.</p>
+        <p>Track CAV accuracy and alignment with per-layer discriminative neurons. Shows the evolution of the AI-ness representation through the network.</p>
+      </div>
+      <div>
+        <h3>Possible Outcomes</h3>
+        <div class="outcomes">
+          <div class="outcome">
+            <span class="o-letter">A</span>
+            <span class="o-text">
+              <strong>CAV accuracy increases with layer depth.</strong>
+              <span class="o-interp">AI-ness is a semantic concept, built up gradually. Consistent with BERT's known behavior.</span>
+            </span>
+          </div>
+          <div class="outcome">
+            <span class="o-letter">B</span>
+            <span class="o-text">
+              <strong>Separation emerges early and plateaus.</strong>
+              <span class="o-interp">Detection based on low-level statistical patterns — genuinely surprising given BERT's architecture.</span>
+            </span>
+          </div>
+          <div class="outcome">
+            <span class="o-letter">C</span>
+            <span class="o-text">
+              <strong>Generator-specific layer patterns.</strong>
+              <span class="o-interp">Convergent with D2b layer histograms — strong mutual reinforcement. Some generators syntactically obvious, others require deeper processing.</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="exp-meta">
+      <div class="exp-meta-item"><span class="ml">Effort</span><span class="mv">~1–1.5 days</span></div>
+      <div class="exp-meta-item"><span class="ml">Requires</span><span class="mv" style="color:var(--drop);">Step 0 + per-layer hooks</span></div>
+      <div class="exp-meta-item"><span class="ml">Reads with</span><span class="mv">D2b layer histogram</span></div>
+    </div>
+  </div>
+
+  <!-- CT -->
+  <div class="exp" style="border-color:rgba(212,168,83,0.2);">
+    <div class="exp-head">
+      <span class="exp-id">CT</span>
+      <span class="exp-title">Cross-Generator Transfer Test</span>
+      <span class="tag tg-warn">Conditional</span>
+      <span class="tag tg-joint">Joint</span>
+    </div>
+    <div class="exp-body full">
+      <div>
+        <h3>What &amp; How</h3>
+        <p>Train classifier using only generator-A discriminative neurons as features, test on generator-B texts. Use the D2a Jaccard matrix to select pairs: high-Jaccard pairs as positive test (do shared neurons transfer?), low-Jaccard pairs as negative control (does near-zero overlap predict near-chance accuracy?).</p>
+        <h3 style="margin-top:16px;">Possible Outcomes</h3>
+        <div class="outcomes">
+          <div class="outcome">
+            <span class="o-letter">A</span>
+            <span class="o-text">
+              <strong>Transfer accuracy tracks Jaccard.</strong> High-Jaccard pairs → high transfer; low-Jaccard → near-chance.
+              <span class="o-interp">Causal generalization confirmed. D1 causality + D2a overlap + CT transfer = one coherent narrative. Strongest possible paper result.</span>
+            </span>
+          </div>
+          <div class="outcome">
+            <span class="o-letter">B</span>
+            <span class="o-text">
+              <strong>Transfer fails even for high-Jaccard pairs.</strong>
+              <span class="o-interp">Jaccard overlap is coincidental. Detection mechanism more entangled than neuron-level analysis suggests. Still publishable.</span>
+            </span>
+          </div>
+          <div class="outcome">
+            <span class="o-letter">C</span>
+            <span class="o-text">
+              <strong>Transfer works even for low-Jaccard pairs.</strong>
+              <span class="o-interp">A small undetected core is doing the work. Motivates identifying neurons present across all 11 generators as a separate analysis.</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="exp-meta">
+      <div class="exp-meta-item"><span class="ml">Effort</span><span class="mv">~2–3 days</span></div>
+      <div class="exp-meta-item"><span class="ml">Requires</span><span class="mv" style="color:var(--drop);">Step 0 + D1a + D2a</span></div>
+      <div class="exp-meta-item"><span class="ml">Condition</span><span class="mv" style="color:var(--warn);">D1a + D2a complete by ~Apr 18–20</span></div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ══ §05 DEPENDENCIES ══════════════════════════════════════════════ -->
+<section id="deps">
+  <div class="section-label">05 — Dependency Map</div>
+  <h2>What Depends on What</h2>
+
+  <div class="dep-wrap">
+    <div class="dep-tree">
+
+      <div class="dep-free">D3a: Mean diff vector — run now, no Step 0 needed</div>
+
+      <div class="dep-root">Step 0: All 11 per-generator neuron sets — HARD BLOCKER</div>
+
+      <div class="dep-children">
+        <div class="dep-row">
+          <div class="dep-node p">D1a: Ablation (zero + mean)</div>
+          <span class="dep-aside">Paweł · ~2 days · blocks CT</span>
+        </div>
+        <div class="dep-row">
+          <div class="dep-node p">D1b: Activation patching</div>
+          <span class="dep-aside">Paweł · ~2–3 days · parallel with D1a</span>
+        </div>
+        <div class="dep-row">
+          <div class="dep-node m">D1c: Integrated gradients</div>
+          <span class="dep-aside">Miłosz · ~2 days · parallel</span>
+        </div>
+        <div class="dep-row" style="margin-top:4px;">
+          <div class="dep-node p">D2a: Jaccard matrix</div>
+          <span class="dep-aside">Paweł · ~1 day · blocks CT</span>
+        </div>
+        <div class="dep-row">
+          <div class="dep-node m">D2b: Layer histogram</div>
+          <span class="dep-aside">Miłosz · ~1 day · parallel</span>
+        </div>
+        <div class="dep-row">
+          <div class="dep-node m">D2c: Generator properties vs distances</div>
+          <span class="dep-aside">Miłosz · ~2 days · needs property table first</span>
+        </div>
+        <div class="dep-row" style="margin-top:4px;">
+          <div class="dep-node">D3a: LR alignment check (Step 0 needed for comparison)</div>
+          <span class="dep-aside">~0.5 day</span>
+        </div>
+        <div class="dep-row">
+          <div class="dep-node">D3b: CAV per layer</div>
+          <span class="dep-aside">nice-to-have · ~1–1.5 days</span>
+        </div>
+        <div class="dep-row" style="margin-top:4px;">
+          <div class="dep-node c">CT: Transfer test [conditional — needs D1a + D2a]</div>
+          <span class="dep-aside">Joint · ~2–3 days</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <p style="font-size:11px; color:var(--text-3); margin-top:10px;">D1a/b/c and D2a/b/c are fully parallel once Step 0 is complete. CT is the only strictly sequential experiment and requires both D1a and D2a to be done first.</p>
+</section>
+
+<!-- ══ §06 OPEN DECISIONS ════════════════════════════════════════════ -->
+<section id="decisions">
+  <div class="section-label">06 — Before You Start</div>
+  <h2>Open Decisions That Must Be Resolved First</h2>
+
+  <div class="decision">
+    <span class="decision-num">01</span>
+    <span class="decision-text"><strong>Model confirmed: BERT-base-uncased.</strong> Not DistilBERT. 12 layers × 768 neurons = 9,216 total. The recap HTML had stale "DistilBERT" copy in one card — this is now corrected. All neuron counts and layer references use BERT-base-uncased numbers.</span>
+  </div>
+  <div class="decision">
+    <span class="decision-num">02</span>
+    <span class="decision-text"><strong>Activation patching matching strategy (D1b).</strong> Must agree with Miłosz before D1b implementation. Recommendation: random pairing within same RAID domain. This is a design decision that affects interpretation and should be documented explicitly in the paper.</span>
+  </div>
+  <div class="decision">
+    <span class="decision-num">03</span>
+    <span class="decision-text"><strong>Generator property table for D2c.</strong> Miłosz needs to produce a concrete table of the 11 RAID generators with measurable properties before D2c can begin. Model parameter count is unavailable for GPT-4. More tractable: model family (OpenAI / Anthropic / open-source), instruction-tuned vs. base model, open vs. closed weights.</span>
+  </div>
+  <div class="decision">
+    <span class="decision-num">04</span>
+    <span class="decision-text"><strong>Transfer test go/no-go date.</strong> Agree on a hard checkpoint — if D1a + D2a are both complete by approximately April 18–20, CT is in scope. If either is delayed, CT is out. Decide this now to avoid scope creep later.</span>
+  </div>
+  <div class="decision">
+    <span class="decision-num">05</span>
+    <span class="decision-text"><strong>D3 scope discipline.</strong> D3a (mean diff + LR alignment) is the core of D3, ~1 hour. D3b (CAV per layer) is a nice-to-have add-on, ~1–1.5 days. D3 must not expand to compete with D1 for implementation time. D3a can run via autoresearcher in background.</span>
+  </div>
+</section>
+
+<!-- ══ §07 EXCLUDED ══════════════════════════════════════════════════ -->
+<section id="excluded">
+  <div class="section-label">07 — Excluded Directions</div>
+  <h2>What Is Not Being Pursued (and Why)</h2>
+
+  <div class="card drop">
+    <h3>Clustering as Primary Analysis</h3>
+    <p>Originally the paper's headline contribution. Dropped because: (a) clustering only discriminative neurons trivially produces exactly 2 clusters (AI vs human preference); (b) clustering the full feature space produces 1 dominant cluster of ~99% of neurons plus a small residual; (c) the three-cluster finding from wiki_labeled could not be reproduced on RAID. Hard to make clusters mean something — doesn't mean they naturally cluster.</p>
+  </div>
+
+  <div class="card drop">
+    <h3>Circuit Analysis</h3>
+    <p>Identifying specific attention head × FF layer circuits. Excluded: TransformerLens is decoder-centric and encoder adaptation requires significant custom engineering; circuit analysis is a different research question from neuron-level causal validation; scope discipline for the May 25 deadline. Strong candidate for a follow-up paper.</p>
+  </div>
+
+  <div class="card muted">
+    <h3>Sparse Autoencoders (SAEs)</h3>
+    <p>The dominant MI method for decoder-only models. No published SAE work on standard NLP BERT models exists as of early 2026. Architecture adaptation is substantial and out of scope. Follow-up paper territory.</p>
+  </div>
+
+  <div class="card muted">
+    <h3>Attention Head Analysis</h3>
+    <p>Neurons are CLS token activations from the residual stream after both attention and FF processing — not from isolated attention heads. Attention head analysis is a different decomposition of the same signal. Not planned.</p>
+  </div>
+
+  <div class="card muted">
+    <h3>Classification Accuracy as Headline</h3>
+    <p>98%+ accuracy with frozen BERT + sklearn is a known, non-novel result. The paper is about understanding what is happening inside an existing detector, not building a better one.</p>
+  </div>
+
+  <div class="card warn">
+    <h3>Minimal Pairs / Counterfactual Inputs</h3>
+    <p><span class="tag tg-warn" style="margin-right:8px;">Deferred</span> Contrastive inputs designed to flip neuron activations. Less mechanistic than ablation/patching; more behavioral. Deprioritized in favor of D1. Could appear as a qualitative supplement if D1 finishes early.</p>
+  </div>
+</section>
+
+<!-- ══ §08 INFRASTRUCTURE ════════════════════════════════════════════ -->
+<section id="infra">
+  <div class="section-label">08 — Infrastructure</div>
+  <h2>Autoresearcher Framework</h2>
+
+  <p>An autonomous experiment-running system inspired by Karpathy's approach. Multi-agent orchestrator design with filesystem-based coordination via <code>summary.md</code> outputs per experiment run and a structured experiment directory schema.</p>
+
+  <div class="infra-grid" style="margin-bottom:16px;">
+    <div class="infra-item">
+      <div class="i-label">Repo</div>
+      <div class="i-val">Public GitHub · multi-agent orchestrator initialized</div>
+    </div>
+    <div class="infra-item">
+      <div class="i-label">Coordination model</div>
+      <div class="i-val">Filesystem-based via <code>summary.md</code> per experiment run</div>
+    </div>
+    <div class="infra-item">
+      <div class="i-label">First direction configured</div>
+      <div class="i-val">Linear representation analysis (D3)</div>
+    </div>
+    <div class="infra-item">
+      <div class="i-label">directions.yaml</div>
+      <div class="i-val">Generated — covers D1 / D2 / D3 / CT with dependencies and done_when conditions</div>
+    </div>
+    <div class="infra-item">
+      <div class="i-label">Immediate action</div>
+      <div class="i-val">Run D3a via autoresearcher now while Step 0 completes</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ §09 TIMELINE ══════════════════════════════════════════════════ -->
+<section id="timeline">
+  <div class="section-label">09 — Timeline</div>
+  <h2>Rough Ordering to May 25</h2>
+
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:2px; padding:24px 28px;">
+    <div class="timeline">
+      <div class="tl-row tl-now">
+        <div class="tl-week">Now</div>
+        <div class="tl-content">
+          <span class="tag tg-drop">Step 0</span>
+          <span class="tag tg-green">D3a immediately</span>
+          <span class="tl-label">Finish per-generator neuron pipeline. Run D3a on existing activations in parallel.</span>
+        </div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-week">Wk 1</div>
+        <div class="tl-content">
+          <span class="tag tg-pawel">D1a Ablation</span>
+          <span class="tag tg-pawel">D1b Patching</span>
+          <span class="tag tg-milosz">D1c Integr. Grad.</span>
+          <span class="tag tg-pawel">D2a Jaccard</span>
+          <span class="tag tg-milosz">D2b Histogram</span>
+          <span class="tl-label">All in parallel once Step 0 done. D2c begins after property table agreed.</span>
+        </div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-week">Wk 2</div>
+        <div class="tl-content">
+          <span class="tag tg-milosz">D2c Properties</span>
+          <span class="tag tg-muted">D3b CAV/layer</span>
+          <span class="tl-label">Begin writing results sections in parallel with remaining experiments.</span>
+        </div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-week">~Apr 18</div>
+        <div class="tl-content">
+          <span class="tag tg-warn">CT go/no-go</span>
+          <span class="tl-label">Checkpoint. If D1a + D2a complete, run transfer test. Otherwise lock scope.</span>
+        </div>
+      </div>
+      <div class="tl-row tl-critical">
+        <div class="tl-week">~Apr 22</div>
+        <div class="tl-content">
+          <span class="tl-label" style="color:var(--drop);">All experiments complete. Writing begins in earnest.</span>
+        </div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-week">Apr–May</div>
+        <div class="tl-content">
+          <span class="tl-label">Writing, revision, Miłosz review cycles, figure production.</span>
+        </div>
+      </div>
+      <div class="tl-row tl-critical">
+        <div class="tl-week">May 25</div>
+        <div class="tl-content">
+          <span class="tl-label" style="color:var(--drop); font-weight:500;">EMNLP 2026 ARR deadline.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ §10 OPEN QUESTIONS ════════════════════════════════════════════ -->
+<section id="questions">
+  <div class="section-label">10 — Open Questions</div>
+  <h2>Unresolved at Time of Writing</h2>
+
+  <ul class="q-list">
+    <li>Does the Enkhbayar (2025) causal paradox — discriminative neurons being unnecessary for output — hold in a classifier setting? D1a and D1b together directly answer this.</li>
+    <li>Are the same neurons discriminative across all 11 RAID generators, or is there generator-specific specialization? D2a (Jaccard) characterizes this; either answer is publishable.</li>
+    <li>Is "AI-ness" encoded as a clean linear direction in CLS activation space? Do discriminative neurons define that direction? D3a answers the second part; the first is implicit in whether alignment is strong.</li>
+    <li>Do Miłosz's D2c generator properties correlate with activation distances? Requires the property table to be defined before this is testable.</li>
+    <li>Does the transfer test (CT) run at all? Contingent on D1a + D2a completing by approximately April 18–20.</li>
+    <li>Do D2b layer histograms and D3b CAV-per-layer converge on the same story about which layers carry the discriminative signal? Convergence here would be a strong supporting finding.</li>
+  </ul>
+</section>
+
+<hr>
+
+<footer>
+  <span>Paweł Blicharz &amp; Miłosz Grunwald · Gdańsk · 2026</span>
+  <span>Model: bert-base-uncased · Dataset: RAID (Dugan et al., ACL 2024)</span>
+  <span>EMNLP 2026 ARR · Deadline May 25, 2026</span>
+</footer>
+
+</div>
+</body>
+</html>
