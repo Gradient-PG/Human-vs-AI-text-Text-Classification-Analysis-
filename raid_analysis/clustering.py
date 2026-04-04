@@ -54,7 +54,11 @@ class WardSilhouetteStrategy(ClusteringStrategy):
             ward = WardLinkageContext.from_embedding(embedding)
         Z = ward.Z
         sil_all = {
-            k: silhouette_score(embedding, fcluster(Z, t=k, criterion="maxclust"))
+            k: silhouette_score(
+                embedding,
+                fcluster(Z, t=k, criterion="maxclust"),
+                metric="euclidean",
+            )
             for k in self.k_range
         }
         opt_k = max(sil_all, key=sil_all.get)
@@ -129,12 +133,12 @@ class KMeansSilhouetteStrategy(ClusteringStrategy):
         for k in self.k_range:
             km = KMeans(n_clusters=k, random_state=self.random_state, n_init=self.n_init)
             lbl = km.fit_predict(embedding)
-            km_sil[k] = silhouette_score(embedding, lbl)
+            km_sil[k] = silhouette_score(embedding, lbl, metric="euclidean")
         opt_k = max(km_sil, key=km_sil.get)
         km_final = KMeans(
             n_clusters=opt_k, random_state=self.random_state, n_init=self.n_init
         )
-        labels = km_final.fit_predict(embedding) + 1
+        labels = km_final.fit_predict(embedding)
         header = [
             f"K (KMeans Silhouette):        {opt_k}  (score: {km_sil[opt_k]:.4f})",
             "",
@@ -156,15 +160,84 @@ class KMeansSilhouetteStrategy(ClusteringStrategy):
         )
 
 
+class HDBSCANStrategy(ClusteringStrategy):
+    """
+    HDBSCAN (hierarchical density-based clustering).
+
+    Labels use ``-1`` for noise; dense clusters are ``0 .. K-1``. Plots and text
+    summaries already treat ``-1`` as noise.
+    """
+
+    def __init__(
+        self,
+        min_cluster_size: int | None = None,
+        min_samples: int | None = None,
+        cluster_selection_epsilon: float = 0.0,
+    ):
+        self.min_cluster_size = min_cluster_size
+        self.min_samples = min_samples
+        self.cluster_selection_epsilon = cluster_selection_epsilon
+
+    def run(
+        self,
+        embedding: np.ndarray,
+        ward: WardLinkageContext | None = None,
+    ) -> ClusteringResult:
+        n = embedding.shape[0]
+        mcs = self.min_cluster_size
+        if mcs is None:
+            mcs = max(15, min(150, n // 60))
+        ms = self.min_samples
+        if ms is None:
+            ms = max(5, mcs // 5)
+        try:
+            import hdbscan as hdbscan_lib
+        except ImportError as exc:
+            raise ImportError(
+                "hdbscan is required for HDBSCANStrategy. Install: uv pip install hdbscan"
+            ) from exc
+        clusterer = hdbscan_lib.HDBSCAN(
+            min_cluster_size=mcs,
+            min_samples=ms,
+            metric="euclidean",
+            cluster_selection_method="eom",
+            cluster_selection_epsilon=self.cluster_selection_epsilon,
+        )
+        labels = clusterer.fit_predict(embedding).astype(np.int64)
+        unique = set(labels.tolist())
+        n_clusters = len(unique) - (1 if -1 in unique else 0)
+        n_noise = int((labels == -1).sum())
+        header = [
+            f"min_cluster_size:             {mcs}",
+            f"min_samples:                  {ms}",
+            f"Clusters (excl. noise):       {n_clusters}",
+            f"Noise points:                 {n_noise}",
+            "",
+        ]
+        return ClusteringResult(
+            labels=labels,
+            method_display_name="HDBSCAN",
+            file_tag="hdbscan",
+            extra={
+                "min_cluster_size": mcs,
+                "min_samples": ms,
+                "n_clusters": n_clusters,
+                "n_noise": n_noise,
+                "summary_header_lines": header,
+            },
+        )
+
+
 def default_clustering_strategies() -> list[ClusteringStrategy]:
     return [
         WardSilhouetteStrategy(),
         WardGapStrategy(),
         KMeansSilhouetteStrategy(),
+        HDBSCANStrategy(),
     ]
 
 
-CLUSTERING_STRATEGY_IDS = ("ward_silhouette", "ward_gap", "kmeans")
+CLUSTERING_STRATEGY_IDS = ("ward_silhouette", "ward_gap", "kmeans", "hdbscan")
 
 
 def clustering_strategies_from_names(names: Sequence[str]) -> list[ClusteringStrategy]:
@@ -177,6 +250,7 @@ def clustering_strategies_from_names(names: Sequence[str]) -> list[ClusteringStr
         "ward_silhouette": WardSilhouetteStrategy,
         "ward_gap": WardGapStrategy,
         "kmeans": KMeansSilhouetteStrategy,
+        "hdbscan": HDBSCANStrategy,
     }
     out: list[ClusteringStrategy] = []
     for raw in names:
