@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .activation_extractor import ActivationExtractor
 from .dataset_tokenizer import DatasetTokenizer
+from .model import load_bert_model
 from .raid_loader import ALL_DOMAINS, ALL_RAID_MODELS, RAIDConfig, load_raid, slug
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -22,6 +23,7 @@ __all__ = [
     "ActivationExtractor",
     "DatasetTokenizer",
     "RAIDConfig",
+    "load_bert_model",
     "load_raid",
     "project_root",
     "slug",

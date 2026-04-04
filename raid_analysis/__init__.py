@@ -10,6 +10,9 @@ from .data import (
     load_stats,
     compute_neuron_statistics,
     identify_discriminative_neurons,
+    get_discriminative_neuron_indices,
+    get_discriminative_set,
+    get_discriminative_sets_per_generator,
     add_derived_neuron_columns,
     build_trait_matrix,
     sanitize_trait_matrix,
@@ -28,6 +31,16 @@ from .clustering import (
     default_clustering_strategies,
     run_clustering_strategies,
     run_clustering_analysis,
+)
+
+from .experiments import (
+    ablate_neurons,
+    patch_neurons,
+    jaccard_similarity,
+    jaccard_matrix,
+    core_neurons,
+    mean_difference_vector,
+    lr_weight_vector,
 )
 
 from .viz import (
@@ -64,6 +77,10 @@ __all__ = [
     # Neuron statistics
     "compute_neuron_statistics",
     "identify_discriminative_neurons",
+    # Discriminative neuron helpers
+    "get_discriminative_neuron_indices",
+    "get_discriminative_set",
+    "get_discriminative_sets_per_generator",
     # Traits
     "add_derived_neuron_columns",
     "build_trait_matrix",
@@ -81,6 +98,14 @@ __all__ = [
     "default_clustering_strategies",
     "run_clustering_analysis",
     "run_clustering_strategies",
+    # Experiment primitives (D1, D2, D3)
+    "ablate_neurons",
+    "patch_neurons",
+    "jaccard_similarity",
+    "jaccard_matrix",
+    "core_neurons",
+    "mean_difference_vector",
+    "lr_weight_vector",
     # Dimensionality reduction
     "PCAReduction",
     "UMAPReduction",

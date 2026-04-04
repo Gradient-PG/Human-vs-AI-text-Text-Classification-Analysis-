@@ -90,26 +90,44 @@ Train classifier using only generator-A discriminative neurons, test on generato
 
 ```
 ├── raid_analysis/                 # Core analysis library
-│   ├── __init__.py                # Public API surface
+│   ├── __init__.py                # Public API surface (re-exports from subpackages)
 │   ├── constants.py               # Shared constants (layers, thresholds, palettes)
-│   ├── data.py                    # Load neuron stats and activation matrices
-│   ├── dim_reduction.py           # PCA / UMAP dimensionality reduction strategies
-│   ├── clustering.py              # Ward, KMeans, HDBSCAN clustering strategies
-│   ├── clustering_pipeline.py     # Clustering analysis orchestration
-│   ├── neurons_pipeline.py        # Neuron analysis: figures + summary + embedding
-│   ├── exemplars.py               # AUC preference-group exemplars
-│   ├── run_analysis.py            # Top-level orchestrator for all analysis stages
-│   ├── summaries.py               # Text report generators
-│   ├── traits.py                  # Neuron × trait matrix construction
-│   ├── figures_embedding.py       # 2D embedding visualizations
-│   ├── figures_hierarchy.py       # Silhouette, dendrogram, merge gap figures
-│   ├── figures_neurons.py         # Layer distribution, boxplots, scatter figures
-│   └── io.py                      # Figure/text save utilities
+│   ├── io.py                      # Figure/text save utilities
+│   ├── neurons_pipeline.py        # Neuron analysis orchestrator
+│   ├── run_analysis.py            # Top-level orchestrator (all stages)
+│   │
+│   ├── data/                      # Data loading, statistics, derived features
+│   │   ├── activations.py         # Raw activation loading from .npy files
+│   │   ├── neuron_stats.py        # Mann-Whitney U + AUC per-neuron pipeline
+│   │   ├── loader.py              # Load per-layer CSVs into DataFrames
+│   │   ├── discriminative.py      # Discriminative neuron set helpers
+│   │   └── traits.py              # Neuron × trait matrix construction
+│   │
+│   ├── clustering/                # Self-contained clustering (optional)
+│   │   ├── strategies.py          # Ward, KMeans, HDBSCAN strategy classes
+│   │   ├── pca.py                 # PCA subspace for clustering + 2D viz
+│   │   └── pipeline.py            # Clustering analysis orchestrator
+│   │
+│   ├── viz/                       # All figure generation
+│   │   ├── neurons.py             # Layer distribution, boxplots, scatter
+│   │   ├── embedding.py           # 2D embedding plots (all neurons + clusters)
+│   │   ├── hierarchy.py           # Dendrograms, silhouette, merge gaps
+│   │   └── dim_reduction.py       # PCA/UMAP reduction strategies
+│   │
+│   ├── reports/                   # Text reports and exemplars
+│   │   ├── summaries.py           # neuron_summary_text, clustering_summary_text
+│   │   └── exemplars.py           # AUC preference-group exemplar texts
+│   │
+│   └── experiments/               # Primitives for research directions D1-D3
+│       ├── causal.py              # D1: ablation, activation patching
+│       ├── cross_generator.py     # D2: Jaccard similarity, core neurons
+│       └── linear.py              # D3: mean difference vector, LR weights
 │
 ├── utils/                         # Data loading and BERT activation extraction
 │   ├── __init__.py                # Public API surface
 │   ├── activation_extractor.py    # Extract CLS activations from BERT layers
 │   ├── dataset_tokenizer.py       # Tokenize datasets for BERT
+│   ├── model.py                   # Load frozen BERT model + tokenizer
 │   ├── raid_loader.py             # Load RAID benchmark subsets from local CSVs
 │   └── hidden.py                  # HuggingFace API key (git-ignored)
 │
@@ -262,14 +280,29 @@ from utils import (
     ActivationExtractor, DatasetTokenizer,
     load_raid, RAIDConfig, slug,
     ALL_RAID_MODELS, ALL_DOMAINS,
+    load_bert_model, project_root,
 )
 from raid_analysis import (
+    # Orchestration
     analyze_raid_model,
+    # Data loading
     load_stats, build_full_neuron_matrix, load_activation_column,
+    load_activations, load_activations_for_model,
+    compute_neuron_statistics, identify_discriminative_neurons,
+    get_discriminative_neuron_indices, get_discriminative_sets_per_generator,
+    # Constants
     ALL_LAYERS, ALPHA, AUC_LOW, AUC_HIGH,
+    # Traits
     build_trait_matrix, add_derived_neuron_columns,
+    # IO & reports
     save_figure, write_text,
     neuron_summary_text, clustering_summary_text, exemplar_text,
+    # D1: Causal validation
+    ablate_neurons, patch_neurons,
+    # D2: Cross-generator generalization
+    jaccard_similarity, jaccard_matrix, core_neurons,
+    # D3: Linear representation
+    mean_difference_vector, lr_weight_vector,
 )
 ```
 

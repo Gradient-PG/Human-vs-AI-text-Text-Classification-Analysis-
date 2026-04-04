@@ -6,6 +6,11 @@ from .activations import (
     load_activations,
     load_activations_for_model,
 )
+from .discriminative import (
+    get_discriminative_neuron_indices,
+    get_discriminative_set,
+    get_discriminative_sets_per_generator,
+)
 from .loader import load_stats
 from .neuron_stats import compute_neuron_statistics, identify_discriminative_neurons
 from .traits import (
@@ -20,6 +25,9 @@ __all__ = [
     "load_activation_column",
     "load_activations",
     "load_activations_for_model",
+    "get_discriminative_neuron_indices",
+    "get_discriminative_set",
+    "get_discriminative_sets_per_generator",
     "load_stats",
     "compute_neuron_statistics",
     "identify_discriminative_neurons",
