@@ -19,10 +19,7 @@ Output:
 """
 
 import argparse
-import sys
 from pathlib import Path
-
-sys.path.append(str(Path(__file__).parent.parent))
 
 from utils.dataset_tokenizer import DatasetTokenizer
 from utils.raid_loader import ALL_RAID_MODELS, RAIDConfig, load_raid, slug

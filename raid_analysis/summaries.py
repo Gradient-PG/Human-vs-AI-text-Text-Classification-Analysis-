@@ -110,7 +110,7 @@ def clustering_summary_text(
     extra_header_lines: list | None = None,
 ) -> str:
     is_disc = neurons_df["discriminative"].values
-    global_disc_frac = is_disc.mean()
+    global_disc_frac = float(is_disc.mean()) if len(is_disc) else 0.0
     n_total = len(neurons_df)
     n_disc = int(is_disc.sum())
 
@@ -251,8 +251,10 @@ def exemplar_text(
     human_mask = labels == 0
 
     lines = [
-        f"CLUSTER EXEMPLAR ANALYSIS  [{model}]",
-        f"Top {top_n} exemplars per class per cluster",
+        f"AUC PREFERENCE EXEMPLARS  [{model}]",
+        "Groups: non-discriminative (0), AI-preferring discriminative (1), "
+        "human-preferring discriminative (2) — not algorithmic clusters.",
+        f"Top {top_n} exemplars per class per group",
     ]
     if has_domain:
         lines.append("Each line includes RAID domain when present in the tokenized dataset.")
@@ -277,10 +279,10 @@ def exemplar_text(
         lines += [
             "",
             "=" * 80,
-            f"  CLUSTER {k}  |  {len(cn)} neurons  |  dominant: {dominant_dir}",
+            f"  GROUP {k}  |  {len(cn)} neurons  |  dominant: {dominant_dir}",
             "=" * 80,
             "",
-            "  >>> AI EXEMPLARS (cluster maximally active)",
+            "  >>> AI EXEMPLARS (group maximally active)",
         ]
         for rank, idx in enumerate(top_ai, 1):
             text = get_text(idx)
@@ -290,7 +292,7 @@ def exemplar_text(
                 f"  {preview}",
             ]
 
-        lines += ["", "  >>> HUMAN EXEMPLARS (cluster maximally suppressed)"]
+        lines += ["", "  >>> HUMAN EXEMPLARS (group maximally suppressed)"]
         for rank, idx in enumerate(top_hu, 1):
             text = get_text(idx)
             preview = text[:text_preview] + " [...]" if len(text) > text_preview else text

@@ -27,45 +27,101 @@ def fig_embedding_all_neurons(
     n_hu = (is_disc & (auc <= 0.5)).sum()
     n_non = (~is_disc).sum()
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
+    n_auc_hi = int((auc > 0.5).sum())
+    n_auc_lo = int((auc <= 0.5).sum())
 
-    sc = ax1.scatter(
+    fig, axes = plt.subplots(2, 2, figsize=(16, 14))
+    ax_tl, ax_tr = axes[0]
+    ax_bl, ax_br = axes[1]
+
+    # (1) Top-left: discrimination strength = AUC deviation (statistical disc. threshold)
+    sc1 = ax_tl.scatter(
         embedding[:, 0], embedding[:, 1],
         c=auc_dev, cmap="plasma",
         alpha=0.5, s=6,
         vmin=0, vmax=0.5,
         rasterized=True,
     )
-    cb = fig.colorbar(sc, ax=ax1, fraction=0.046, pad=0.04)
-    cb.set_label("AUC deviation from 0.5", fontsize=10)
-    cb.ax.axhline(0.2, color="white", linewidth=1.5, linestyle="--")
-    cb.ax.text(0.55, 0.41, "disc.\nthreshold", transform=cb.ax.transAxes,
-               fontsize=7, color="white", va="center")
-    ax1.set_title(f"All Neurons — Discrimination Strength ({embed_name}) [{model}]",
-                  fontsize=13, fontweight="bold")
-    ax1.set_xlabel(axis_x, fontsize=12)
-    ax1.set_ylabel(axis_y, fontsize=12)
+    cb1 = fig.colorbar(sc1, ax=ax_tl, fraction=0.046, pad=0.04)
+    cb1.set_label("AUC deviation from 0.5", fontsize=10)
+    cb1.ax.axhline(0.2, color="white", linewidth=1.5, linestyle="--")
+    cb1.ax.text(0.55, 0.41, "disc.\nthreshold", transform=cb1.ax.transAxes,
+                fontsize=7, color="white", va="center")
+    ax_tl.set_title(
+        f"Discrimination strength (AUC deviation, disc. threshold) - ({embed_name}) [{model}]",
+        fontsize=12,
+        fontweight="bold",
+    )
+    ax_tl.set_xlabel(axis_x, fontsize=11)
+    ax_tl.set_ylabel(axis_y, fontsize=11)
 
+    # (2) Top-right: raw AUC in [0, 1]
+    sc2 = ax_tr.scatter(
+        embedding[:, 0], embedding[:, 1],
+        c=auc, cmap="RdBu_r",
+        alpha=0.5, s=6,
+        vmin=0, vmax=1,
+        rasterized=True,
+    )
+    cb2 = fig.colorbar(sc2, ax=ax_tr, fraction=0.046, pad=0.04)
+    cb2.set_label("AUC  (0 = Human, 1 = AI)", fontsize=10)
+    cb2.ax.axhline(0.5, color="black", linewidth=1.2, linestyle="--")
+    ax_tr.set_title(
+        f"Raw AUC ({embed_name}) [{model}]",
+        fontsize=12,
+        fontweight="bold",
+    )
+    ax_tr.set_xlabel(axis_x, fontsize=11)
+    ax_tr.set_ylabel(axis_y, fontsize=11)
+
+    # (3) Bottom-left: binary split at AUC = 0.5 (all neurons)
+    m_lo = auc <= 0.5
+    m_hi = auc > 0.5
+    ax_bl.scatter(
+        embedding[m_lo, 0], embedding[m_lo, 1],
+        c="#3498db", alpha=0.45, s=6,
+        label=f"AUC ≤ 0.5  (n={n_auc_lo:,})",
+        rasterized=True,
+    )
+    ax_bl.scatter(
+        embedding[m_hi, 0], embedding[m_hi, 1],
+        c="#e74c3c", alpha=0.45, s=6,
+        label=f"AUC > 0.5  (n={n_auc_hi:,})",
+        rasterized=True,
+    )
+    ax_bl.set_title(
+        f"Binary AUC split at 0.5 ({embed_name}) [{model}]",
+        fontsize=12,
+        fontweight="bold",
+    )
+    ax_bl.set_xlabel(axis_x, fontsize=11)
+    ax_bl.set_ylabel(axis_y, fontsize=11)
+    ax_bl.legend(fontsize=9, loc="best", framealpha=0.9)
+
+    # (4) Bottom-right: statistically discriminative neurons only (original panel)
     non_mask = ~is_disc
     ai_mask = is_disc & (auc > 0.5)
     hu_mask = is_disc & (auc <= 0.5)
 
-    ax2.scatter(embedding[non_mask, 0], embedding[non_mask, 1],
-                c="#cccccc", alpha=0.25, s=5,
-                label=f"Non-discriminative  (n={n_non:,})",
-                rasterized=True)
-    ax2.scatter(embedding[ai_mask, 0], embedding[ai_mask, 1],
-                c="#e74c3c", alpha=0.85, s=18, edgecolors="none",
-                label=f"AI-preferring  (n={n_ai:,})")
-    ax2.scatter(embedding[hu_mask, 0], embedding[hu_mask, 1],
-                c="#3498db", alpha=0.85, s=18, edgecolors="none",
-                label=f"Human-preferring  (n={n_hu:,})")
-    ax2.set_title(f"All Neurons — Discriminative Highlighted ({embed_name}) [{model}]",
-                  fontsize=13, fontweight="bold")
-    ax2.set_xlabel(axis_x, fontsize=12)
-    ax2.set_ylabel(axis_y, fontsize=12)
-    ax2.legend(fontsize=10, loc="best", framealpha=0.9,
-               title=f"Total discriminative: {n_disc:,} / {len(neurons_df):,}")
+    ax_br.scatter(embedding[non_mask, 0], embedding[non_mask, 1],
+                  c="#cccccc", alpha=0.25, s=5,
+                  label=f"Non-discriminative  (n={n_non:,})",
+                  rasterized=True)
+    ax_br.scatter(embedding[ai_mask, 0], embedding[ai_mask, 1],
+                  c="#e74c3c", alpha=0.85, s=18, edgecolors="none",
+                  label=f"AI-preferring  (n={n_ai:,})")
+    ax_br.scatter(embedding[hu_mask, 0], embedding[hu_mask, 1],
+                  c="#3498db", alpha=0.85, s=18, edgecolors="none",
+                  label=f"Human-preferring  (n={n_hu:,})")
+    ax_br.set_title(
+        f"Discriminative highlighted ({embed_name}) [{model}]",
+        fontsize=12,
+        fontweight="bold",
+    )
+    ax_br.set_xlabel(axis_x, fontsize=11)
+    ax_br.set_ylabel(axis_y, fontsize=11)
+    ax_br.legend(fontsize=9, loc="best", framealpha=0.9,
+                 title=f"Total discriminative: {n_disc:,} / {len(neurons_df):,}")
 
     fig.tight_layout()
     return fig
@@ -82,10 +138,12 @@ def fig_full_space_clustering(
 ) -> plt.Figure:
     is_disc = neurons_df["discriminative"].values
     auc = neurons_df["auc"].values
+    auc_deviation = neurons_df["auc_deviation"].values
     layers = neurons_df["layer"].values
 
     ai_mask = is_disc & (auc > 0.5)
     hu_mask = is_disc & (auc <= 0.5)
+    non_disc_mask = ~is_disc
 
     unique_sorted = sorted(set(cluster_labels))
     has_noise = -1 in unique_sorted
@@ -110,9 +168,9 @@ def fig_full_space_clustering(
     ax_auc = fig.add_subplot(gs[0, 1])
     ax_disc = fig.add_subplot(gs[0, 2])
     ax_layer = fig.add_subplot(gs[1, 0])
-    ax_enrich = fig.add_subplot(gs[1, 1])
-    ax_hidden = fig.add_subplot(gs[1, 2])
-    ax_hidden.axis("off")
+    gs_right = gs[1, 1:].subgridspec(2, 1, height_ratios=[1.0, 1.15], hspace=0.42)
+    ax_strength = fig.add_subplot(gs_right[0, 0])
+    ax_dir = fig.add_subplot(gs_right[1, 0])
 
     point_colors = np.array([cluster_colors[k] for k in cluster_labels])
 
@@ -193,31 +251,63 @@ def fig_full_space_clustering(
     ax_layer.set_ylim(0, 1.05)
     ax_layer.grid(axis="y", alpha=0.3)
 
-    global_frac = is_disc.mean()
-    enrichments = []
+    bar_cols = [cluster_colors[c] for c in real_ids]
+    mean_strength = []
     for c in real_ids:
         mask_c = cluster_labels == c
-        frac_c = is_disc[mask_c].mean() if mask_c.sum() > 0 else 0.0
-        enrichments.append(frac_c / global_frac if global_frac > 0 else 0.0)
+        disc_in_c = mask_c & is_disc
+        if disc_in_c.any():
+            mean_strength.append(float(auc_deviation[disc_in_c].mean()))
+        else:
+            mean_strength.append(0.0)
+    bars_s = ax_strength.bar(
+        x_pos, mean_strength, bar_width,
+        color=bar_cols, edgecolor="black", linewidth=0.7,
+    )
+    ymax_s = max(mean_strength) if mean_strength else 0.0
+    y_top = max(0.06, ymax_s * 1.2) if ymax_s > 0 else 0.06
+    for bar, val in zip(bars_s, mean_strength):
+        if val > 1e-9:
+            pad = 0.02 * y_top
+            ax_strength.text(
+                bar.get_x() + bar.get_width() / 2, bar.get_height() + pad,
+                f"{val:.3f}", ha="center", va="bottom", fontsize=9, fontweight="bold",
+            )
+    ax_strength.set_xticks(x_pos)
+    ax_strength.set_xticklabels([f"Cluster {c}" for c in real_ids], fontsize=10)
+    ax_strength.set_ylabel("Mean AUC deviation from 0.5\n(discriminative neurons only)",
+                           fontsize=10)
+    ax_strength.set_title(
+        f"Discriminative Strength by Cluster — {method} [{model}]",
+        fontsize=13, fontweight="bold",
+    )
+    ax_strength.grid(axis="y", alpha=0.3)
+    ax_strength.set_ylim(0, y_top)
 
-    bar_cols = [cluster_colors[c] for c in real_ids]
-    bars = ax_enrich.bar(x_pos, enrichments, bar_width,
-                         color=bar_cols, edgecolor="black", linewidth=0.7)
-    ax_enrich.axhline(1.0, color="black", linewidth=1.5, linestyle="--",
-                      label="No enrichment (ratio = 1)")
-    for bar, val in zip(bars, enrichments):
-        ax_enrich.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.03,
-                       f"{val:.2f}x", ha="center", va="bottom", fontsize=9,
-                       fontweight="bold")
-    ax_enrich.set_xticks(x_pos)
-    ax_enrich.set_xticklabels([f"Cluster {c}" for c in real_ids], fontsize=10)
-    ax_enrich.set_ylabel("Enrichment ratio  (cluster disc. % / global disc. %)",
-                         fontsize=10)
-    ax_enrich.set_title(f"Discrimination Enrichment — {method} [{model}]",
-                        fontsize=13, fontweight="bold")
-    ax_enrich.legend(fontsize=9)
-    ax_enrich.grid(axis="y", alpha=0.3)
-    ax_enrich.set_ylim(bottom=0)
+    dir_labels = ["Non-discriminative", "Human-preferring", "AI-preferring"]
+    dir_colors = ["#aaaaaa", "#3498db", "#e74c3c"]
+    dir_masks = [non_disc_mask, hu_mask, ai_mask]
+    bottoms_dir = np.zeros(n_bars)
+    for d_label, d_col, d_mask in zip(dir_labels, dir_colors, dir_masks):
+        fracs_d = np.array(
+            [((cluster_labels == c) & d_mask).sum() / max((cluster_labels == c).sum(), 1)
+             for c in real_ids]
+        )
+        ax_dir.bar(
+            x_pos, fracs_d, bar_width, bottom=bottoms_dir,
+            color=d_col, label=d_label, edgecolor="white", linewidth=0.5,
+        )
+        bottoms_dir += fracs_d
+    ax_dir.set_xticks(x_pos)
+    ax_dir.set_xticklabels([f"Cluster {c}" for c in real_ids], fontsize=10)
+    ax_dir.set_ylabel("Fraction of neurons in cluster", fontsize=11)
+    ax_dir.set_title(
+        f"Discriminative Direction Mix — {method} [{model}]",
+        fontsize=13, fontweight="bold",
+    )
+    ax_dir.legend(fontsize=9, loc="upper right", framealpha=0.9)
+    ax_dir.set_ylim(0, 1.05)
+    ax_dir.grid(axis="y", alpha=0.3)
 
     fig.suptitle(f"{method} Cluster Analysis — {model}  (K={n_real})",
                  fontsize=15, fontweight="bold", y=1.01)

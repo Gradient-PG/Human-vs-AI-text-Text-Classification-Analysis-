@@ -19,11 +19,8 @@ Usage:
 
 import argparse
 import csv
-import sys
 from collections import defaultdict
 from pathlib import Path
-
-sys.path.append(str(Path(__file__).parent.parent))
 
 from datasets import load_dataset
 from tqdm import tqdm
