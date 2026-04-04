@@ -13,125 +13,17 @@ Usage:
 import argparse
 from pathlib import Path
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from scipy import stats
-from sklearn.metrics import roc_auc_score
-from tqdm import tqdm
-import json
-
-
-def load_activations(input_dir: str):
-    """Load activation data from directory."""
-    input_path = Path(input_dir)
-
-    with open(input_path / "metadata.json", "r") as f:
-        metadata = json.load(f)
-
-    print(f"Loading activations from {input_path}")
-    print(f"  Layers: {metadata['layers']}")
-    print(f"  Samples: {metadata['n_samples']} ({metadata['n_ai']} AI, {metadata['n_human']} Human)")
-
-    activations = {}
-    for layer in metadata["layers"]:
-        layer_file = input_path / f"layer_{layer}_activations.npy"
-        activations[layer] = np.load(layer_file)
-        print(f"  Loaded layer {layer}: {activations[layer].shape}")
-
-    labels = np.load(input_path / "labels.npy")
-
-    return activations, labels, metadata
-
-
-def compute_neuron_statistics(activations: np.ndarray, labels: np.ndarray):
-    """
-    Compute per-neuron Mann-Whitney U test and AUC effect size.
-
-    Args:
-        activations: (N_samples, N_neurons) array
-        labels: (N_samples,) array of 0/1 labels
-
-    Returns:
-        DataFrame with per-neuron statistics
-    """
-    ai_mask = labels == 1
-    human_mask = labels == 0
-    n_neurons = activations.shape[1]
-
-    results = []
-
-    for neuron_idx in tqdm(range(n_neurons), desc="Testing neurons"):
-        ai_acts = activations[ai_mask, neuron_idx]
-        human_acts = activations[human_mask, neuron_idx]
-
-        # Mann-Whitney U test (non-parametric)
-        u_stat, p_value = stats.mannwhitneyu(ai_acts, human_acts, alternative="two-sided")
-
-        # AUC as effect size
-        y_true = np.concatenate([np.ones(len(ai_acts)), np.zeros(len(human_acts))])
-        y_scores = np.concatenate([ai_acts, human_acts])
-
-        try:
-            auc = roc_auc_score(y_true, y_scores)
-        except Exception:
-            auc = 0.5  # fallback if all values are identical
-
-        ai_median = np.median(ai_acts)
-        human_median = np.median(human_acts)
-
-        results.append(
-            {
-                "neuron_idx": neuron_idx,
-                "ai_median": ai_median,
-                "ai_q25": np.percentile(ai_acts, 25),
-                "ai_q75": np.percentile(ai_acts, 75),
-                "human_median": human_median,
-                "human_q25": np.percentile(human_acts, 25),
-                "human_q75": np.percentile(human_acts, 75),
-                "u_statistic": u_stat,
-                "p_value": p_value,
-                "auc": auc,
-                "auc_deviation": abs(auc - 0.5),
-                "direction": "AI-preferring" if auc > 0.5 else "Human-preferring",
-            }
-        )
-
-    return pd.DataFrame(results)
-
-
-def identify_discriminative_neurons(
-    stats_df: pd.DataFrame, alpha: float = 0.001, auc_threshold: float = 0.7
-):
-    """
-    Identify discriminative neurons based on p-value and AUC thresholds.
-    Applies Bonferroni correction for multiple testing.
-
-    Args:
-        stats_df: DataFrame with neuron statistics
-        alpha: Significance level (before Bonferroni correction)
-        auc_threshold: AUC threshold (neurons with AUC > threshold or < 1-threshold
-                       are considered discriminative)
-    """
-    n_tests = len(stats_df)
-    corrected_alpha = alpha / n_tests  # Bonferroni correction
-
-    stats_df["significant"] = stats_df["p_value"] < corrected_alpha
-    stats_df["strong_effect"] = (stats_df["auc"] > auc_threshold) | (
-        stats_df["auc"] < (1 - auc_threshold)
-    )
-    stats_df["discriminative"] = stats_df["significant"] & stats_df["strong_effect"]
-
-    print(f"\nBonferroni corrected alpha = {corrected_alpha:.2e}")
-    print(f"AUC threshold: >{auc_threshold} or <{1 - auc_threshold}")
-
-    return stats_df, corrected_alpha
+from raid_analysis.data.activations import load_activations
+from raid_analysis.data.neuron_stats import (
+    compute_neuron_statistics,
+    identify_discriminative_neurons,
+)
 
 
 def analyze_layer(
     layer_idx: int,
-    activations: np.ndarray,
-    labels: np.ndarray,
+    activations,
+    labels,
     alpha: float = 0.001,
     auc_threshold: float = 0.7,
 ):
@@ -151,6 +43,8 @@ def analyze_layer(
         (stats_df["discriminative"]) & (stats_df["direction"] == "Human-preferring")
     ).sum()
 
+    print(f"\nBonferroni corrected alpha = {corrected_alpha:.2e}")
+    print(f"AUC threshold: >{auc_threshold} or <{1 - auc_threshold}")
     print(f"\nResults:")
     print(f"  Total neurons: {len(stats_df)}")
     print(f"  Discriminative: {n_disc} ({n_disc / len(stats_df) * 100:.1f}%)")
@@ -245,7 +139,6 @@ def main():
 
     args = parser.parse_args()
 
-    # Optional wandb initialization
     wandb_run = None
     if args.wandb_project:
         try:
@@ -264,7 +157,7 @@ def main():
             )
             print(f"Weights & Biases logging enabled: {args.wandb_project}/{args.wandb_run_name}")
         except ImportError:
-            print("⚠ wandb not installed — continuing without experiment tracking.")
+            print("wandb not installed — continuing without experiment tracking.")
 
     print("=" * 80)
     print("BERT ACTIVATION ANALYSIS  (Mann-Whitney U + AUC)")
@@ -273,10 +166,12 @@ def main():
     print(f"Alpha:         {args.alpha}  (Bonferroni-corrected per layer)")
     print(f"AUC threshold: >{args.auc_threshold} or <{1 - args.auc_threshold}")
 
-    # Load activations
     activations, labels, metadata = load_activations(args.input)
 
-    # Analyze each layer and save per-layer CSV
+    print(f"Loading activations from {args.input}")
+    print(f"  Layers: {metadata['layers']}")
+    print(f"  Samples: {metadata['n_samples']} ({metadata['n_ai']} AI, {metadata['n_human']} Human)")
+
     all_stats = {}
     output_path = Path(args.input)
 
@@ -294,10 +189,8 @@ def main():
         stats_df.to_csv(csv_path, index=False)
         print(f"  Saved: {csv_path}")
 
-    # Overall summary
     log_overall_summary(all_stats)
 
-    # Log summary metrics to wandb if enabled
     if wandb_run:
         layers = sorted(all_stats.keys())
         total_neurons = sum(len(all_stats[l]) for l in layers)
@@ -314,7 +207,6 @@ def main():
     print("\n" + "=" * 80)
     print("Analysis complete.")
     print(f"  CSV files saved to: {args.input}/")
-    print("  Next steps: open notebooks/neurons_analysis.ipynb and neuron_clustering.ipynb")
     print("=" * 80)
 
 

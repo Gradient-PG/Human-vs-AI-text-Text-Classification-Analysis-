@@ -1,11 +1,11 @@
-"""Load neuron stats and activation matrices from analyze_activations outputs."""
+"""Load per-layer neuron stats CSVs into DataFrames with derived columns."""
 
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from .constants import ALL_LAYERS
+from ..constants import ALL_LAYERS
 
 
 def load_stats(results_path: Path):
@@ -28,21 +28,3 @@ def load_stats(results_path: Path):
 
     labels = np.load(results_path / "labels.npy")
     return neurons_df, disc_df, labels
-
-
-def load_activation_column(results_path: Path, layer: int, neuron_idx: int) -> np.ndarray:
-    acts = np.load(results_path / f"layer_{layer}_activations.npy")
-    return acts[:, neuron_idx]
-
-
-def build_full_neuron_matrix(neurons_df: pd.DataFrame, results_path: Path) -> np.ndarray:
-    """
-    Build (n_all_neurons, n_samples) activation matrix for all 9,216 neurons.
-
-    Row order matches neurons_df row order: layer 1 neurons 0-767, then layer 2, etc.
-    """
-    frames = []
-    for layer in ALL_LAYERS:
-        layer_acts = np.load(results_path / f"layer_{layer}_activations.npy")
-        frames.append(layer_acts.T)
-    return np.vstack(frames)

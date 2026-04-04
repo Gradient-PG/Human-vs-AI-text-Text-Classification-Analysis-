@@ -7,16 +7,17 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .data import build_full_neuron_matrix, load_stats
-from .dim_reduction import get_dim_reduction
-from .figures_embedding import fig_embedding_all_neurons
-from .figures_neurons import (
+from .data.activations import build_full_neuron_matrix
+from .data.loader import load_stats
+from .viz.dim_reduction import get_dim_reduction
+from .viz.embedding import fig_embedding_all_neurons
+from .viz.neurons import (
     fig_activation_boxplots,
     fig_activation_scatter,
     fig_layer_distribution,
 )
 from .io import save_figure, write_text
-from .summaries import neuron_summary_text
+from .reports.summaries import neuron_summary_text
 
 
 def run_neurons_analysis(

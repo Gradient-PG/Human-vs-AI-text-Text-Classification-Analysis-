@@ -164,8 +164,7 @@ class HDBSCANStrategy(ClusteringStrategy):
     """
     HDBSCAN (hierarchical density-based clustering).
 
-    Labels use ``-1`` for noise; dense clusters are ``0 .. K-1``. Plots and text
-    summaries already treat ``-1`` as noise.
+    Labels use ``-1`` for noise; dense clusters are ``0 .. K-1``.
     """
 
     def __init__(
@@ -270,11 +269,6 @@ def run_clustering_strategies(
 ) -> list[ClusteringResult]:
     """
     Run each strategy on the same point cloud.
-
-    **Input ``embedding``**: array of shape ``(n_points, n_features)`` — one row per
-    point. In neuron analysis the pipeline uses a column-standardized full
-    activation matrix here; trait runs use a standardized trait matrix.
-    Algorithms only see this matrix (plus Ward’s internal linkage when applicable).
 
     Ward-based strategies share one :class:`WardLinkageContext` so linkage is
     computed once per embedding.

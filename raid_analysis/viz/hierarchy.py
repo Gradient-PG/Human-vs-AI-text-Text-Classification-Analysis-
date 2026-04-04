@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.cluster.hierarchy import dendrogram, set_link_color_palette
 
-from .constants import CLUSTER_PALETTE
+from ..constants import CLUSTER_PALETTE
 
 
 def fig_silhouette(k_range, silhouette_scores: dict, optimal_k: int, model: str) -> plt.Figure:

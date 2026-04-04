@@ -10,6 +10,8 @@ from typing import List, Optional
 from datasets import Dataset, DatasetDict
 from transformers import AutoTokenizer
 
+_DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parent.parent / "data" / "processed"
+
 
 class DatasetTokenizer:
     """
@@ -17,7 +19,8 @@ class DatasetTokenizer:
 
     Args:
         tokenizer_name: HuggingFace tokenizer name
-        output_dir: Parent directory for saved dataset folders
+        output_dir: Parent directory for saved dataset folders.
+            Defaults to ``<project_root>/data/processed``.
         max_length: Max sequence length
         random_state: Seed (reserved for future use)
         text_column: Text column name (default ``text``)
@@ -27,14 +30,14 @@ class DatasetTokenizer:
     def __init__(
         self,
         tokenizer_name: str = "bert-base-uncased",
-        output_dir: str = "data/processed",
+        output_dir: str | Path | None = None,
         max_length: int = 512,
         random_state: int = 42,
         text_column: str = "text",
         extra_columns: Optional[List[str]] = None,
     ):
         self.tokenizer_name = tokenizer_name
-        self.output_dir = Path(output_dir)
+        self.output_dir = Path(output_dir) if output_dir is not None else _DEFAULT_OUTPUT_DIR
         self.max_length = max_length
         self.random_state = random_state
         self.text_column = text_column

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Tuple
 
 import numpy as np
 from sklearn.decomposition import PCA
@@ -22,7 +21,7 @@ class DimReductionSpec:
 
 
 class DimReductionStrategy(ABC):
-    """Reduce neuron feature rows to 2D for visualization (clustering uses full ``X_neurons`` in the pipeline)."""
+    """Reduce neuron feature rows to 2D for visualization."""
 
     @property
     @abstractmethod
