@@ -249,14 +249,28 @@ uv run scripts/analyze_raid_models.py --exemplars
 
 ## Library Usage
 
-The `raid_analysis` and `utils` packages can be imported programmatically:
+Install as an editable package so that `raid_analysis` and `utils` are importable from any working directory (e.g. from an external experiment framework):
+
+```bash
+uv pip install -e /path/to/Human-vs-AI-text-Text-Classification-Analysis-
+```
+
+Then import programmatically:
 
 ```python
-from utils import ActivationExtractor, DatasetTokenizer, load_raid, RAIDConfig, slug
-from raid_analysis import analyze_raid_model
-from raid_analysis.data import load_stats, build_full_neuron_matrix, load_activation_column
-from raid_analysis.constants import ALL_LAYERS, ALPHA, AUC_LOW, AUC_HIGH
-from raid_analysis.traits import build_trait_matrix, add_derived_neuron_columns
+from utils import (
+    ActivationExtractor, DatasetTokenizer,
+    load_raid, RAIDConfig, slug,
+    ALL_RAID_MODELS, ALL_DOMAINS,
+)
+from raid_analysis import (
+    analyze_raid_model,
+    load_stats, build_full_neuron_matrix, load_activation_column,
+    ALL_LAYERS, ALPHA, AUC_LOW, AUC_HIGH,
+    build_trait_matrix, add_derived_neuron_columns,
+    save_figure, write_text,
+    neuron_summary_text, clustering_summary_text, exemplar_text,
+)
 ```
 
 ---

@@ -27,8 +27,6 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).parent.parent))
-
 from utils.raid_loader import ALL_RAID_MODELS, slug
 
 

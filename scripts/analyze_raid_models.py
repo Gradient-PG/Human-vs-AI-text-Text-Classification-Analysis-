@@ -31,8 +31,6 @@ import matplotlib
 
 matplotlib.use("Agg")
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 from raid_analysis.clustering import CLUSTERING_STRATEGY_IDS
 from raid_analysis.run_analysis import analyze_raid_model
 from utils.raid_loader import ALL_RAID_MODELS, slug
