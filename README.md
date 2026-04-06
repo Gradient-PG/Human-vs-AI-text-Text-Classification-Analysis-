@@ -307,6 +307,58 @@ from raid_analysis import (
 
 ---
 
+## Reproducibility
+
+This project is designed so that any collaborator can regenerate all results from scratch on any machine, given only the Git repository.
+
+### Pinned dependencies
+
+`uv.lock` is committed to the repository. Running `uv sync` installs the exact same package versions everywhere. Never edit `uv.lock` manually — it is updated automatically when you change `pyproject.toml`.
+
+### Pinned model weights
+
+All `from_pretrained` calls pin `bert-base-uncased` to a specific HuggingFace commit SHA (`raid_pipeline.model_loader.BERT_MODEL_REVISION`). This guarantees identical weights even if the upstream repository receives future updates.
+
+### Secrets
+
+Copy `.env.example` to `.env` and fill in your HuggingFace token:
+
+```bash
+cp .env.example .env
+# edit .env → HF_TOKEN=hf_...
+```
+
+`.env` is gitignored — secrets stay local. The token is only needed for `scripts/download_raid.py` (the initial dataset download).
+
+### Data tiers and what to keep
+
+| Tier | Location | Size | Committed? | How to reproduce |
+|------|----------|------|------------|------------------|
+| Raw RAID CSVs | `data/raw/raid/` | ~2.6 GB | No (gitignored) | `uv run scripts/download_raid.py` |
+| Tokenized datasets | `data/processed/raid_*/` | ~1 GB | No (gitignored) | `uv run scripts/run_raid_pipeline.py` (Step 1) |
+| Layer activations (.npy) | `results/activations_raid_*/` | ~2 GB | No (gitignored) | `uv run scripts/run_raid_pipeline.py` (Step 2) |
+| Neuron stats CSVs | `results/activations_raid_*/layer_*_neuron_stats.csv` | ~17 MB | No (gitignored) | `uv run scripts/run_raid_pipeline.py` (Step 3) |
+| Analysis outputs | `results/analysis/` | Small | No (gitignored) | `uv run scripts/analyze_raid_models.py` |
+
+None of the above are committed because they are fully reproducible from the pipeline scripts. To regenerate everything from scratch:
+
+```bash
+# 1. Download RAID (needs HF_TOKEN in .env, ~30 min)
+uv run scripts/download_raid.py
+
+# 2. Tokenize + extract activations + compute stats (all 11 models)
+uv run scripts/run_raid_pipeline.py --samples 10000
+
+# 3. Run neuron analysis + clustering + exemplars
+uv run scripts/analyze_raid_models.py --exemplars
+```
+
+### Random seeds
+
+All sampling and shuffling uses `--seed 42` by default. As long as the same seed, sample count, and RAID version are used, results are deterministic (modulo floating-point non-determinism on different GPU architectures).
+
+---
+
 ## Tech Stack
 
 **Package Management**: [uv](https://github.com/astral-sh/uv)  

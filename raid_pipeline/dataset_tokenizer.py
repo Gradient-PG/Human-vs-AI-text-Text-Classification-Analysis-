@@ -10,6 +10,8 @@ from typing import List, Optional
 from datasets import Dataset, DatasetDict
 from transformers import AutoTokenizer
 
+from .model_loader import BERT_MODEL_NAME, BERT_MODEL_REVISION
+
 _DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parent.parent / "data" / "processed"
 
 
@@ -19,6 +21,7 @@ class DatasetTokenizer:
 
     Args:
         tokenizer_name: HuggingFace tokenizer name
+        revision: Exact model revision (commit SHA) for reproducibility.
         output_dir: Parent directory for saved dataset folders.
             Defaults to ``<project_root>/data/processed``.
         max_length: Max sequence length
@@ -29,7 +32,8 @@ class DatasetTokenizer:
 
     def __init__(
         self,
-        tokenizer_name: str = "bert-base-uncased",
+        tokenizer_name: str = BERT_MODEL_NAME,
+        revision: str = BERT_MODEL_REVISION,
         output_dir: str | Path | None = None,
         max_length: int = 512,
         random_state: int = 42,
@@ -37,13 +41,14 @@ class DatasetTokenizer:
         extra_columns: Optional[List[str]] = None,
     ):
         self.tokenizer_name = tokenizer_name
+        self.revision = revision
         self.output_dir = Path(output_dir) if output_dir is not None else _DEFAULT_OUTPUT_DIR
         self.max_length = max_length
         self.random_state = random_state
         self.text_column = text_column
         self.extra_columns = extra_columns or []
 
-        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, revision=revision)
 
     def _preprocess_dataset(self, ds):
         text_col = self.text_column

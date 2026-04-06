@@ -24,10 +24,12 @@ from collections import defaultdict
 from pathlib import Path
 
 from datasets import load_dataset
+from dotenv import load_dotenv
 from tqdm import tqdm
 
 from raid_pipeline.raid_loader import slug
 
+load_dotenv()
 HF_TOKEN = os.environ.get("HF_TOKEN")
 
 CSV_FIELDS = ["generation", "title", "domain", "model"]

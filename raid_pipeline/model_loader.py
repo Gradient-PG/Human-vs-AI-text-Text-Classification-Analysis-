@@ -5,9 +5,13 @@ from __future__ import annotations
 import torch
 from transformers import AutoModel, AutoTokenizer
 
+BERT_MODEL_NAME = "bert-base-uncased"
+BERT_MODEL_REVISION = "86b5e0934494bd15c9632b12f734a8a67f723594"
+
 
 def load_bert_model(
-    model_name: str = "bert-base-uncased",
+    model_name: str = BERT_MODEL_NAME,
+    revision: str = BERT_MODEL_REVISION,
     device: str | None = None,
 ) -> tuple[AutoModel, AutoTokenizer]:
     """
@@ -18,6 +22,7 @@ def load_bert_model(
 
     Args:
         model_name: HuggingFace model identifier.
+        revision: Exact model revision (commit SHA) for reproducibility.
         device: ``"cuda"``, ``"cpu"``, or ``None`` (auto-detect).
 
     Returns:
@@ -26,8 +31,8 @@ def load_bert_model(
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModel.from_pretrained(model_name, output_hidden_states=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, revision=revision)
+    model = AutoModel.from_pretrained(model_name, revision=revision, output_hidden_states=True)
     model.to(device)
     model.eval()
 

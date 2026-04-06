@@ -45,7 +45,9 @@ def exemplar_text(
         meta = json.load(f)
     samples_per_class = meta["n_samples"] // 2
 
-    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+    from raid_pipeline.model_loader import BERT_MODEL_NAME, BERT_MODEL_REVISION
+
+    tokenizer = AutoTokenizer.from_pretrained(BERT_MODEL_NAME, revision=BERT_MODEL_REVISION)
     tok_dict = load_from_disk(str(tokenized_path))
     full_split = tok_dict[split]
 

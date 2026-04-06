@@ -19,6 +19,7 @@ from pathlib import Path
 import torch
 from transformers import AutoModel
 from raid_pipeline.activation_extractor import ActivationExtractor
+from raid_pipeline.model_loader import BERT_MODEL_NAME, BERT_MODEL_REVISION
 
 
 def main():
@@ -34,7 +35,7 @@ def main():
     parser.add_argument(
         "--encoder",
         type=str,
-        default="bert-base-uncased",
+        default=BERT_MODEL_NAME,
         help="Encoder model name",
     )
     parser.add_argument(
@@ -83,7 +84,7 @@ def main():
     # Load encoder
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Loading encoder model on {device}...")
-    encoder = AutoModel.from_pretrained(args.encoder)
+    encoder = AutoModel.from_pretrained(args.encoder, revision=BERT_MODEL_REVISION)
     
     # Create extractor
     extractor = ActivationExtractor(
