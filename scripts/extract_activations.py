@@ -18,7 +18,7 @@ from pathlib import Path
 
 import torch
 from transformers import AutoModel
-from utils.activation_extractor import ActivationExtractor
+from raid_pipeline.activation_extractor import ActivationExtractor
 
 
 def main():

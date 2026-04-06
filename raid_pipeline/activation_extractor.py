@@ -49,7 +49,7 @@ class ActivationExtractor:
     ) -> Dict[int, np.ndarray]:
         """
         Extract activations from specified layers with balanced class sampling.
-        
+
         Args:
             dataset: Tokenized dataset with 'input_ids', 'attention_mask', 'label'
             batch_size: Batch size for processing
@@ -61,28 +61,22 @@ class ActivationExtractor:
             Labels array (N_samples,)
         """
         from datasets import concatenate_datasets
-        
-        # Balance dataset if max_samples is specified
+
         if max_samples:
-            # Split by class
             ai_samples = dataset.filter(lambda x: x['label'] == 1)
             human_samples = dataset.filter(lambda x: x['label'] == 0)
-            
-            # Calculate balanced split
+
             samples_per_class = max_samples // 2
-            
-            # Take equal numbers from each class
+
             ai_subset = ai_samples.shuffle(seed=42).select(range(min(samples_per_class, len(ai_samples))))
             human_subset = human_samples.shuffle(seed=42).select(range(min(samples_per_class, len(human_samples))))
-            
-            # Combine and shuffle
+
             dataset = concatenate_datasets([ai_subset, human_subset]).shuffle(seed=42)
-            
+
             print(f"Balanced sampling: {len(ai_subset)} AI + {len(human_subset)} Human = {len(dataset)} total")
-        
+
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
-        # Initialize storage for each layer
         layer_activations = {layer: [] for layer in self.layers}
         all_labels = []
 
@@ -110,7 +104,6 @@ class ActivationExtractor:
                 del outputs
                 all_labels.append(labels.numpy())
 
-        # Concatenate all batches
         for layer_idx in self.layers:
             layer_activations[layer_idx] = np.vstack(layer_activations[layer_idx])
 
@@ -154,7 +147,6 @@ class ActivationExtractor:
             desc=f"Extracting {split}"
         )
 
-        # Save activations
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 
@@ -163,7 +155,6 @@ class ActivationExtractor:
             np.save(save_path, layer_acts)
             print(f"  Saved layer {layer_idx}: {save_path}")
 
-        # Save labels
         labels_path = output_path / "labels.npy"
         np.save(labels_path, labels)
         print(f"  Saved labels: {labels_path}")
@@ -183,5 +174,3 @@ class ActivationExtractor:
         print(f"  Saved metadata: {metadata_path}")
 
         print(f"\nAll activations saved to {output_path}")
-
-

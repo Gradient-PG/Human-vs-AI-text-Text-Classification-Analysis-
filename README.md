@@ -123,13 +123,12 @@ Train classifier using only generator-A discriminative neurons, test on generato
 │       ├── cross_generator.py     # D2: Jaccard similarity, core neurons
 │       └── linear.py              # D3: mean difference vector, LR weights
 │
-├── utils/                         # Data loading and BERT activation extraction
+├── raid_pipeline/                 # RAID data pipeline (loading, tokenization, extraction)
 │   ├── __init__.py                # Public API surface
-│   ├── activation_extractor.py    # Extract CLS activations from BERT layers
-│   ├── dataset_tokenizer.py       # Tokenize datasets for BERT
-│   ├── model.py                   # Load frozen BERT model + tokenizer
 │   ├── raid_loader.py             # Load RAID benchmark subsets from local CSVs
-│   └── hidden.py                  # HuggingFace API key (git-ignored)
+│   ├── dataset_tokenizer.py       # Tokenize datasets for BERT
+│   ├── activation_extractor.py    # Extract CLS activations from BERT layers
+│   └── model_loader.py            # Load frozen BERT model + tokenizer
 │
 ├── scripts/                       # CLI entry points (pipeline stages)
 │   ├── download_raid.py           # Stream RAID dataset → data/raw/raid/*.csv
@@ -267,7 +266,7 @@ uv run scripts/analyze_raid_models.py --exemplars
 
 ## Library Usage
 
-Install as an editable package so that `raid_analysis` and `utils` are importable from any working directory (e.g. from an external experiment framework):
+Install as an editable package so that `raid_analysis` and `raid_pipeline` are importable from any working directory (e.g. from an external experiment framework):
 
 ```bash
 uv pip install -e /path/to/Human-vs-AI-text-Text-Classification-Analysis-
@@ -276,7 +275,7 @@ uv pip install -e /path/to/Human-vs-AI-text-Text-Classification-Analysis-
 Then import programmatically:
 
 ```python
-from utils import (
+from raid_pipeline import (
     ActivationExtractor, DatasetTokenizer,
     load_raid, RAIDConfig, slug,
     ALL_RAID_MODELS, ALL_DOMAINS,

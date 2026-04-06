@@ -47,7 +47,7 @@ def load_activations_for_model(
         model: RAID model name (e.g. ``"gpt4"``, ``"mistral-chat"``).
         results_root: Parent directory containing ``activations_raid_*`` folders.
     """
-    from utils.raid_loader import slug
+    from raid_pipeline.raid_loader import slug
 
     results_root = Path(results_root)
     results_path = results_root / f"activations_raid_{slug(model)}"

@@ -21,8 +21,8 @@ Output:
 import argparse
 from pathlib import Path
 
-from utils.dataset_tokenizer import DatasetTokenizer
-from utils.raid_loader import ALL_RAID_MODELS, RAIDConfig, load_raid, slug
+from raid_pipeline.dataset_tokenizer import DatasetTokenizer
+from raid_pipeline.raid_loader import ALL_RAID_MODELS, RAIDConfig, load_raid, slug
 
 
 def main():

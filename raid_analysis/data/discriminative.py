@@ -45,7 +45,7 @@ def get_discriminative_sets_per_generator(
     Returns:
         ``{model: {(layer, neuron_idx), ...}}`` for each generator.
     """
-    from utils.raid_loader import slug
+    from raid_pipeline.raid_loader import slug
 
     results_root = Path(results_root)
     out: dict[str, set[tuple[int, int]]] = {}

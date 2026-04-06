@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from utils.raid_loader import slug
+from raid_pipeline.raid_loader import slug
 
 from .constants import ALL_LAYERS
 from .clustering.pipeline import run_clustering_analysis

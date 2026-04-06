@@ -19,19 +19,16 @@ Usage:
 
 import argparse
 import csv
+import os
 from collections import defaultdict
 from pathlib import Path
 
 from datasets import load_dataset
 from tqdm import tqdm
 
-from utils.raid_loader import slug
+from raid_pipeline.raid_loader import slug
 
-try:
-    from utils import hidden
-    HF_TOKEN = hidden.hf_api_key
-except (ImportError, AttributeError):
-    HF_TOKEN = None
+HF_TOKEN = os.environ.get("HF_TOKEN")
 
 CSV_FIELDS = ["generation", "title", "domain", "model"]
 
