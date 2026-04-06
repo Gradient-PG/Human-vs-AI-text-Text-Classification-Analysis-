@@ -13,6 +13,7 @@ Usage:
 import argparse
 from pathlib import Path
 
+from raid_analysis.constants import N_BERT_NEURONS
 from raid_analysis.data.activations import load_activations
 from raid_analysis.data.neuron_stats import (
     compute_neuron_statistics,
@@ -33,7 +34,9 @@ def analyze_layer(
     print(f"{'=' * 60}")
 
     stats_df = compute_neuron_statistics(activations, labels)
-    stats_df, corrected_alpha = identify_discriminative_neurons(stats_df, alpha, auc_threshold)
+    stats_df, corrected_alpha = identify_discriminative_neurons(
+        stats_df, alpha, auc_threshold, n_total_tests=N_BERT_NEURONS
+    )
 
     n_disc = stats_df["discriminative"].sum()
     n_ai_pref = (

@@ -33,7 +33,7 @@ High accuracy with frozen BERT + sklearn is a known, non-novel result (Linear SV
 | Discriminative neurons | Varies per generator |
 | RAID generators analyzed | 11 |
 | AI-preferring : human-preferring ratio | ~1:1 |
-| Bonferroni-adjusted α | 3.25×10⁻⁷ (per-neuron threshold) |
+| Bonferroni-adjusted α | ~1.08×10⁻⁷ (0.001 / 9,216 global tests) |
 
 **Stable results:**
 - **Balanced bidirectionality** — roughly equal numbers of AI-preferring (AUC > 0.7) and human-preferring (AUC < 0.3) neurons. Pattern appears stable across generators.
@@ -217,6 +217,8 @@ uv run scripts/extract_activations.py \
 
 #### Step 4 — Neuron statistics
 
+This step is handled automatically by `run_raid_pipeline.py` above. The standalone script is available if you need to re-run statistics in isolation (e.g. after changing the AUC threshold):
+
 ```bash
 uv run scripts/analyze_activations.py --input results/activations_raid_gpt4
 ```
@@ -259,7 +261,7 @@ uv run scripts/analyze_raid_models.py --exemplars
 
 1. **AUC-ROC** per neuron — AUC > 0.7 → AI-preferring; AUC < 0.3 → human-preferring
 2. **Mann-Whitney U Test** — tests whether AI vs human activation distributions differ significantly
-3. **Bonferroni correction** — adjusted α ≈ 3.25×10⁻⁷ per neuron
+3. **Bonferroni correction** — adjusted α ≈ 1.08×10⁻⁷ per neuron (0.001 / 9,216 global tests)
 4. **Cohen's d** — supplementary effect size
 
 ---
@@ -289,15 +291,19 @@ from raid_analysis import (
     load_activations, load_activations_for_model,
     compute_neuron_statistics, identify_discriminative_neurons,
     get_discriminative_neuron_indices, get_discriminative_sets_per_generator,
+    # Discriminative neuron index helpers (use with ablate_neurons / patch_neurons)
+    get_layer_discriminative_indices,  # flat column indices for a single layer
     # Constants
-    ALL_LAYERS, ALPHA, AUC_LOW, AUC_HIGH,
+    ALL_LAYERS, ALPHA, AUC_LOW, AUC_HIGH, N_BERT_NEURONS,
     # Traits
     build_trait_matrix, add_derived_neuron_columns,
     # IO & reports
     save_figure, write_text,
     neuron_summary_text, clustering_summary_text, exemplar_text,
-    # D1: Causal validation
+    # D1: Causal validation — necessity / sufficiency
     ablate_neurons, patch_neurons,
+    # D1: Probing classifier (train once, score on ablated activations)
+    train_probe, score_probe, TrainedProbe,
     # D2: Cross-generator generalization
     jaccard_similarity, jaccard_matrix, core_neurons,
     # D3: Linear representation

@@ -1,6 +1,6 @@
 """RAID multi-model neuron analysis: data loading, clustering, visualization, reports."""
 
-from .constants import ALL_LAYERS, ALPHA, AUC_HIGH, AUC_LOW
+from .constants import ALL_LAYERS, ALPHA, AUC_HIGH, AUC_LOW, N_BERT_NEURONS
 
 from .data import (
     build_full_neuron_matrix,
@@ -13,6 +13,7 @@ from .data import (
     get_discriminative_neuron_indices,
     get_discriminative_set,
     get_discriminative_sets_per_generator,
+    get_layer_discriminative_indices,
     add_derived_neuron_columns,
     build_trait_matrix,
     sanitize_trait_matrix,
@@ -41,6 +42,9 @@ from .experiments import (
     core_neurons,
     mean_difference_vector,
     lr_weight_vector,
+    TrainedProbe,
+    train_probe,
+    score_probe,
 )
 
 from .viz import (
@@ -68,6 +72,7 @@ __all__ = [
     "ALPHA",
     "AUC_HIGH",
     "AUC_LOW",
+    "N_BERT_NEURONS",
     # Data loading
     "build_full_neuron_matrix",
     "load_activation_column",
@@ -81,6 +86,7 @@ __all__ = [
     "get_discriminative_neuron_indices",
     "get_discriminative_set",
     "get_discriminative_sets_per_generator",
+    "get_layer_discriminative_indices",
     # Traits
     "add_derived_neuron_columns",
     "build_trait_matrix",
@@ -106,6 +112,10 @@ __all__ = [
     "core_neurons",
     "mean_difference_vector",
     "lr_weight_vector",
+    # D1 probing classifier
+    "TrainedProbe",
+    "train_probe",
+    "score_probe",
     # Dimensionality reduction
     "PCAReduction",
     "UMAPReduction",

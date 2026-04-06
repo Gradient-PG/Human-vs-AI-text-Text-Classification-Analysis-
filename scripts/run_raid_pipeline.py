@@ -34,6 +34,7 @@ from raid_pipeline.raid_loader import ALL_RAID_MODELS, RAIDConfig, load_raid, sl
 from raid_pipeline.dataset_tokenizer import DatasetTokenizer
 from raid_pipeline.activation_extractor import ActivationExtractor
 from raid_pipeline.model_loader import load_bert_model
+from raid_analysis.constants import N_BERT_NEURONS
 from raid_analysis.data.activations import load_activations
 from raid_analysis.data.neuron_stats import (
     compute_neuron_statistics,
@@ -116,7 +117,7 @@ def run_pipeline_for_model(
 
     for layer_idx in metadata["layers"]:
         stats_df = compute_neuron_statistics(activations[layer_idx], labels)
-        stats_df, _ = identify_discriminative_neurons(stats_df)
+        stats_df, _ = identify_discriminative_neurons(stats_df, n_total_tests=N_BERT_NEURONS)
         csv_path = output_path / f"layer_{layer_idx}_neuron_stats.csv"
         stats_df.to_csv(csv_path, index=False)
         n_disc = stats_df["discriminative"].sum()

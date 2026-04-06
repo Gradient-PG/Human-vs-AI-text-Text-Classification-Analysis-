@@ -70,16 +70,27 @@ def identify_discriminative_neurons(
     stats_df: pd.DataFrame,
     alpha: float = 0.001,
     auc_threshold: float = 0.7,
+    n_total_tests: int | None = None,
 ) -> tuple[pd.DataFrame, float]:
     """
     Mark discriminative neurons via Bonferroni-corrected significance + AUC threshold.
 
     Adds columns ``significant``, ``strong_effect``, ``discriminative`` in-place.
 
+    Args:
+        stats_df: Per-neuron statistics from :func:`compute_neuron_statistics`.
+        alpha: Family-wise error rate before correction (default 0.001).
+        auc_threshold: AUC boundary (default 0.7 → AUC > 0.7 or AUC < 0.3).
+        n_total_tests: Total number of hypothesis tests for Bonferroni correction.
+            Pass ``N_BERT_NEURONS`` (9,216) to apply a single global correction
+            across all 12 layers simultaneously, which is the statistically correct
+            approach for BERT-base-uncased.  If ``None``, falls back to
+            ``len(stats_df)`` (per-layer correction, less conservative).
+
     Returns:
         (stats_df, corrected_alpha).
     """
-    n_tests = len(stats_df)
+    n_tests = n_total_tests if n_total_tests is not None else len(stats_df)
     corrected_alpha = alpha / n_tests
 
     stats_df["significant"] = stats_df["p_value"] < corrected_alpha

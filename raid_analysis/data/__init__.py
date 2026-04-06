@@ -10,6 +10,7 @@ from .discriminative import (
     get_discriminative_neuron_indices,
     get_discriminative_set,
     get_discriminative_sets_per_generator,
+    get_layer_discriminative_indices,
 )
 from .loader import load_stats
 from .neuron_stats import compute_neuron_statistics, identify_discriminative_neurons
@@ -28,6 +29,7 @@ __all__ = [
     "get_discriminative_neuron_indices",
     "get_discriminative_set",
     "get_discriminative_sets_per_generator",
+    "get_layer_discriminative_indices",
     "load_stats",
     "compute_neuron_statistics",
     "identify_discriminative_neurons",
