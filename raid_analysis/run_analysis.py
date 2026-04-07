@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from utils.raid_loader import slug
+from raid_pipeline.raid_loader import slug
 
 from .constants import ALL_LAYERS
-from .clustering_pipeline import run_clustering_analysis
-from .exemplars import run_exemplars_analysis
+from .clustering.pipeline import run_clustering_analysis
+from .reports.exemplars import run_exemplars_analysis
 from .neurons_pipeline import run_neurons_analysis
 
 
@@ -29,7 +29,7 @@ def analyze_raid_model(
     Write ``output_root/{slug}/neurons/`` and optionally ``.../clustering/``.
 
     ``clustering`` is ``None`` or empty to skip clustering; otherwise method names
-    from :data:`~raid_analysis.clustering.CLUSTERING_STRATEGY_IDS`.
+    from :data:`~raid_analysis.clustering.strategies.CLUSTERING_STRATEGY_IDS`.
     """
     model_slug = slug(model)
     results_path = activations_root / f"activations_raid_{model_slug}"

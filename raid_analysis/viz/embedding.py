@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.gridspec import GridSpec
 
-from .constants import AUC_HIGH, AUC_LOW
+from ..constants import AUC_HIGH, AUC_LOW
 
 
 def fig_embedding_all_neurons(
@@ -34,7 +34,6 @@ def fig_embedding_all_neurons(
     ax_tl, ax_tr = axes[0]
     ax_bl, ax_br = axes[1]
 
-    # (1) Top-left: discrimination strength = AUC deviation (statistical disc. threshold)
     sc1 = ax_tl.scatter(
         embedding[:, 0], embedding[:, 1],
         c=auc_dev, cmap="plasma",
@@ -55,7 +54,6 @@ def fig_embedding_all_neurons(
     ax_tl.set_xlabel(axis_x, fontsize=11)
     ax_tl.set_ylabel(axis_y, fontsize=11)
 
-    # (2) Top-right: raw AUC in [0, 1]
     sc2 = ax_tr.scatter(
         embedding[:, 0], embedding[:, 1],
         c=auc, cmap="RdBu_r",
@@ -74,7 +72,6 @@ def fig_embedding_all_neurons(
     ax_tr.set_xlabel(axis_x, fontsize=11)
     ax_tr.set_ylabel(axis_y, fontsize=11)
 
-    # (3) Bottom-left: binary split at AUC = 0.5 (all neurons)
     m_lo = auc <= 0.5
     m_hi = auc > 0.5
     ax_bl.scatter(
@@ -98,7 +95,6 @@ def fig_embedding_all_neurons(
     ax_bl.set_ylabel(axis_y, fontsize=11)
     ax_bl.legend(fontsize=9, loc="best", framealpha=0.9)
 
-    # (4) Bottom-right: statistically discriminative neurons only (original panel)
     non_mask = ~is_disc
     ai_mask = is_disc & (auc > 0.5)
     hu_mask = is_disc & (auc <= 0.5)

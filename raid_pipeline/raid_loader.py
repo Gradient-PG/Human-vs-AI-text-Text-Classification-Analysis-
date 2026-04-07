@@ -33,7 +33,7 @@ ALL_RAID_MODELS = [
 
 ALL_DOMAINS = ["abstracts", "books", "news", "reddit", "reviews", "wiki"]
 
-DEFAULT_RAW_DIR = Path("data/raw/raid")
+DEFAULT_RAW_DIR = Path(__file__).resolve().parent.parent / "data" / "raw" / "raid"
 
 
 def slug(name: str) -> str:

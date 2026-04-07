@@ -1,53 +1,27 @@
-"""Full-space clustering on a PCA subspace of activations; writes to ``.../clustering/``."""
+"""Clustering analysis orchestrator: PCA subspace + strategies + figures + reports."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
-from .clustering import (
+from .strategies import (
     ClusteringResult,
-    ClusteringStrategy,
-    HDBSCANStrategy,
-    KMeansSilhouetteStrategy,
-    WardGapStrategy,
-    WardSilhouetteStrategy,
+    clustering_strategies_from_names,
     run_clustering_strategies,
 )
-from .figures_embedding import fig_full_space_clustering
-from .figures_hierarchy import fig_dendrogram, fig_merge_distance_gaps, fig_silhouette
-from .io import save_figure, write_text
-from .pca_for_clustering import (
+from ..viz.embedding import fig_full_space_clustering
+from ..viz.hierarchy import fig_dendrogram, fig_merge_distance_gaps, fig_silhouette
+from ..io import save_figure, write_text
+from .pca import (
     embedding_2d_for_visualization,
     fit_pca_cluster_subspace,
     format_pca_cluster_variance_report,
     viz_axis_labels,
 )
-from .summaries import clustering_summary_text
-
-
-def build_strategies_for_cli(methods: tuple[str, ...]) -> list[ClusteringStrategy]:
-    """CLI-compatible strategy instances (matches former ``analyze_raid_models`` defaults)."""
-    out: list[ClusteringStrategy] = []
-    for raw in methods:
-        key = raw.strip().lower()
-        if key == "ward_silhouette":
-            out.append(WardSilhouetteStrategy())
-        elif key == "ward_gap":
-            out.append(WardGapStrategy())
-        elif key == "kmeans":
-            out.append(KMeansSilhouetteStrategy())
-        elif key == "hdbscan":
-            try:
-                import hdbscan  # noqa: F401
-            except ImportError:
-                print("    SKIP HDBSCAN - install with: uv pip install hdbscan")
-                continue
-            out.append(HDBSCANStrategy(min_cluster_size=300, min_samples=30))
-        else:
-            raise ValueError(f"Unknown clustering method: {raw!r}")
-    return out
+from ..reports.summaries import clustering_summary_text
 
 
 def _save_clustering_result(
@@ -127,7 +101,7 @@ def run_clustering_analysis(
 
     Returns False if 2D embedding fails (e.g. missing umap-learn); True otherwise.
     """
-    strategies = build_strategies_for_cli(methods)
+    strategies = clustering_strategies_from_names(methods)
     if not strategies:
         print("    No clustering strategies to run (empty after resolving deps).")
         return True

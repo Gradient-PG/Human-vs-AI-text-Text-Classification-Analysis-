@@ -3,18 +3,18 @@
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-
-try:
-    plt.style.use("seaborn-v0_8-whitegrid")
-except OSError:
-    plt.style.use("seaborn-whitegrid")
-plt.rcParams["figure.dpi"] = 120
-plt.rcParams["font.size"] = 11
 import numpy as np
 import pandas as pd
 
-from .constants import ALL_LAYERS, AUC_HIGH, AUC_LOW
-from .data import load_activation_column
+from ..constants import ALL_LAYERS, AUC_HIGH, AUC_LOW
+from ..data.activations import load_activation_column
+
+
+def _apply_style():
+    try:
+        plt.style.use("seaborn-v0_8-whitegrid")
+    except OSError:
+        plt.style.use("seaborn-whitegrid")
 
 
 def _layer_stats(neurons_df: pd.DataFrame, disc_df: pd.DataFrame) -> pd.DataFrame:
@@ -34,6 +34,7 @@ def _layer_stats(neurons_df: pd.DataFrame, disc_df: pd.DataFrame) -> pd.DataFram
 def fig_layer_distribution(
     neurons_df: pd.DataFrame, disc_df: pd.DataFrame, model: str
 ) -> plt.Figure:
+    _apply_style()
     layer_df = _layer_stats(neurons_df, disc_df)
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
     x = layer_df["layer"]
@@ -74,6 +75,7 @@ def fig_layer_distribution(
 def fig_activation_boxplots(
     disc_df: pd.DataFrame, labels: np.ndarray, results_path: Path, model: str
 ) -> plt.Figure:
+    _apply_style()
     if disc_df.empty:
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.text(0.5, 0.5, "No discriminative neurons found",
@@ -109,6 +111,7 @@ def fig_activation_boxplots(
 
 
 def fig_activation_scatter(disc_df: pd.DataFrame, model: str) -> plt.Figure:
+    _apply_style()
     if disc_df.empty:
         fig, ax = plt.subplots(figsize=(8, 8))
         ax.text(0.5, 0.5, "No discriminative neurons found",

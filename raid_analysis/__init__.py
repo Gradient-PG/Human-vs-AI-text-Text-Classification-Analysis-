@@ -1,4 +1,24 @@
-"""RAID multi-model neuron analysis: embedding strategies, clustering, figures."""
+"""RAID multi-model neuron analysis: data loading, clustering, visualization, reports."""
+
+from .constants import ALL_LAYERS, ALPHA, AUC_HIGH, AUC_LOW, N_BERT_NEURONS
+
+from .data import (
+    build_full_neuron_matrix,
+    load_activation_column,
+    load_activations,
+    load_activations_for_model,
+    load_stats,
+    compute_neuron_statistics,
+    identify_discriminative_neurons,
+    get_discriminative_neuron_indices,
+    get_discriminative_set,
+    get_discriminative_sets_per_generator,
+    get_layer_discriminative_indices,
+    add_derived_neuron_columns,
+    build_trait_matrix,
+    sanitize_trait_matrix,
+    traits_matrix_to_csv,
+)
 
 from .clustering import (
     CLUSTERING_STRATEGY_IDS,
@@ -11,25 +31,40 @@ from .clustering import (
     clustering_strategies_from_names,
     default_clustering_strategies,
     run_clustering_strategies,
-)
-from .constants import ALL_LAYERS, ALPHA, AUC_HIGH, AUC_LOW
-from .data import build_full_neuron_matrix, load_activation_column, load_stats
-from .dim_reduction import PCAReduction, UMAPReduction, get_dim_reduction
-from .io import save_figure, write_text
-from .run_analysis import analyze_raid_model
-from .summaries import (
-    clustering_summary_text,
-    exemplar_text,
-    neuron_summary_text,
-)
-from .traits import (
-    add_derived_neuron_columns,
-    build_trait_matrix,
-    sanitize_trait_matrix,
-    traits_matrix_to_csv,
+    run_clustering_analysis,
 )
 
-analyze_model = analyze_raid_model  # backward-compatible name
+from .experiments import (
+    ablate_neurons,
+    patch_neurons,
+    jaccard_similarity,
+    jaccard_matrix,
+    core_neurons,
+    mean_difference_vector,
+    lr_weight_vector,
+    TrainedProbe,
+    train_probe,
+    score_probe,
+)
+
+from .viz import (
+    PCAReduction,
+    UMAPReduction,
+    get_dim_reduction,
+)
+
+from .io import save_figure, write_text
+
+from .reports import (
+    neuron_summary_text,
+    clustering_summary_text,
+    exemplar_text,
+    assign_auc_preference_groups,
+)
+
+from .run_analysis import analyze_raid_model
+
+analyze_model = analyze_raid_model
 
 __all__ = [
     # Constants
@@ -37,10 +72,26 @@ __all__ = [
     "ALPHA",
     "AUC_HIGH",
     "AUC_LOW",
+    "N_BERT_NEURONS",
     # Data loading
     "build_full_neuron_matrix",
     "load_activation_column",
+    "load_activations",
+    "load_activations_for_model",
     "load_stats",
+    # Neuron statistics
+    "compute_neuron_statistics",
+    "identify_discriminative_neurons",
+    # Discriminative neuron helpers
+    "get_discriminative_neuron_indices",
+    "get_discriminative_set",
+    "get_discriminative_sets_per_generator",
+    "get_layer_discriminative_indices",
+    # Traits
+    "add_derived_neuron_columns",
+    "build_trait_matrix",
+    "sanitize_trait_matrix",
+    "traits_matrix_to_csv",
     # Clustering
     "CLUSTERING_STRATEGY_IDS",
     "ClusteringResult",
@@ -51,24 +102,33 @@ __all__ = [
     "WardSilhouetteStrategy",
     "clustering_strategies_from_names",
     "default_clustering_strategies",
+    "run_clustering_analysis",
     "run_clustering_strategies",
+    # Experiment primitives (D1, D2, D3)
+    "ablate_neurons",
+    "patch_neurons",
+    "jaccard_similarity",
+    "jaccard_matrix",
+    "core_neurons",
+    "mean_difference_vector",
+    "lr_weight_vector",
+    # D1 probing classifier
+    "TrainedProbe",
+    "train_probe",
+    "score_probe",
     # Dimensionality reduction
     "PCAReduction",
     "UMAPReduction",
     "get_dim_reduction",
-    # Orchestration
-    "analyze_model",
-    "analyze_raid_model",
     # IO
     "save_figure",
     "write_text",
-    # Summaries
+    # Reports
+    "assign_auc_preference_groups",
     "clustering_summary_text",
     "exemplar_text",
     "neuron_summary_text",
-    # Traits
-    "add_derived_neuron_columns",
-    "build_trait_matrix",
-    "sanitize_trait_matrix",
-    "traits_matrix_to_csv",
+    # Orchestration
+    "analyze_model",
+    "analyze_raid_model",
 ]

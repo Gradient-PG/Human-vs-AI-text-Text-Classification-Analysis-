@@ -94,7 +94,6 @@ poetry.lock
 
 # uv
 .venv/
-uv.lock  # Optional: commit this for reproducible builds
 
 # PEP 582
 __pypackages__/

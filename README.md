@@ -33,7 +33,7 @@ High accuracy with frozen BERT + sklearn is a known, non-novel result (Linear SV
 | Discriminative neurons | Varies per generator |
 | RAID generators analyzed | 11 |
 | AI-preferring : human-preferring ratio | ~1:1 |
-| Bonferroni-adjusted α | 3.25×10⁻⁷ (per-neuron threshold) |
+| Bonferroni-adjusted α | ~1.08×10⁻⁷ (0.001 / 9,216 global tests) |
 
 **Stable results:**
 - **Balanced bidirectionality** — roughly equal numbers of AI-preferring (AUC > 0.7) and human-preferring (AUC < 0.3) neurons. Pattern appears stable across generators.
@@ -90,28 +90,45 @@ Train classifier using only generator-A discriminative neurons, test on generato
 
 ```
 ├── raid_analysis/                 # Core analysis library
-│   ├── __init__.py                # Public API surface
+│   ├── __init__.py                # Public API surface (re-exports from subpackages)
 │   ├── constants.py               # Shared constants (layers, thresholds, palettes)
-│   ├── data.py                    # Load neuron stats and activation matrices
-│   ├── dim_reduction.py           # PCA / UMAP dimensionality reduction strategies
-│   ├── clustering.py              # Ward, KMeans, HDBSCAN clustering strategies
-│   ├── clustering_pipeline.py     # Clustering analysis orchestration
-│   ├── neurons_pipeline.py        # Neuron analysis: figures + summary + embedding
-│   ├── exemplars.py               # AUC preference-group exemplars
-│   ├── run_analysis.py            # Top-level orchestrator for all analysis stages
-│   ├── summaries.py               # Text report generators
-│   ├── traits.py                  # Neuron × trait matrix construction
-│   ├── figures_embedding.py       # 2D embedding visualizations
-│   ├── figures_hierarchy.py       # Silhouette, dendrogram, merge gap figures
-│   ├── figures_neurons.py         # Layer distribution, boxplots, scatter figures
-│   └── io.py                      # Figure/text save utilities
+│   ├── io.py                      # Figure/text save utilities
+│   ├── neurons_pipeline.py        # Neuron analysis orchestrator
+│   ├── run_analysis.py            # Top-level orchestrator (all stages)
+│   │
+│   ├── data/                      # Data loading, statistics, derived features
+│   │   ├── activations.py         # Raw activation loading from .npy files
+│   │   ├── neuron_stats.py        # Mann-Whitney U + AUC per-neuron pipeline
+│   │   ├── loader.py              # Load per-layer CSVs into DataFrames
+│   │   ├── discriminative.py      # Discriminative neuron set helpers
+│   │   └── traits.py              # Neuron × trait matrix construction
+│   │
+│   ├── clustering/                # Self-contained clustering (optional)
+│   │   ├── strategies.py          # Ward, KMeans, HDBSCAN strategy classes
+│   │   ├── pca.py                 # PCA subspace for clustering + 2D viz
+│   │   └── pipeline.py            # Clustering analysis orchestrator
+│   │
+│   ├── viz/                       # All figure generation
+│   │   ├── neurons.py             # Layer distribution, boxplots, scatter
+│   │   ├── embedding.py           # 2D embedding plots (all neurons + clusters)
+│   │   ├── hierarchy.py           # Dendrograms, silhouette, merge gaps
+│   │   └── dim_reduction.py       # PCA/UMAP reduction strategies
+│   │
+│   ├── reports/                   # Text reports and exemplars
+│   │   ├── summaries.py           # neuron_summary_text, clustering_summary_text
+│   │   └── exemplars.py           # AUC preference-group exemplar texts
+│   │
+│   └── experiments/               # Primitives for research directions D1-D3
+│       ├── causal.py              # D1: ablation, activation patching
+│       ├── cross_generator.py     # D2: Jaccard similarity, core neurons
+│       └── linear.py              # D3: mean difference vector, LR weights
 │
-├── utils/                         # Data loading and BERT activation extraction
+├── raid_pipeline/                 # RAID data pipeline (loading, tokenization, extraction)
 │   ├── __init__.py                # Public API surface
-│   ├── activation_extractor.py    # Extract CLS activations from BERT layers
-│   ├── dataset_tokenizer.py       # Tokenize datasets for BERT
 │   ├── raid_loader.py             # Load RAID benchmark subsets from local CSVs
-│   └── hidden.py                  # HuggingFace API key (git-ignored)
+│   ├── dataset_tokenizer.py       # Tokenize datasets for BERT
+│   ├── activation_extractor.py    # Extract CLS activations from BERT layers
+│   └── model_loader.py            # Load frozen BERT model + tokenizer
 │
 ├── scripts/                       # CLI entry points (pipeline stages)
 │   ├── download_raid.py           # Stream RAID dataset → data/raw/raid/*.csv
@@ -200,6 +217,8 @@ uv run scripts/extract_activations.py \
 
 #### Step 4 — Neuron statistics
 
+This step is handled automatically by `run_raid_pipeline.py` above. The standalone script is available if you need to re-run statistics in isolation (e.g. after changing the AUC threshold):
+
 ```bash
 uv run scripts/analyze_activations.py --input results/activations_raid_gpt4
 ```
@@ -242,14 +261,14 @@ uv run scripts/analyze_raid_models.py --exemplars
 
 1. **AUC-ROC** per neuron — AUC > 0.7 → AI-preferring; AUC < 0.3 → human-preferring
 2. **Mann-Whitney U Test** — tests whether AI vs human activation distributions differ significantly
-3. **Bonferroni correction** — adjusted α ≈ 3.25×10⁻⁷ per neuron
+3. **Bonferroni correction** — adjusted α ≈ 1.08×10⁻⁷ per neuron (0.001 / 9,216 global tests)
 4. **Cohen's d** — supplementary effect size
 
 ---
 
 ## Library Usage
 
-Install as an editable package so that `raid_analysis` and `utils` are importable from any working directory (e.g. from an external experiment framework):
+Install as an editable package so that `raid_analysis` and `raid_pipeline` are importable from any working directory (e.g. from an external experiment framework):
 
 ```bash
 uv pip install -e /path/to/Human-vs-AI-text-Text-Classification-Analysis-
@@ -258,20 +277,91 @@ uv pip install -e /path/to/Human-vs-AI-text-Text-Classification-Analysis-
 Then import programmatically:
 
 ```python
-from utils import (
+from raid_pipeline import (
     ActivationExtractor, DatasetTokenizer,
     load_raid, RAIDConfig, slug,
     ALL_RAID_MODELS, ALL_DOMAINS,
+    load_bert_model, project_root,
 )
 from raid_analysis import (
+    # Orchestration
     analyze_raid_model,
+    # Data loading
     load_stats, build_full_neuron_matrix, load_activation_column,
-    ALL_LAYERS, ALPHA, AUC_LOW, AUC_HIGH,
+    load_activations, load_activations_for_model,
+    compute_neuron_statistics, identify_discriminative_neurons,
+    get_discriminative_neuron_indices, get_discriminative_sets_per_generator,
+    # Discriminative neuron index helpers (use with ablate_neurons / patch_neurons)
+    get_layer_discriminative_indices,  # flat column indices for a single layer
+    # Constants
+    ALL_LAYERS, ALPHA, AUC_LOW, AUC_HIGH, N_BERT_NEURONS,
+    # Traits
     build_trait_matrix, add_derived_neuron_columns,
+    # IO & reports
     save_figure, write_text,
     neuron_summary_text, clustering_summary_text, exemplar_text,
+    # D1: Causal validation — necessity / sufficiency
+    ablate_neurons, patch_neurons,
+    # D1: Probing classifier (train once, score on ablated activations)
+    train_probe, score_probe, TrainedProbe,
+    # D2: Cross-generator generalization
+    jaccard_similarity, jaccard_matrix, core_neurons,
+    # D3: Linear representation
+    mean_difference_vector, lr_weight_vector,
 )
 ```
+
+---
+
+## Reproducibility
+
+This project is designed so that any collaborator can regenerate all results from scratch on any machine, given only the Git repository.
+
+### Pinned dependencies
+
+`uv.lock` is committed to the repository. Running `uv sync` installs the exact same package versions everywhere. Never edit `uv.lock` manually — it is updated automatically when you change `pyproject.toml`.
+
+### Pinned model weights
+
+All `from_pretrained` calls pin `bert-base-uncased` to a specific HuggingFace commit SHA (`raid_pipeline.model_loader.BERT_MODEL_REVISION`). This guarantees identical weights even if the upstream repository receives future updates.
+
+### Secrets
+
+Copy `.env.example` to `.env` and fill in your HuggingFace token:
+
+```bash
+cp .env.example .env
+# edit .env → HF_TOKEN=hf_...
+```
+
+`.env` is gitignored — secrets stay local. The token is only needed for `scripts/download_raid.py` (the initial dataset download).
+
+### Data tiers and what to keep
+
+| Tier | Location | Size | Committed? | How to reproduce |
+|------|----------|------|------------|------------------|
+| Raw RAID CSVs | `data/raw/raid/` | ~2.6 GB | No (gitignored) | `uv run scripts/download_raid.py` |
+| Tokenized datasets | `data/processed/raid_*/` | ~1 GB | No (gitignored) | `uv run scripts/run_raid_pipeline.py` (Step 1) |
+| Layer activations (.npy) | `results/activations_raid_*/` | ~2 GB | No (gitignored) | `uv run scripts/run_raid_pipeline.py` (Step 2) |
+| Neuron stats CSVs | `results/activations_raid_*/layer_*_neuron_stats.csv` | ~17 MB | No (gitignored) | `uv run scripts/run_raid_pipeline.py` (Step 3) |
+| Analysis outputs | `results/analysis/` | Small | No (gitignored) | `uv run scripts/analyze_raid_models.py` |
+
+None of the above are committed because they are fully reproducible from the pipeline scripts. To regenerate everything from scratch:
+
+```bash
+# 1. Download RAID (needs HF_TOKEN in .env, ~30 min)
+uv run scripts/download_raid.py
+
+# 2. Tokenize + extract activations + compute stats (all 11 models)
+uv run scripts/run_raid_pipeline.py --samples 10000
+
+# 3. Run neuron analysis + clustering + exemplars
+uv run scripts/analyze_raid_models.py --exemplars
+```
+
+### Random seeds
+
+All sampling and shuffling uses `--seed 42` by default. As long as the same seed, sample count, and RAID version are used, results are deterministic (modulo floating-point non-determinism on different GPU architectures).
 
 ---
 

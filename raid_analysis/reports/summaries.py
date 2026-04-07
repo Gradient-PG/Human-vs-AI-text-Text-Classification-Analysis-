@@ -1,15 +1,14 @@
-"""Text reports: neuron stats, clustering summaries, optional exemplars."""
+"""Text reports: neuron stats and clustering summaries."""
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from .constants import ALPHA, AUC_HIGH, AUC_LOW
-from .data import load_activation_column
+from ..constants import ALPHA, AUC_HIGH, AUC_LOW
+from ..data.activations import load_activation_column
 
 
 def neuron_summary_text(
@@ -182,123 +181,4 @@ def clustering_summary_text(
         "Layer (discriminative only):",
         neurons_df[neurons_df["discriminative"]]["layer"].value_counts().sort_index().to_string(),
     ]
-    return "\n".join(lines)
-
-
-def exemplar_text(
-    X_neurons: np.ndarray,
-    neuron_df: pd.DataFrame,
-    labels: np.ndarray,
-    results_path: Path,
-    tokenized_path: Path,
-    split: str,
-    model: str,
-    top_n: int = 20,
-    text_preview: int = 500,
-) -> str:
-    from datasets import concatenate_datasets, load_from_disk
-    from transformers import AutoTokenizer
-
-    with open(results_path / "metadata.json") as f:
-        meta = json.load(f)
-    samples_per_class = meta["n_samples"] // 2
-
-    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
-    tok_dict = load_from_disk(str(tokenized_path))
-    full_split = tok_dict[split]
-
-    ai_samples = full_split.filter(lambda x: x["label"] == 1)
-    human_samples = full_split.filter(lambda x: x["label"] == 0)
-    ai_sub = ai_samples.shuffle(seed=42).select(range(min(samples_per_class, len(ai_samples))))
-    hu_sub = human_samples.shuffle(seed=42).select(range(min(samples_per_class, len(human_samples))))
-    ordered = concatenate_datasets([ai_sub, hu_sub]).shuffle(seed=42)
-
-    reconstructed = np.array(ordered["label"])
-    mismatches = int(np.sum(reconstructed != labels))
-
-    has_domain = "domain" in ordered.column_names
-
-    def _scalar_str(val) -> str:
-        if val is None:
-            return "?"
-        if hasattr(val, "item") and callable(val.item):
-            try:
-                val = val.item()
-            except (ValueError, RuntimeError):
-                pass
-        return str(val)
-
-    def domain_suffix(idx: int) -> str:
-        if not has_domain:
-            return ""
-        d = _scalar_str(ordered[int(idx)]["domain"])
-        return f"  domain={d}"
-
-    def get_text(idx: int) -> str:
-        return tokenizer.decode(ordered[int(idx)]["input_ids"], skip_special_tokens=True)
-
-    X_z = (X_neurons - X_neurons.mean(axis=1, keepdims=True)) / (
-        X_neurons.std(axis=1, keepdims=True) + 1e-8
-    )
-    cluster_ids = sorted(neuron_df["cluster"].unique())
-    R = {k: X_z[neuron_df["cluster"].values == k].mean(axis=0) for k in cluster_ids}
-    specificity = {
-        k: R[k] - np.mean([R[j] for j in cluster_ids if j != k], axis=0)
-        for k in cluster_ids
-    }
-
-    ai_mask = labels == 1
-    human_mask = labels == 0
-
-    lines = [
-        f"AUC PREFERENCE EXEMPLARS  [{model}]",
-        "Groups: non-discriminative (0), AI-preferring discriminative (1), "
-        "human-preferring discriminative (2) — not algorithmic clusters.",
-        f"Top {top_n} exemplars per class per group",
-    ]
-    if has_domain:
-        lines.append("Each line includes RAID domain when present in the tokenized dataset.")
-    else:
-        lines.append(
-            "Note: no 'domain' column in tokenized data — re-run tokenize_raid.py "
-            "(keeps domain) to show domains here."
-        )
-    if mismatches:
-        lines.append(f"WARNING: {mismatches} label mismatches detected")
-
-    for k in cluster_ids:
-        scores = specificity[k]
-        cn = neuron_df[neuron_df["cluster"] == k]
-        dominant_dir = cn["direction"].value_counts().index[0]
-
-        ai_scores = np.where(ai_mask, scores, -np.inf)
-        hu_scores = np.where(human_mask, scores, np.inf)
-        top_ai = np.argsort(ai_scores)[-top_n:][::-1]
-        top_hu = np.argsort(hu_scores)[:top_n]
-
-        lines += [
-            "",
-            "=" * 80,
-            f"  GROUP {k}  |  {len(cn)} neurons  |  dominant: {dominant_dir}",
-            "=" * 80,
-            "",
-            "  >>> AI EXEMPLARS (group maximally active)",
-        ]
-        for rank, idx in enumerate(top_ai, 1):
-            text = get_text(idx)
-            preview = text[:text_preview] + " [...]" if len(text) > text_preview else text
-            lines += [
-                f"\n  [AI #{rank}]  sample_idx={idx}{domain_suffix(idx)}  score={scores[idx]:+.4f}",
-                f"  {preview}",
-            ]
-
-        lines += ["", "  >>> HUMAN EXEMPLARS (group maximally suppressed)"]
-        for rank, idx in enumerate(top_hu, 1):
-            text = get_text(idx)
-            preview = text[:text_preview] + " [...]" if len(text) > text_preview else text
-            lines += [
-                f"\n  [Human #{rank}]  sample_idx={idx}{domain_suffix(idx)}  score={scores[idx]:+.4f}",
-                f"  {preview}",
-            ]
-
     return "\n".join(lines)

@@ -21,24 +21,25 @@ Output structure:
     results/activations_raid_{model}/     activations + neuron stats CSVs
 """
 
+from __future__ import annotations
+
 import argparse
-import subprocess
 import sys
 import time
 from pathlib import Path
 
-from utils.raid_loader import ALL_RAID_MODELS, slug
+import torch
 
-
-def _run(cmd: list[str], label: str) -> bool:
-    """Run a subprocess, print its output live, return True on success."""
-    print(f"\n{'-' * 60}")
-    print(f"  {label}")
-    print(f"  $ {' '.join(cmd)}")
-    print(f"{'-' * 60}\n")
-
-    result = subprocess.run(cmd, cwd=str(Path(__file__).parent.parent))
-    return result.returncode == 0
+from raid_pipeline.raid_loader import ALL_RAID_MODELS, RAIDConfig, load_raid, slug
+from raid_pipeline.dataset_tokenizer import DatasetTokenizer
+from raid_pipeline.activation_extractor import ActivationExtractor
+from raid_pipeline.model_loader import load_bert_model
+from raid_analysis.constants import N_BERT_NEURONS
+from raid_analysis.data.activations import load_activations
+from raid_analysis.data.neuron_stats import (
+    compute_neuron_statistics,
+    identify_discriminative_neurons,
+)
 
 
 def run_pipeline_for_model(
@@ -49,6 +50,8 @@ def run_pipeline_for_model(
     extract_batch_size: int,
     seed: int,
     domains: list[str] | None,
+    encoder,
+    device: str,
 ) -> bool:
     model_slug = slug(model)
     dataset_name = f"raid_{model_slug}"
@@ -64,40 +67,61 @@ def run_pipeline_for_model(
 
     t0 = time.time()
 
-    tokenize_cmd = [
-        sys.executable, "scripts/tokenize_raid.py",
-        "--model", model,
-        "--max-samples", str(samples),
-        "--dataset-name", dataset_name,
-        "--batch-size", str(batch_size),
-        "--seed", str(seed),
-    ]
-    if domains:
-        tokenize_cmd.extend(["--domains"] + domains)
+    # Step 1: Tokenize
+    print(f"\n{'-' * 60}")
+    print(f"  Step 1/3  Tokenize ({model} vs human)")
+    print(f"{'-' * 60}\n")
 
-    if not _run(tokenize_cmd, f"Step 1/3  Tokenize ({model} vs human)"):
-        print(f"FAILED at tokenization for {model}")
-        return False
+    config = RAIDConfig(
+        model=model,
+        domains=domains,
+        max_samples=samples,
+        seed=seed,
+    )
+    ds = load_raid(config)
 
-    extract_cmd = [
-        sys.executable, "scripts/extract_activations.py",
-        "--tokenized-path", tokenized_path,
-        "--output", activations_dir,
-        "--samples", str(samples),
-        "--batch-size", str(extract_batch_size),
-        "--split", "train",
-    ]
-    if not _run(extract_cmd, f"Step 2/3  Extract activations ({model})"):
-        print(f"FAILED at extraction for {model}")
-        return False
+    tokenizer = DatasetTokenizer(
+        output_dir="data/processed",
+        max_length=512,
+        random_state=seed,
+        text_column="text",
+        extra_columns=["domain", "source_model"],
+    )
+    tokenizer.tokenize_and_save(ds, batch_size=batch_size, dataset_name=dataset_name)
 
-    analyze_cmd = [
-        sys.executable, "scripts/analyze_activations.py",
-        "--input", activations_dir,
-    ]
-    if not _run(analyze_cmd, f"Step 3/3  Analyze neurons ({model})"):
-        print(f"FAILED at analysis for {model}")
-        return False
+    # Step 2: Extract activations
+    print(f"\n{'-' * 60}")
+    print(f"  Step 2/3  Extract activations ({model})")
+    print(f"{'-' * 60}\n")
+
+    extractor = ActivationExtractor(
+        encoder=encoder,
+        layers=list(range(1, 13)),
+        device=device,
+    )
+    extractor.extract_and_save(
+        tokenized_dataset_path=tokenized_path,
+        output_dir=activations_dir,
+        batch_size=extract_batch_size,
+        max_samples=samples,
+        split="train",
+    )
+
+    # Step 3: Neuron statistics
+    print(f"\n{'-' * 60}")
+    print(f"  Step 3/3  Analyze neurons ({model})")
+    print(f"{'-' * 60}\n")
+
+    activations, labels, metadata = load_activations(activations_dir)
+    output_path = Path(activations_dir)
+
+    for layer_idx in metadata["layers"]:
+        stats_df = compute_neuron_statistics(activations[layer_idx], labels)
+        stats_df, _ = identify_discriminative_neurons(stats_df, n_total_tests=N_BERT_NEURONS)
+        csv_path = output_path / f"layer_{layer_idx}_neuron_stats.csv"
+        stats_df.to_csv(csv_path, index=False)
+        n_disc = stats_df["discriminative"].sum()
+        print(f"  Layer {layer_idx:2d}: {n_disc:3d} discriminative → {csv_path.name}")
 
     elapsed = time.time() - t0
     print(f"\n  {model} vs human completed in {elapsed:.0f}s")
@@ -165,18 +189,28 @@ def main():
     print(f"  Domains:          {args.domains or 'all'}")
     print(f"  Seed:             {args.seed}")
 
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"\n  Loading BERT model once (device: {device}) ...")
+    encoder, _tokenizer = load_bert_model(device=device)
+
     t_total = time.time()
     results: dict[str, bool] = {}
 
     for model in models:
-        ok = run_pipeline_for_model(
-            model,
-            samples=args.samples,
-            batch_size=args.batch_size,
-            extract_batch_size=args.extract_batch_size,
-            seed=args.seed,
-            domains=args.domains,
-        )
+        try:
+            ok = run_pipeline_for_model(
+                model,
+                samples=args.samples,
+                batch_size=args.batch_size,
+                extract_batch_size=args.extract_batch_size,
+                seed=args.seed,
+                domains=args.domains,
+                encoder=encoder,
+                device=device,
+            )
+        except Exception as exc:
+            print(f"\n  FAILED: {model} — {exc}")
+            ok = False
         results[model] = ok
 
     elapsed_total = time.time() - t_total
