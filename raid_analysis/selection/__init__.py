@@ -1,10 +1,12 @@
 """Method-agnostic neuron selection protocols and implementations."""
 
-from .protocol import NeuronSelector, SelectionResult, save_selection, load_selection
+from .protocol import NeuronSelector, SelectionResult, load_selection, save_selection
+from .sparse_probe import SparseProbeSelector
 
 __all__ = [
     "NeuronSelector",
     "SelectionResult",
-    "save_selection",
+    "SparseProbeSelector",
     "load_selection",
+    "save_selection",
 ]
