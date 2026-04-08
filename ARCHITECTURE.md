@@ -551,23 +551,23 @@ raid_analysis/
 │   ├── ablation.py                      # AblationEvaluator
 │   ├── patching.py                      # PatchingEvaluator
 │   ├── confound.py                      # ConfoundEvaluator
-│   └── probe_accuracy.py               # ProbeAccuracyEvaluator
+│   └── probe_accuracy.py                # ProbeAccuracyEvaluator
 │
 ├── experiments/                         # REFACTOR: experiment orchestrators
 │   ├── __init__.py
 │   ├── runner.py                        # Fold loop: select → eval probe → evaluate
 │   ├── config.py                        # Config loading, defaults, validation
-│   ├── exp_sparse_probe.py             # Exp 1: L1 sweep + stability
-│   ├── exp_ablation.py                 # Exp 2: group ablation validation
-│   ├── exp_patching.py                 # Exp 3: activation patching sufficiency
-│   ├── exp_confound.py                 # Exp 4: confound checks
-│   ├── exp_characterize.py            # Exp 5: validated set characterization
-│   ├── exp_auc_comparison.py          # Exp 6: AUC vs sparse probe comparison
-│   ├── exp_mlp_probe.py               # Exp 7: optional MLP + IG
+│   ├── exp_sparse_probe.py              # Exp 1: L1 sweep + stability
+│   ├── exp_ablation.py                  # Exp 2: group ablation validation
+│   ├── exp_patching.py                  # Exp 3: activation patching sufficiency
+│   ├── exp_confound.py                  # Exp 4: confound checks
+│   ├── exp_characterize.py              # Exp 5: validated set characterization
+│   ├── exp_auc_comparison.py            # Exp 6: AUC vs sparse probe comparison
+│   ├── exp_mlp_probe.py                 # Exp 7: optional MLP + IG
 │   │
 │   │ # Kept as low-level primitives (imported by selection/ and evaluation/):
 │   ├── causal.py                        # ablate_neurons, patch_neurons
-│   ├── cross_generator.py              # jaccard_similarity, jaccard_matrix
+│   ├── cross_generator.py               # jaccard_similarity, jaccard_matrix
 │   ├── linear.py                        # mean_difference_vector, lr_weight_vector
 │   └── probing.py                       # TrainedProbe, train_probe (old simple API)
 │
@@ -577,8 +577,8 @@ raid_analysis/
 │   ├── embedding.py                     # KEEP
 │   ├── hierarchy.py                     # KEEP
 │   ├── neurons.py                       # KEEP
-│   ├── sparsity_curves.py              # NEW: accuracy vs nonzero count + knee
-│   ├── dose_response.py                # NEW: accuracy drop vs k ablated
+│   ├── sparsity_curves.py               # NEW: accuracy vs nonzero count + knee
+│   ├── dose_response.py                 # NEW: accuracy drop vs k ablated
 │   └── flip_rate.py                     # NEW: flip rate per generator/domain
 │
 ├── clustering/                          # KEEP (unchanged)
