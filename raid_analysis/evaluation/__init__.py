@@ -1,5 +1,8 @@
 """Method-agnostic evaluation protocols, L2 probe factory, and implementations."""
 
+from .ablation import AblationEvaluator
+from .confound import ConfoundEvaluator
+from .patching import PatchingEvaluator
 from .probe_accuracy import ProbeAccuracyEvaluator
 from .probe_factory import (
     EvalProbe,
@@ -10,9 +13,12 @@ from .probe_factory import (
 from .protocol import Evaluator, FoldResult, load_fold_result, save_fold_result
 
 __all__ = [
+    "AblationEvaluator",
+    "ConfoundEvaluator",
     "Evaluator",
     "EvalProbe",
     "FoldResult",
+    "PatchingEvaluator",
     "ProbeAccuracyEvaluator",
     "load_eval_probe",
     "load_fold_result",

@@ -63,9 +63,10 @@ def run_experiment(
     labels: np.ndarray,
     metadata: SampleMetadata,
     splits_by_seed: dict[int, list[CVSplit]],
-    selector: NeuronSelector,
     evaluator: Evaluator,
     *,
+    selector: NeuronSelector | None = None,
+    precomputed_selections: dict[tuple[int, int], SelectionResult] | None = None,
     output_dir: Path | None = None,
     stability_threshold: float = 0.8,
     eval_probe_C: float = 1.0,
@@ -73,13 +74,21 @@ def run_experiment(
 ) -> ExperimentResult:
     """Run the full CV experiment loop.
 
+    Either *selector* or *precomputed_selections* must be provided:
+
+    - **selector**: runs Step 1 (neuron selection on train data) each fold.
+    - **precomputed_selections**: ``{(seed, fold_idx): SelectionResult}`` loaded
+      from a prior experiment.  Skips Step 1.  Used by dependent experiments
+      (ablation, patching, confound) that reuse Experiment 1's neuron sets.
+
     Args:
         activations: ``(N, D)`` concatenated activations (all samples).
         labels: ``(N,)`` binary labels.
         metadata: Per-sample metadata aligned with activations.
         splits_by_seed: ``{seed: [CVSplit, ...]}`` from :func:`generate_multi_seed_splits`.
-        selector: A :class:`NeuronSelector` implementation.
         evaluator: An :class:`Evaluator` implementation.
+        selector: A :class:`NeuronSelector` implementation (Step 1).
+        precomputed_selections: Pre-loaded selections keyed by ``(seed, fold_idx)``.
         output_dir: If provided, persist per-fold results and aggregate here.
         stability_threshold: Fraction of folds a neuron must appear in to be
             considered stable (default 0.8).
@@ -89,6 +98,9 @@ def run_experiment(
     Returns:
         :class:`ExperimentResult` with per-fold results and aggregate.
     """
+    if selector is None and precomputed_selections is None:
+        raise ValueError("Either 'selector' or 'precomputed_selections' must be provided")
+
     fold_results: list[FoldResult] = []
     all_neuron_sets: list[set[tuple[int, int]]] = []
 
@@ -106,8 +118,18 @@ def run_experiment(
             test_labels = labels[fold.test_idx]
             test_meta = metadata[fold.test_idx]
 
-            # Step 1: Selection (train data only)
-            selection = selector.select(train_acts, train_labels)
+            # Step 1: Selection (train data only, or precomputed)
+            if precomputed_selections is not None:
+                key = (seed, fold.fold_idx)
+                if key not in precomputed_selections:
+                    raise KeyError(
+                        f"No precomputed selection for seed={seed}, "
+                        f"fold={fold.fold_idx}"
+                    )
+                selection = precomputed_selections[key]
+            else:
+                assert selector is not None
+                selection = selector.select(train_acts, train_labels)
 
             # Step 2: Evaluation probe (train data only)
             eval_probe = train_eval_probe(
@@ -145,7 +167,8 @@ def run_experiment(
 
             if output_dir is not None:
                 fold_dir = output_dir / f"seed_{seed}" / f"fold_{fold.fold_idx}"
-                save_selection(selection, fold_dir)
+                if precomputed_selections is None:
+                    save_selection(selection, fold_dir)
                 save_eval_probe(eval_probe, fold_dir)
                 save_fold_result(fold_result, fold_dir)
 
