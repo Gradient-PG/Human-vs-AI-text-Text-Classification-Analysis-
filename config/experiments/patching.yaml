@@ -1,0 +1,18 @@
+experiment: patching
+source_experiment: sparse_probe
+
+evaluator: patching
+evaluator_params:
+  pairing: same_domain
+  k_values: [1, 2, 5, 10, 20, 50, 100, 200]
+  n_shuffles: 20
+  n_random_draws: 20
+
+n_folds: 5
+seeds: [42, 123, 456, 789, 1024]
+stability_threshold: 0.8
+eval_probe_C: 1.0
+eval_probe_max_iter: 5000
+
+activations_root: results
+output_dir: results/experiments

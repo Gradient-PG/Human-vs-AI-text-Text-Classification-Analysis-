@@ -1,0 +1,20 @@
+experiment: mlp_probe
+source_experiment: sparse_probe
+
+selector: ig
+selector_params:
+  probe_type: mlp
+  hidden_sizes: [256, 64]
+  top_k: 100
+  baseline: zero
+  n_steps: 50
+
+evaluator: probe_accuracy
+
+n_folds: 5
+seeds: [42, 123, 456, 789, 1024]
+eval_probe_C: 1.0
+eval_probe_max_iter: 5000
+
+activations_root: results
+output_dir: results/experiments

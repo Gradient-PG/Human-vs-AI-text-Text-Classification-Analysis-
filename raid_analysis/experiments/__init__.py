@@ -4,7 +4,10 @@ from .causal import ablate_neurons, patch_neurons
 from .config import ExperimentConfig, SparseProbeSweepConfig, load_config, save_config
 from .cross_generator import core_neurons, jaccard_matrix, jaccard_similarity
 from .exp_ablation import run_ablation_experiment
+from .exp_auc_comparison import run_auc_comparison
+from .exp_characterize import run_characterize_experiment
 from .exp_confound import run_confound_experiment
+from .exp_mlp_probe import run_mlp_probe_experiment
 from .exp_patching import run_patching_experiment
 from .exp_sparse_probe import SparseProbeSweepResult, run_sparse_probe_sweep
 from .linear import lr_weight_vector, mean_difference_vector
@@ -26,8 +29,11 @@ __all__ = [
     "patch_neurons",
     "resolve_knee_dir",
     "run_ablation_experiment",
+    "run_auc_comparison",
+    "run_characterize_experiment",
     "run_confound_experiment",
     "run_experiment",
+    "run_mlp_probe_experiment",
     "run_patching_experiment",
     "run_sparse_probe_sweep",
     "save_config",

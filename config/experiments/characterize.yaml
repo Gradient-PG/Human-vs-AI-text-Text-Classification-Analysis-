@@ -1,0 +1,6 @@
+experiment: characterize
+source_experiment: sparse_probe
+generators: [gpt4, chatgpt, mistral-chat, llama-chat, cohere-chat]
+
+activations_root: results
+output_dir: results/experiments
