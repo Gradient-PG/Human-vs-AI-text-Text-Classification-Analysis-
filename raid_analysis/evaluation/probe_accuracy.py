@@ -44,7 +44,7 @@ class ProbeAccuracyEvaluator(Evaluator):
             auc = float("nan")
 
         preds = eval_probe.predict(test_activations)
-        f1 = float(f1_score(test_labels, preds))
+        f1 = float(f1_score(test_labels, preds, zero_division=0.0))
 
         return {
             "accuracy": accuracy,

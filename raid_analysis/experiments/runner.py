@@ -23,7 +23,6 @@ import numpy as np
 from ..data.metadata import SampleMetadata
 from ..data.splits import CVSplit
 from ..evaluation.probe_factory import (
-    EvalProbe,
     save_eval_probe,
     train_eval_probe,
 )
@@ -88,6 +87,8 @@ def run_experiment(
         splits_by_seed: ``{seed: [CVSplit, ...]}`` from :func:`generate_multi_seed_splits`.
         evaluator: An :class:`Evaluator` implementation.
         selector: A :class:`NeuronSelector` implementation (Step 1).
+            If the selector has a ``random_state`` attribute, the runner
+            overrides it to the current CV seed before each fold.
         precomputed_selections: Pre-loaded selections keyed by ``(seed, fold_idx)``.
         output_dir: If provided, persist per-fold results and aggregate here.
         stability_threshold: Fraction of folds a neuron must appear in to be
@@ -129,6 +130,14 @@ def run_experiment(
                 selection = precomputed_selections[key]
             else:
                 assert selector is not None
+                # NOTE: The runner overrides the selector's random_state to
+                # match the current CV seed, ensuring each seed produces
+                # independently seeded selections.  Selectors that expose a
+                # `random_state` attribute (e.g. SparseProbeSelector) will
+                # have it set here; the value passed at construction is only
+                # used for standalone (non-runner) calls.
+                if hasattr(selector, "random_state"):
+                    selector.random_state = seed
                 selection = selector.select(train_acts, train_labels)
 
             # Step 2: Evaluation probe (train data only)

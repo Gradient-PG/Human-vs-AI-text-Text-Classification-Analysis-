@@ -102,10 +102,12 @@ def main() -> None:
         print(f"  {exp}")
         print(f"{'='*60}\n")
 
+        exp_output = Path(args.output_dir) / exp / args.generator
         cmd = [
             sys.executable, str(script),
             exp,
             "--generator", args.generator,
+            "--output-dir", str(exp_output),
         ]
 
         config_file = Path(args.config_dir) / f"{exp}.yaml"

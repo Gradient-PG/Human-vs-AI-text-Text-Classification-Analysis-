@@ -12,7 +12,8 @@ selector_params:
 evaluator: probe_accuracy
 
 n_folds: 5
-seeds: [42, 123, 456, 789, 1024]
+seeds: [42]
+max_samples: 2000
 eval_probe_C: 1.0
 eval_probe_max_iter: 5000
 

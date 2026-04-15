@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ..data.splits import CVSplit, load_splits
+from ..data.splits import CVSplit
 from ..selection.protocol import SelectionResult, load_selection
 
 

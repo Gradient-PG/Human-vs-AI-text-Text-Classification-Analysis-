@@ -11,6 +11,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import sys
 import time
 from pathlib import Path
@@ -19,7 +20,7 @@ project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root))
 
 from raid_analysis.data.activations import concat_all_layers, load_activations
-from raid_analysis.data.metadata import SampleMetadata, load_metadata
+from raid_analysis.data.metadata import load_metadata
 from raid_analysis.data.splits import (
     generate_multi_seed_splits,
     load_splits,
@@ -127,7 +128,12 @@ def main() -> None:
 
 
 def _load_data(config: ExperimentConfig, generator: str):
-    """Load activations, labels, metadata, and generate/load splits."""
+    """Load activations, labels, metadata, and optionally subsample.
+
+    When ``config.max_samples`` is set and smaller than the number of
+    extracted samples, a balanced (50/50 label) random subsample is drawn
+    so experiments can iterate quickly without re-extracting activations.
+    """
     from raid_pipeline.raid_loader import slug
 
     results_root = Path(config.activations_root)
@@ -137,6 +143,25 @@ def _load_data(config: ExperimentConfig, generator: str):
     activations = concat_all_layers(acts_dict)
 
     metadata = load_metadata(results_path)
+
+    n_total = len(labels)
+    max_n = config.max_samples
+    if max_n and max_n < n_total:
+        import numpy as np
+
+        rng = np.random.RandomState(42)
+        pos_idx = np.where(labels == 1)[0]
+        neg_idx = np.where(labels == 0)[0]
+        per_class = max_n // 2
+
+        chosen_pos = rng.choice(pos_idx, size=min(per_class, len(pos_idx)), replace=False)
+        chosen_neg = rng.choice(neg_idx, size=min(per_class, len(neg_idx)), replace=False)
+        keep = np.sort(np.concatenate([chosen_pos, chosen_neg]))
+
+        activations = activations[keep]
+        labels = labels[keep]
+        metadata = metadata[keep]
+        print(f"Subsampled {n_total} → {len(labels)} samples (balanced)")
 
     return activations, labels, metadata
 
@@ -169,9 +194,9 @@ def _run_standard(config, args, output_dir):
         from raid_analysis.experiments.exp_sparse_probe import run_sparse_probe_sweep
 
         if not isinstance(config, SparseProbeSweepConfig):
+            valid_fields = {f.name for f in dataclasses.fields(SparseProbeSweepConfig)}
             config = SparseProbeSweepConfig(
-                **{k: v for k, v in config.__dict__.items()
-                   if k in {f.name for f in __import__('dataclasses').fields(SparseProbeSweepConfig)}}
+                **{k: v for k, v in config.__dict__.items() if k in valid_fields}
             )
         run_sparse_probe_sweep(
             activations, labels, metadata, splits_by_seed,
@@ -227,7 +252,6 @@ def _run_standard(config, args, output_dir):
 def _run_characterize(config, args, output_dir):
     """Run the characterize experiment across multiple generators."""
     from raid_analysis.experiments.exp_characterize import run_characterize_experiment
-    from raid_analysis.experiments.source_loader import resolve_knee_dir
 
     generators = config.generators
     source_dir = _resolve_source(args, config)
@@ -268,11 +292,15 @@ def _run_characterize(config, args, output_dir):
 
 
 def _resolve_source(args, config) -> Path:
-    """Resolve the source experiment directory."""
+    """Resolve the source experiment directory.
+
+    For non-characterize experiments, appends the generator name so the path
+    points to the per-generator sweep root (e.g. ``results/experiments/sparse_probe/gpt4``).
+    """
     if args.source_dir:
         return Path(args.source_dir)
     if config.source_experiment:
-        return Path(config.output_dir) / config.source_experiment
+        return Path(config.output_dir) / config.source_experiment / args.generator
     return Path(config.output_dir) / "sparse_probe" / args.generator
 
 

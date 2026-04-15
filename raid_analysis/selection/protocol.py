@@ -16,6 +16,8 @@ import numpy as np
 
 from ..data.activations import (
     global_indices_to_neuron_set,
+    global_to_layer_neuron,
+    layer_neuron_to_global,
     neuron_set_to_global_indices,
 )
 
@@ -97,7 +99,7 @@ def save_selection(result: SelectionResult, directory: str | Path) -> None:
 
     global_indices = neuron_set_to_global_indices(result.neuron_indices)
     ranking_global = [
-        int((l - 1) * 768 + n) for l, n in result.ranking
+        layer_neuron_to_global(l, n) for l, n in result.ranking
     ]
 
     payload = {
@@ -131,7 +133,6 @@ def load_selection(directory: str | Path) -> SelectionResult:
         np.array(payload["neuron_indices_global"], dtype=np.int64)
     )
 
-    from ..data.activations import global_to_layer_neuron
     ranking = [
         global_to_layer_neuron(g) for g in payload["ranking_global"]
     ]

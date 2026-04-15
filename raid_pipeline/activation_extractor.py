@@ -5,12 +5,12 @@ Extracts hidden states from specified transformer layers for interpretability an
 
 import json
 
+import numpy as np
 import torch
-from torch.utils.data import DataLoader
 from datasets import Dataset
 from pathlib import Path
+from torch.utils.data import DataLoader
 from tqdm import tqdm
-import numpy as np
 from typing import List, Dict
 
 
@@ -46,7 +46,7 @@ class ActivationExtractor:
         batch_size: int = 64,
         max_samples: int = None,
         desc: str = "Extracting activations"
-    ) -> Dict[int, np.ndarray]:
+    ) -> tuple[Dict[int, np.ndarray], np.ndarray, Dataset]:
         """
         Extract activations from specified layers with balanced class sampling.
 
@@ -57,8 +57,10 @@ class ActivationExtractor:
             desc: Progress bar description
 
         Returns:
-            Dictionary mapping layer_idx -> activations array (N_samples, 768)
-            Labels array (N_samples,)
+            Tuple of:
+              - Dictionary mapping layer_idx -> activations array (N_samples, 768)
+              - Labels array (N_samples,)
+              - The final (possibly shuffled/subsampled) Dataset, aligned with the arrays
         """
         from datasets import concatenate_datasets
 
@@ -74,6 +76,10 @@ class ActivationExtractor:
             dataset = concatenate_datasets([ai_subset, human_subset]).shuffle(seed=42)
 
             print(f"Balanced sampling: {len(ai_subset)} AI + {len(human_subset)} Human = {len(dataset)} total")
+
+        # Keep a reference to the aligned dataset before converting to DataLoader
+        # (DataLoader strips non-tensor columns; we need it for metadata later)
+        aligned_dataset = dataset
 
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
@@ -113,7 +119,7 @@ class ActivationExtractor:
         print(f"  Shape per layer: {layer_activations[self.layers[0]].shape}")
         print(f"  Total samples: {len(labels_array)}")
 
-        return layer_activations, labels_array
+        return layer_activations, labels_array, aligned_dataset
 
     def extract_and_save(
         self,
@@ -140,7 +146,7 @@ class ActivationExtractor:
         dataset = dataset_dict[split]
 
         print(f"\nExtracting activations from {split} split...")
-        activations, labels = self.extract_activations(
+        activations, labels, aligned_dataset = self.extract_activations(
             dataset=dataset,
             batch_size=batch_size,
             max_samples=max_samples,
@@ -172,5 +178,18 @@ class ActivationExtractor:
         with open(metadata_path, 'w') as f:
             json.dump(metadata, f, indent=2)
         print(f"  Saved metadata: {metadata_path}")
+
+        # Save per-sample metadata (domain, text length) aligned with the arrays
+        try:
+            from raid_analysis.data.metadata import (
+                compute_metadata_from_dataset,
+                save_metadata,
+            )
+            sample_meta = compute_metadata_from_dataset(aligned_dataset)
+            sample_meta_path = save_metadata(sample_meta, output_path)
+            print(f"  Saved sample metadata: {sample_meta_path}")
+        except Exception as exc:
+            print(f"  WARNING: could not save sample_metadata.npz — {exc}")
+            print(f"  Run: uv run scripts/backfill_metadata.py to generate it later.")
 
         print(f"\nAll activations saved to {output_path}")

@@ -19,6 +19,7 @@ from typing import Any
 
 import numpy as np
 
+from ..data.activations import layer_neuron_to_global
 from ..data.metadata import SampleMetadata
 from ..experiments.causal import patch_neurons
 from ..selection.protocol import SelectionResult
@@ -71,7 +72,8 @@ class PatchingEvaluator(Evaluator):
         eval_probe: EvalProbe,
     ) -> dict[str, Any]:
         ranked_global = [
-            (layer - 1) * 768 + neuron for layer, neuron in selection.ranking
+            layer_neuron_to_global(layer, neuron)
+            for layer, neuron in selection.ranking
         ]
         n_features = test_activations.shape[1]
 
@@ -136,11 +138,13 @@ class PatchingEvaluator(Evaluator):
                 "random_flip_rate_std": float(np.std(random_flip_rates)),
             })
 
-        # Per-domain breakdown at full selected set
+        # Per-domain breakdown at the largest k actually used in the sweep
+        max_k_used = max(p["k"] for p in patching_sweep) if patching_sweep else len(ranked_global)
+        domain_neuron_indices = ranked_global[:max_k_used]
         domain_results = self._domain_breakdown(
             test_activations, base_acts, base_preds,
             human_domains, human_domains_arr, ai_by_domain,
-            ranked_global, test_metadata, eval_probe,
+            domain_neuron_indices, test_metadata, eval_probe,
         )
 
         return {

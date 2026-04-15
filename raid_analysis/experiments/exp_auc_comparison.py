@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from scipy import stats as scipy_stats
 
 from ..data.activations import neuron_set_to_global_indices
 from ..data.metadata import SampleMetadata
@@ -21,7 +20,6 @@ from ..evaluation.probe_factory import train_eval_probe
 from ..experiments.causal import ablate_neurons
 from ..experiments.cross_generator import jaccard_similarity
 from ..selection.auc import AUCSelector
-from ..selection.protocol import SelectionResult
 from .config import ExperimentConfig, save_config
 from .source_loader import load_source_selections, resolve_knee_dir
 
@@ -143,6 +141,9 @@ def run_auc_comparison(
 
 def _aggregate_comparison(fold_results: list[dict[str, Any]]) -> dict[str, Any]:
     """Compute mean ± std for all numeric comparison metrics."""
+    if not fold_results:
+        raise ValueError("_aggregate_comparison: No fold results to aggregate")
+
     agg: dict[str, Any] = {}
     numeric_keys = [
         "jaccard", "intersection_size", "auc_n_selected", "l1_n_selected",

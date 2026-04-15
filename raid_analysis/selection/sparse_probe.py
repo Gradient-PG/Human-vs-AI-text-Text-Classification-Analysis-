@@ -23,7 +23,9 @@ class SparseProbeSelector(NeuronSelector):
             = fewer nonzero neurons.
         solver: Sklearn solver supporting L1 (``"saga"`` or ``"liblinear"``).
         max_iter: Solver iteration limit.
-        random_state: Seed for solver reproducibility.
+        random_state: Seed for solver reproducibility.  When run through
+            :func:`~raid_analysis.experiments.runner.run_experiment`, this is
+            **overridden** to the current CV seed before each fold call.
     """
 
     def __init__(

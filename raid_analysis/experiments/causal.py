@@ -20,8 +20,9 @@ def ablate_neurons(
         activations: (N_samples, N_neurons) array.
         neuron_indices: Column indices to ablate.
         method: ``"zero"`` sets to 0; ``"mean"`` replaces with per-neuron dataset mean.
-        dataset_mean: Precomputed (N_neurons,) mean vector. Required when ``method="mean"``.
-            If ``None`` with ``method="mean"``, the mean is computed from ``activations``.
+        dataset_mean: Precomputed (N_neurons,) mean vector.  **Required** when
+            ``method="mean"`` — must be computed from the *training* fold to
+            avoid test-set leakage.
 
     Returns:
         Modified copy of ``activations``.
@@ -33,7 +34,10 @@ def ablate_neurons(
         out[:, idx] = 0.0
     elif method == "mean":
         if dataset_mean is None:
-            dataset_mean = activations.mean(axis=0)
+            raise ValueError(
+                "dataset_mean must be provided when method='mean'. "
+                "Use selection.train_mean to avoid test-set leakage."
+            )
         out[:, idx] = dataset_mean[idx]
     else:
         raise ValueError(f"Unknown ablation method: {method!r}; use 'zero' or 'mean'")

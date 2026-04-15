@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import time
-from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -78,6 +77,9 @@ def run_sparse_probe_sweep(
     Returns:
         :class:`SparseProbeSweepResult` with sweep curve, knee, and stable set.
     """
+    if not config.C_values:
+        raise ValueError("C_values must be non-empty for sparse probe sweep")
+
     if output_dir is not None:
         output_dir.mkdir(parents=True, exist_ok=True)
         save_config(config, output_dir / "config.yaml")
@@ -101,7 +103,6 @@ def run_sparse_probe_sweep(
             C=C,
             solver=config.solver,
             max_iter=config.max_iter,
-            random_state=config.seeds[0],
         )
 
         c_dir = output_dir / f"C_{C}" if output_dir else None

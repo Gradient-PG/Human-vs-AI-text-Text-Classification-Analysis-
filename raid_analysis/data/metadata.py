@@ -46,18 +46,36 @@ class SampleMetadata:
 def compute_metadata_from_dataset(dataset) -> SampleMetadata:
     """Extract metadata from an HF ``Dataset``.
 
-    Expects columns ``text`` (or ``generation``) and ``domain``.
-    Computes character-level text length and integer-encodes domains.
+    Expects a ``domain`` column and one of:
+      - ``text`` or ``generation`` — character-level text length is computed.
+      - ``input_ids`` — token count (non-padding) is used as a length proxy
+        when the raw text column has been removed by tokenization.
 
     Args:
-        dataset: A HuggingFace ``Dataset`` with ``text`` and ``domain`` columns.
+        dataset: A HuggingFace ``Dataset``.
 
     Returns:
         :class:`SampleMetadata` aligned with the dataset row order.
     """
-    text_col = "text" if "text" in dataset.column_names else "generation"
-    texts = dataset[text_col]
-    text_lengths = np.array([len(t) for t in texts], dtype=np.int64)
+    cols = dataset.column_names
+
+    if "text" in cols:
+        texts = dataset["text"]
+        text_lengths = np.array([len(t) for t in texts], dtype=np.int64)
+    elif "generation" in cols:
+        texts = dataset["generation"]
+        text_lengths = np.array([len(t) for t in texts], dtype=np.int64)
+    elif "input_ids" in cols:
+        input_ids = dataset["input_ids"]
+        text_lengths = np.array(
+            [int(sum(1 for tok in ids if tok != 0)) for ids in input_ids],
+            dtype=np.int64,
+        )
+    else:
+        raise ValueError(
+            f"Cannot compute text lengths: dataset has columns {cols}. "
+            f"Expected 'text', 'generation', or 'input_ids'."
+        )
 
     raw_domains: Sequence[str] = dataset["domain"]
     domain_names = sorted(set(raw_domains))

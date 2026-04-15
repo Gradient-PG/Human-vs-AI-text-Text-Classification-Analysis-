@@ -13,6 +13,7 @@ from typing import Any
 
 import numpy as np
 
+from ..data.activations import layer_neuron_to_global
 from ..data.metadata import SampleMetadata
 from ..experiments.causal import ablate_neurons
 from ..selection.protocol import SelectionResult
@@ -54,7 +55,8 @@ class AblationEvaluator(Evaluator):
         baseline_acc = eval_probe.score(test_activations, test_labels)
 
         ranked_global = [
-            (layer - 1) * 768 + neuron for layer, neuron in selection.ranking
+            layer_neuron_to_global(layer, neuron)
+            for layer, neuron in selection.ranking
         ]
         n_features = test_activations.shape[1]
         train_mean = selection.train_mean
