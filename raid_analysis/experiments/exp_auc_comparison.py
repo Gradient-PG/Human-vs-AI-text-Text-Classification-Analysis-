@@ -17,11 +17,11 @@ from ..data.activations import neuron_set_to_global_indices
 from ..data.metadata import SampleMetadata
 from ..data.splits import CVSplit
 from ..evaluation.probe_factory import train_eval_probe
-from ..experiments.causal import ablate_neurons
-from ..experiments.cross_generator import jaccard_similarity
+from ..evaluation.causal import ablate_neurons
+from ..utils.set_ops import jaccard_similarity
 from ..selection.auc import AUCSelector
 from .config import ExperimentConfig, save_config
-from .source_loader import load_source_selections, resolve_knee_dir
+from .source_loader import load_source_selections
 
 
 def run_auc_comparison(
@@ -48,8 +48,7 @@ def run_auc_comparison(
     Returns:
         Dict with per-fold and aggregate comparison metrics.
     """
-    knee_dir = resolve_knee_dir(source_dir)
-    l1_selections = load_source_selections(knee_dir, splits_by_seed)
+    l1_selections = load_source_selections(source_dir, splits_by_seed)
 
     auc_selector = AUCSelector(
         alpha=config.selector_params.get("alpha", 0.001),
@@ -60,7 +59,7 @@ def run_auc_comparison(
         output_dir.mkdir(parents=True, exist_ok=True)
         save_config(config, output_dir / "config.yaml")
 
-    print(f"AUC comparison: source={knee_dir}")
+    print(f"AUC comparison: source={source_dir}")
 
     fold_results: list[dict[str, Any]] = []
 
@@ -71,7 +70,9 @@ def run_auc_comparison(
             test_acts = activations[fold.test_idx]
             test_labels = labels[fold.test_idx]
 
-            auc_selection = auc_selector.select(train_acts, train_labels)
+            auc_selection = auc_selector.select(
+                train_acts, train_labels, random_state=seed,
+            )
             l1_selection = l1_selections[(seed, fold.fold_idx)]
 
             # Overlap metrics

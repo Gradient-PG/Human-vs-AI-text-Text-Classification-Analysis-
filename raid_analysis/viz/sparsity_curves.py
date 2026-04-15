@@ -2,48 +2,42 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import matplotlib.pyplot as plt
 import numpy as np
 
-if TYPE_CHECKING:
-    from ..experiments.exp_sparse_probe import SweepPoint
-
 
 def fig_accuracy_vs_sparsity(
-    sweep_points: list[SweepPoint],
+    sweep_curve: list[dict],
     knee_idx: int | None = None,
     title: str = "Accuracy vs Sparsity (L1 Probe Sweep)",
 ) -> plt.Figure:
-    """Plot mean accuracy vs mean nonzero neuron count with error bars.
+    """Plot validation accuracy vs nonzero neuron count with knee annotation.
 
     Args:
-        sweep_points: List of :class:`SweepPoint` from the sweep experiment.
-        knee_idx: Index into *sweep_points* for the detected knee. If
-            provided, the knee point is highlighted.
+        sweep_curve: List of dicts with keys ``C``, ``val_accuracy``,
+            ``n_nonzero`` — as produced by ``SparseProbeSelector`` in
+            ``SelectionResult.metadata["sweep_curve"]``.
+        knee_idx: Index into *sweep_curve* for the detected knee.
         title: Figure title.
 
     Returns:
         Matplotlib ``Figure``.
     """
-    n_nonzero = np.array([sp.mean_n_nonzero for sp in sweep_points])
-    accuracy = np.array([sp.mean_accuracy for sp in sweep_points])
-    acc_std = np.array([sp.std_accuracy for sp in sweep_points])
-    c_values = [sp.C for sp in sweep_points]
+    n_nonzero = np.array([p["n_nonzero"] for p in sweep_curve])
+    accuracy = np.array([p["val_accuracy"] for p in sweep_curve])
+    c_values = [p["C"] for p in sweep_curve]
 
     order = np.argsort(n_nonzero)
     n_nonzero = n_nonzero[order]
     accuracy = accuracy[order]
-    acc_std = acc_std[order]
     c_values_sorted = [c_values[i] for i in order]
 
     fig, ax = plt.subplots(figsize=(10, 6))
 
-    ax.errorbar(
-        n_nonzero, accuracy, yerr=acc_std,
-        fmt="o-", color="#377eb8", capsize=4, linewidth=2,
-        markersize=7, label="L2 eval probe accuracy",
+    ax.plot(
+        n_nonzero, accuracy,
+        "o-", color="#377eb8", linewidth=2,
+        markersize=7, label="L1 probe val accuracy",
     )
 
     if knee_idx is not None:
@@ -73,7 +67,7 @@ def fig_accuracy_vs_sparsity(
         )
 
     ax.set_xlabel("Number of nonzero neurons", fontsize=12)
-    ax.set_ylabel("Accuracy (L2 eval probe, test fold)", fontsize=12)
+    ax.set_ylabel("Validation accuracy (L1 probe)", fontsize=12)
     ax.set_title(title, fontsize=14)
     ax.legend(fontsize=10)
     ax.grid(True, alpha=0.3)

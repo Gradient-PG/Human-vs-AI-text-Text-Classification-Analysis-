@@ -42,6 +42,8 @@ class AUCSelector(NeuronSelector):
         self,
         activations: np.ndarray,
         labels: np.ndarray,
+        *,
+        random_state: int | None = None,
     ) -> SelectionResult:
         n_features = activations.shape[1]
 

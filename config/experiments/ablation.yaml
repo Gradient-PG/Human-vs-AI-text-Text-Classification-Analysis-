@@ -9,7 +9,7 @@ evaluator_params:
 
 n_folds: 5
 seeds: [42]
-max_samples: 2000
+max_samples: 500
 stability_threshold: 0.8
 eval_probe_C: 1.0
 eval_probe_max_iter: 5000

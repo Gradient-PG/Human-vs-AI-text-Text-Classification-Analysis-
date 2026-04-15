@@ -70,8 +70,8 @@ def train_eval_probe(
     X_scaled = scaler.fit_transform(activations)
 
     lr = LogisticRegression(
-        penalty="l2",
         C=C,
+        l1_ratio=0.0,
         solver="lbfgs",
         max_iter=max_iter,
         random_state=random_state,

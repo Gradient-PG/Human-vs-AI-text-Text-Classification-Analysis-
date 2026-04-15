@@ -15,7 +15,7 @@ import numpy as np
 
 from ..data.activations import layer_neuron_to_global
 from ..data.metadata import SampleMetadata
-from ..experiments.causal import ablate_neurons
+from .causal import ablate_neurons
 from ..selection.protocol import SelectionResult
 from .probe_factory import EvalProbe
 from .protocol import Evaluator
@@ -43,6 +43,12 @@ class AblationEvaluator(Evaluator):
         self.k_values = k_values or [1, 2, 5, 10, 20, 50, 100, 200]
         self.method = method
         self.n_random_seeds = n_random_seeds
+
+    def __repr__(self) -> str:
+        return (
+            f"AblationEvaluator(k_values={self.k_values}, "
+            f"method={self.method!r}, n_random_seeds={self.n_random_seeds})"
+        )
 
     def evaluate(
         self,

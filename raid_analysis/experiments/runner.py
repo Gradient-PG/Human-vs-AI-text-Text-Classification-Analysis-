@@ -28,6 +28,7 @@ from ..evaluation.probe_factory import (
 )
 from ..evaluation.protocol import Evaluator, FoldResult, save_fold_result
 from ..selection.protocol import NeuronSelector, SelectionResult, save_selection
+from .config import ExperimentConfig
 
 
 @dataclass
@@ -63,13 +64,11 @@ def run_experiment(
     metadata: SampleMetadata,
     splits_by_seed: dict[int, list[CVSplit]],
     evaluator: Evaluator,
+    config: ExperimentConfig,
     *,
     selector: NeuronSelector | None = None,
     precomputed_selections: dict[tuple[int, int], SelectionResult] | None = None,
     output_dir: Path | None = None,
-    stability_threshold: float = 0.8,
-    eval_probe_C: float = 1.0,
-    eval_probe_max_iter: int = 5000,
 ) -> ExperimentResult:
     """Run the full CV experiment loop.
 
@@ -86,15 +85,12 @@ def run_experiment(
         metadata: Per-sample metadata aligned with activations.
         splits_by_seed: ``{seed: [CVSplit, ...]}`` from :func:`generate_multi_seed_splits`.
         evaluator: An :class:`Evaluator` implementation.
+        config: Experiment configuration (carries stability_threshold,
+            eval_probe_C, eval_probe_max_iter, etc.).
         selector: A :class:`NeuronSelector` implementation (Step 1).
-            If the selector has a ``random_state`` attribute, the runner
-            overrides it to the current CV seed before each fold.
+            The runner passes ``random_state=seed`` to ``select()`` each fold.
         precomputed_selections: Pre-loaded selections keyed by ``(seed, fold_idx)``.
         output_dir: If provided, persist per-fold results and aggregate here.
-        stability_threshold: Fraction of folds a neuron must appear in to be
-            considered stable (default 0.8).
-        eval_probe_C: L2 regularisation for the evaluation probe.
-        eval_probe_max_iter: Solver iteration limit for the evaluation probe.
 
     Returns:
         :class:`ExperimentResult` with per-fold results and aggregate.
@@ -130,29 +126,33 @@ def run_experiment(
                 selection = precomputed_selections[key]
             else:
                 assert selector is not None
-                # NOTE: The runner overrides the selector's random_state to
-                # match the current CV seed, ensuring each seed produces
-                # independently seeded selections.  Selectors that expose a
-                # `random_state` attribute (e.g. SparseProbeSelector) will
-                # have it set here; the value passed at construction is only
-                # used for standalone (non-runner) calls.
-                if hasattr(selector, "random_state"):
-                    selector.random_state = seed
-                selection = selector.select(train_acts, train_labels)
+                selection = selector.select(
+                    train_acts, train_labels, random_state=seed,
+                )
 
             # Step 2: Evaluation probe (train data only)
             eval_probe = train_eval_probe(
                 train_acts,
                 train_labels,
-                C=eval_probe_C,
-                max_iter=eval_probe_max_iter,
+                C=config.eval_probe_C,
+                max_iter=config.eval_probe_max_iter,
                 random_state=seed,
             )
+
+            # Step 2b: Score selector's own probe on test data (if available)
+            if selection.probe is not None and selection.scaler is not None:
+                X_test_scaled = selection.scaler.transform(test_acts)
+                selector_test_acc = float(selection.probe.score(X_test_scaled, test_labels))
+            else:
+                selector_test_acc = None
 
             # Step 3: Evaluation (test data only)
             metrics = evaluator.evaluate(
                 test_acts, test_labels, test_meta, selection, eval_probe,
             )
+
+            if selector_test_acc is not None:
+                metrics["selector_test_accuracy"] = selector_test_acc
 
             fold_result = FoldResult(
                 fold_idx=fold.fold_idx,
@@ -183,8 +183,16 @@ def run_experiment(
 
     # Aggregate
     aggregate = _aggregate_metrics(fold_results)
-    stability = _compute_neuron_stability(all_neuron_sets)
-    stable = {n for n, frac in stability.items() if frac >= stability_threshold}
+
+    if precomputed_selections is not None:
+        stability: dict[tuple[int, int], float] = {}
+        stable: set[tuple[int, int]] = set()
+    else:
+        stability = _compute_neuron_stability(all_neuron_sets)
+        stable = {
+            n for n, frac in stability.items()
+            if frac >= config.stability_threshold
+        }
 
     result = ExperimentResult(
         fold_results=fold_results,

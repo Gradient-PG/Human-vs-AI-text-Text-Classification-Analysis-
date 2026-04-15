@@ -42,6 +42,12 @@ class ConfoundEvaluator(Evaluator):
         self.confounds = confounds or ["text_length", "domain"]
         self.significance_threshold = significance_threshold
 
+    def __repr__(self) -> str:
+        return (
+            f"ConfoundEvaluator(confounds={self.confounds}, "
+            f"significance_threshold={self.significance_threshold})"
+        )
+
     def evaluate(
         self,
         test_activations: np.ndarray,

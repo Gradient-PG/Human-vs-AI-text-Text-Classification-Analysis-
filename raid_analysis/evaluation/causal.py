@@ -1,4 +1,4 @@
-"""D1 — Causal validation primitives: ablation and activation patching."""
+"""Causal validation primitives: ablation and activation patching."""
 
 from __future__ import annotations
 

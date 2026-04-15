@@ -11,26 +11,22 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import dataclasses
 import sys
 import time
+import warnings
+from datetime import datetime
 from pathlib import Path
 
 project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root))
 
-from raid_analysis.data.activations import concat_all_layers, load_activations
-from raid_analysis.data.metadata import load_metadata
+from raid_analysis.data.loading import load_experiment_data
 from raid_analysis.data.splits import (
     generate_multi_seed_splits,
     load_splits,
     save_splits,
 )
-from raid_analysis.experiments.config import (
-    ExperimentConfig,
-    SparseProbeSweepConfig,
-    load_config,
-)
+from raid_analysis.experiments.config import ExperimentConfig, load_config
 
 EXPERIMENT_NAMES = [
     "sparse_probe",
@@ -39,11 +35,14 @@ EXPERIMENT_NAMES = [
     "confound",
     "characterize",
     "auc_comparison",
-    "mlp_probe",
 ]
 
 
 def main() -> None:
+    warnings.filterwarnings("ignore", category=FutureWarning, module="sklearn")
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings("ignore", category=ConvergenceWarning)
+
     parser = argparse.ArgumentParser(
         description="Run a single experiment from the experiment catalog."
     )
@@ -78,6 +77,12 @@ def main() -> None:
         help="Output directory override.",
     )
     parser.add_argument(
+        "--run-id",
+        type=str,
+        default=None,
+        help="Run identifier (e.g. timestamp). Auto-generated if not provided.",
+    )
+    parser.add_argument(
         "--list",
         action="store_true",
         help="List available experiments and exit.",
@@ -105,21 +110,29 @@ def main() -> None:
 
     config.experiment = args.experiment
 
+    run_id = args.run_id or datetime.now().strftime("%Y%m%d_%H%M%S")
+    args.run_id = run_id
+
     # Resolve output directory
     if args.output_dir:
         output_dir = Path(args.output_dir)
     else:
-        output_dir = Path(config.output_dir) / args.experiment / args.generator
+        output_dir = (
+            Path(config.output_dir) / run_id / args.experiment / args.generator
+        )
 
     print(f"Experiment: {args.experiment}")
     print(f"Generator: {args.generator}")
-    print(f"Output: {output_dir}")
+    print(f"Run ID:    {run_id}")
+    print(f"Output:    {output_dir}")
     print()
 
     t0 = time.time()
 
     if args.experiment == "characterize":
         _run_characterize(config, args, output_dir)
+    elif args.experiment == "auc_comparison":
+        _run_auc_comparison(config, args, output_dir)
     else:
         _run_standard(config, args, output_dir)
 
@@ -127,51 +140,26 @@ def main() -> None:
     print(f"\nDone in {elapsed:.1f}s")
 
 
-def _load_data(config: ExperimentConfig, generator: str):
-    """Load activations, labels, metadata, and optionally subsample.
-
-    When ``config.max_samples`` is set and smaller than the number of
-    extracted samples, a balanced (50/50 label) random subsample is drawn
-    so experiments can iterate quickly without re-extracting activations.
-    """
-    from raid_pipeline.raid_loader import slug
-
-    results_root = Path(config.activations_root)
-    results_path = results_root / f"activations_raid_{slug(generator)}"
-
-    acts_dict, labels, meta_json = load_activations(results_path)
-    activations = concat_all_layers(acts_dict)
-
-    metadata = load_metadata(results_path)
-
-    n_total = len(labels)
-    max_n = config.max_samples
-    if max_n and max_n < n_total:
-        import numpy as np
-
-        rng = np.random.RandomState(42)
-        pos_idx = np.where(labels == 1)[0]
-        neg_idx = np.where(labels == 0)[0]
-        per_class = max_n // 2
-
-        chosen_pos = rng.choice(pos_idx, size=min(per_class, len(pos_idx)), replace=False)
-        chosen_neg = rng.choice(neg_idx, size=min(per_class, len(neg_idx)), replace=False)
-        keep = np.sort(np.concatenate([chosen_pos, chosen_neg]))
-
-        activations = activations[keep]
-        labels = labels[keep]
-        metadata = metadata[keep]
-        print(f"Subsampled {n_total} → {len(labels)} samples (balanced)")
-
-    return activations, labels, metadata
-
-
 def _get_splits(config, labels, metadata, output_dir):
-    """Generate or load CV splits."""
+    """Generate or load CV splits, regenerating if sample count changed."""
     splits_path = output_dir / "splits.json"
+    n_samples = len(labels)
+
     if splits_path.exists():
-        print(f"Loading existing splits from {splits_path}")
-        return load_splits(splits_path)
+        loaded = load_splits(splits_path)
+        first_folds = next(iter(loaded.values()))
+        max_idx = max(
+            idx
+            for fold in first_folds
+            for idx in (*fold.train_idx, *fold.test_idx)
+        )
+        if max_idx < n_samples:
+            print(f"Loading existing splits from {splits_path}")
+            return loaded
+        print(
+            f"Stale splits (max_idx={max_idx} >= n_samples={n_samples}), "
+            f"regenerating"
+        )
 
     splits_by_seed = generate_multi_seed_splits(
         labels,
@@ -185,90 +173,76 @@ def _get_splits(config, labels, metadata, output_dir):
     return splits_by_seed
 
 
-def _run_standard(config, args, output_dir):
-    """Run a standard fold-based experiment."""
-    activations, labels, metadata = _load_data(config, args.generator)
+def _run_standard(config: ExperimentConfig, args, output_dir: Path):
+    """Run a standard fold-based experiment via the generic pipeline.
+
+    Works for both primary experiments (sparse_probe) and dependent ones
+    (ablation, patching, confound) that reuse selections from a source.
+    """
+    from raid_analysis.experiments.factory import build_evaluator, build_selector
+    from raid_analysis.experiments.runner import run_experiment
+    from raid_analysis.experiments.source_loader import load_source_selections
+
+    activations, labels, metadata = load_experiment_data(config, args.generator)
     splits_by_seed = _get_splits(config, labels, metadata, output_dir)
 
-    if args.experiment == "sparse_probe":
-        from raid_analysis.experiments.exp_sparse_probe import run_sparse_probe_sweep
+    evaluator = build_evaluator(config)
 
-        if not isinstance(config, SparseProbeSweepConfig):
-            valid_fields = {f.name for f in dataclasses.fields(SparseProbeSweepConfig)}
-            config = SparseProbeSweepConfig(
-                **{k: v for k, v in config.__dict__.items() if k in valid_fields}
-            )
-        run_sparse_probe_sweep(
-            activations, labels, metadata, splits_by_seed,
-            config, output_dir=output_dir,
-        )
-
-    elif args.experiment == "ablation":
-        from raid_analysis.experiments.exp_ablation import run_ablation_experiment
-
+    if config.source_experiment:
         source_dir = _resolve_source(args, config)
-        run_ablation_experiment(
-            activations, labels, metadata, splits_by_seed,
-            config, source_dir, output_dir=output_dir,
-        )
+        precomputed = load_source_selections(source_dir, splits_by_seed)
+        selector = None
+        print(f"Using precomputed selections from {source_dir}")
+    else:
+        selector = build_selector(config)
+        precomputed = None
 
-    elif args.experiment == "patching":
-        from raid_analysis.experiments.exp_patching import run_patching_experiment
-
-        source_dir = _resolve_source(args, config)
-        run_patching_experiment(
-            activations, labels, metadata, splits_by_seed,
-            config, source_dir, output_dir=output_dir,
-        )
-
-    elif args.experiment == "confound":
-        from raid_analysis.experiments.exp_confound import run_confound_experiment
-
-        source_dir = _resolve_source(args, config)
-        run_confound_experiment(
-            activations, labels, metadata, splits_by_seed,
-            config, source_dir, output_dir=output_dir,
-        )
-
-    elif args.experiment == "auc_comparison":
-        from raid_analysis.experiments.exp_auc_comparison import run_auc_comparison
-
-        source_dir = _resolve_source(args, config)
-        run_auc_comparison(
-            activations, labels, metadata, splits_by_seed,
-            config, source_dir, output_dir=output_dir,
-        )
-
-    elif args.experiment == "mlp_probe":
-        from raid_analysis.experiments.exp_mlp_probe import run_mlp_probe_experiment
-
-        source_dir = _resolve_source(args, config)
-        run_mlp_probe_experiment(
-            activations, labels, metadata, splits_by_seed,
-            config, source_dir, output_dir=output_dir,
-        )
+    run_experiment(
+        activations=activations,
+        labels=labels,
+        metadata=metadata,
+        splits_by_seed=splits_by_seed,
+        evaluator=evaluator,
+        config=config,
+        selector=selector,
+        precomputed_selections=precomputed,
+        output_dir=output_dir,
+    )
 
 
-def _run_characterize(config, args, output_dir):
+def _run_auc_comparison(config: ExperimentConfig, args, output_dir: Path):
+    """Run the AUC comparison experiment."""
+    from raid_analysis.experiments.exp_auc_comparison import run_auc_comparison
+
+    activations, labels, metadata = load_experiment_data(config, args.generator)
+    splits_by_seed = _get_splits(config, labels, metadata, output_dir)
+
+    source_dir = _resolve_source(args, config)
+    run_auc_comparison(
+        activations, labels, metadata, splits_by_seed,
+        config, source_dir, output_dir=output_dir,
+    )
+
+
+def _run_characterize(config: ExperimentConfig, args, output_dir: Path):
     """Run the characterize experiment across multiple generators."""
+    import json
     from raid_analysis.experiments.exp_characterize import run_characterize_experiment
 
     generators = config.generators
     source_dir = _resolve_source(args, config)
 
     stable_sets: dict[str, set] = {}
-    activations_by_gen: dict[str, any] = {}
-    labels_by_gen: dict[str, any] = {}
+    activations_by_gen: dict = {}
+    labels_by_gen: dict = {}
 
     for gen in generators:
-        acts, labels, metadata = _load_data(config, gen)
+        acts, labels, metadata = load_experiment_data(config, gen)
         activations_by_gen[gen] = acts
         labels_by_gen[gen] = labels
 
-        # Load stable set from source experiment
         gen_source = source_dir.parent / gen
         if gen_source.exists():
-            import json
             sweep_path = gen_source / "sweep_result.json"
             if sweep_path.exists():
                 with open(sweep_path) as f:
@@ -291,17 +265,14 @@ def _run_characterize(config, args, output_dir):
     )
 
 
-def _resolve_source(args, config) -> Path:
-    """Resolve the source experiment directory.
-
-    For non-characterize experiments, appends the generator name so the path
-    points to the per-generator sweep root (e.g. ``results/experiments/sparse_probe/gpt4``).
-    """
+def _resolve_source(args, config: ExperimentConfig) -> Path:
+    """Resolve the source experiment directory."""
     if args.source_dir:
         return Path(args.source_dir)
+    base = Path(config.output_dir) / args.run_id
     if config.source_experiment:
-        return Path(config.output_dir) / config.source_experiment / args.generator
-    return Path(config.output_dir) / "sparse_probe" / args.generator
+        return base / config.source_experiment / args.generator
+    return base / "sparse_probe" / args.generator
 
 
 if __name__ == "__main__":

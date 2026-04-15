@@ -541,8 +541,7 @@ raid_analysis/
 │   ├── protocol.py                      # NeuronSelector protocol, SelectionResult
 │   ├── sparse_probe.py                  # SparseProbeSelector (L1 LogReg)
 │   ├── auc.py                           # AUCSelector (wraps neuron_stats.py)
-│   ├── ig.py                            # IGSelector (IG through trained probe)
-│   └── composite.py                     # Union/intersect/rank selectors
+│   └── ig.py                            # IGSelector (IG through trained probe)
 │
 ├── evaluation/                          # NEW: method-agnostic evaluation
 │   ├── __init__.py
@@ -578,7 +577,7 @@ raid_analysis/
 │   ├── hierarchy.py                     # KEEP
 │   ├── neurons.py                       # KEEP
 │   ├── sparsity_curves.py               # NEW: accuracy vs nonzero count + knee
-│   ├── dose_response.py                 # NEW: accuracy drop vs k ablated
+│   ├── ablation_sweep.py               # NEW: accuracy drop vs k ablated
 │   └── flip_rate.py                     # NEW: flip rate per generator/domain
 │
 ├── clustering/                          # KEEP (unchanged)
@@ -587,7 +586,6 @@ raid_analysis/
 
 
 config/                                  # NEW top-level directory
-├── experiment_defaults.yaml             # Global: seeds, folds, sample size
 └── experiments/
     ├── sparse_probe.yaml
     ├── ablation.yaml

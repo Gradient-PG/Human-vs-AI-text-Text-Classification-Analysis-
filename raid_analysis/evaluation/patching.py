@@ -21,7 +21,7 @@ import numpy as np
 
 from ..data.activations import layer_neuron_to_global
 from ..data.metadata import SampleMetadata
-from ..experiments.causal import patch_neurons
+from .causal import patch_neurons
 from ..selection.protocol import SelectionResult
 from .probe_factory import EvalProbe
 from .protocol import Evaluator
@@ -62,6 +62,12 @@ class PatchingEvaluator(Evaluator):
         self.pairing = pairing
         self.n_shuffles = n_shuffles
         self.n_random_draws = n_random_draws
+
+    def __repr__(self) -> str:
+        return (
+            f"PatchingEvaluator(k_values={self.k_values}, "
+            f"pairing={self.pairing!r}, n_shuffles={self.n_shuffles})"
+        )
 
     def evaluate(
         self,
@@ -157,6 +163,25 @@ class PatchingEvaluator(Evaluator):
             "n_test": len(test_labels),
         }
 
+    def _generate_donor_indices(
+        self,
+        rng: np.random.RandomState,
+        n_humans: int,
+        human_domains_arr: np.ndarray,
+        ai_by_domain: dict[int, np.ndarray],
+    ) -> np.ndarray:
+        """Assign a same-domain AI donor index to each human sample."""
+        donor_idxs = np.empty(n_humans, dtype=int)
+        for d_id, ai_pool in ai_by_domain.items():
+            mask = human_domains_arr == d_id
+            n_need = int(mask.sum())
+            if n_need == 0:
+                continue
+            shuffled = rng.permutation(ai_pool)
+            tiled = np.tile(shuffled, (n_need // len(shuffled)) + 1)[:n_need]
+            donor_idxs[mask] = tiled
+        return donor_idxs
+
     def _sweep_shuffles(
         self,
         test_activations: np.ndarray,
@@ -173,16 +198,9 @@ class PatchingEvaluator(Evaluator):
         flip_rates: list[float] = []
 
         for _ in range(self.n_shuffles):
-            donor_idxs = np.empty(n_humans, dtype=int)
-            for d_id, ai_pool in ai_by_domain.items():
-                mask = human_domains_arr == d_id
-                n_need = int(mask.sum())
-                if n_need == 0:
-                    continue
-                shuffled = rng.permutation(ai_pool)
-                tiled = np.tile(shuffled, (n_need // len(shuffled)) + 1)[:n_need]
-                donor_idxs[mask] = tiled
-
+            donor_idxs = self._generate_donor_indices(
+                rng, n_humans, human_domains_arr, ai_by_domain,
+            )
             donor_acts = test_activations[donor_idxs]
             patched = patch_neurons(base_acts, donor_acts, neuron_indices)
             patched_preds = eval_probe.predict(patched)
@@ -210,16 +228,9 @@ class PatchingEvaluator(Evaluator):
         per_shuffle_domain_flips: list[dict[int, list[bool]]] = []
 
         for _ in range(self.n_shuffles):
-            donor_idxs = np.empty(n_humans, dtype=int)
-            for d_id, ai_pool in ai_by_domain.items():
-                mask = human_domains_arr == d_id
-                n_need = int(mask.sum())
-                if n_need == 0:
-                    continue
-                shuffled = rng.permutation(ai_pool)
-                tiled = np.tile(shuffled, (n_need // len(shuffled)) + 1)[:n_need]
-                donor_idxs[mask] = tiled
-
+            donor_idxs = self._generate_donor_indices(
+                rng, n_humans, human_domains_arr, ai_by_domain,
+            )
             donor_acts = test_activations[donor_idxs]
             patched = patch_neurons(base_acts, donor_acts, neuron_indices)
             patched_preds = eval_probe.predict(patched)

@@ -33,6 +33,8 @@ class SelectionResult:
         probe: The trained selection model, if the method produces one
             (e.g. the L1 LogReg).  Saved for diagnostics only — evaluation
             uses a separate L2 probe.
+        scaler: The fitted scaler associated with the probe (e.g.
+            ``StandardScaler``).  Needed to score the probe on new data.
         train_mean: ``(D,)`` mean activation vector computed on the training
             fold.  Used as the replacement value for mean ablation.
         metadata: Method-specific information (C value, AUC scores, etc.).
@@ -41,6 +43,7 @@ class SelectionResult:
     neuron_indices: set[tuple[int, int]]
     ranking: list[tuple[int, int]]
     probe: Any | None = None
+    scaler: Any | None = None
     train_mean: np.ndarray | None = None
     metadata: dict = field(default_factory=dict)
 
@@ -69,12 +72,17 @@ class NeuronSelector(Protocol):
         self,
         activations: np.ndarray,
         labels: np.ndarray,
+        *,
+        random_state: int | None = None,
     ) -> SelectionResult:
         """Select neurons from *activations* ``(N_train, D)``.
 
         Args:
             activations: Concatenated activation array (all layers).
             labels: ``(N_train,)`` binary labels.
+            random_state: Seed for reproducibility.  When called from the
+                experiment runner, this is set to the current CV seed so that
+                each fold gets an independently seeded selection.
 
         Returns:
             :class:`SelectionResult` with at least ``neuron_indices`` populated.

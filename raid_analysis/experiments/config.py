@@ -1,4 +1,4 @@
-"""Experiment configuration: dataclasses, YAML loading, defaults, validation."""
+"""Experiment configuration: dataclass, YAML loading, defaults, validation."""
 
 from __future__ import annotations
 
@@ -64,21 +64,6 @@ class ExperimentConfig:
             )
 
 
-@dataclass
-class SparseProbeSweepConfig(ExperimentConfig):
-    """Extended config for the sparse probe sweep (Experiment 1)."""
-
-    experiment: str = "sparse_probe"
-    selector: str = "sparse_probe"
-    evaluator: str = "probe_accuracy"
-
-    C_values: list[float] = field(
-        default_factory=lambda: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0]
-    )
-    solver: str = "saga"
-    max_iter: int = 5000
-
-
 # ---------------------------------------------------------------------------
 # YAML loading
 # ---------------------------------------------------------------------------
@@ -93,7 +78,7 @@ def load_config(path: str | Path) -> ExperimentConfig:
     with open(path) as f:
         raw = yaml.safe_load(f) or {}
 
-    return _dict_to_config(raw)
+    return _build(ExperimentConfig, raw)
 
 
 def save_config(config: ExperimentConfig, path: str | Path) -> None:
@@ -106,16 +91,6 @@ def save_config(config: ExperimentConfig, path: str | Path) -> None:
 
     with open(path, "w") as f:
         yaml.dump(data, f, default_flow_style=False, sort_keys=False)
-
-
-def _dict_to_config(raw: dict) -> ExperimentConfig:
-    """Build the right config subclass from a raw dict."""
-    experiment = raw.get("experiment", "sparse_probe")
-
-    if experiment == "sparse_probe":
-        return _build(SparseProbeSweepConfig, raw)
-
-    return _build(ExperimentConfig, raw)
 
 
 def _build(cls: type, raw: dict) -> ExperimentConfig:

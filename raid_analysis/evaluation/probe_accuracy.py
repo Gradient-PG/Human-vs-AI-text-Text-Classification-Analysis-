@@ -21,6 +21,9 @@ from .protocol import Evaluator
 class ProbeAccuracyEvaluator(Evaluator):
     """Evaluate L2 probe accuracy on the test fold."""
 
+    def __repr__(self) -> str:
+        return "ProbeAccuracyEvaluator()"
+
     def evaluate(
         self,
         test_activations: np.ndarray,

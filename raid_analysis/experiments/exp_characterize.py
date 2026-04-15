@@ -14,8 +14,8 @@ from typing import Any
 
 import numpy as np
 
-from ..experiments.cross_generator import core_neurons, jaccard_matrix
-from ..experiments.linear import lr_weight_vector, mean_difference_vector
+from ..utils.set_ops import core_neurons, jaccard_matrix
+from ..utils.linear import lr_weight_vector, mean_difference_vector
 from .config import ExperimentConfig, save_config
 
 
