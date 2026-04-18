@@ -10,7 +10,7 @@ selector_params:
   max_iter: 5000
 
 evaluator: probe_accuracy
-max_samples: 500
+max_samples: 2000
 stability_threshold: 0.8
 eval_probe_C: 1.0
 eval_probe_max_iter: 5000

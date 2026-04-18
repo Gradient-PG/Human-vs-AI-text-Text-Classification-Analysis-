@@ -39,7 +39,10 @@ class PatchingEvaluator(Evaluator):
 
     Args:
         k_values: List of neuron counts to patch.  If ``None``, defaults to
-            ``[1, 2, 5, 10, 20, 50, 100, 200]``.
+            ``[1, 2, 5, 10, 20, 50, 100, 200]``. Use ``-1`` as a sentinel to
+            patch the full selected set (``k = len(selection.ranking)`` per
+            fold). Duplicates and values exceeding the selected-set size are
+            dropped; valid values preserve their YAML order.
         pairing: Pairing strategy.  Currently only ``"same_domain"``.
         n_shuffles: Number of random pairings to average over.
         n_random_draws: Number of random neuron draws for the baseline
@@ -107,11 +110,18 @@ class PatchingEvaluator(Evaluator):
         base_acts = test_activations[valid_humans_arr]
         base_preds = eval_probe.predict(base_acts)
 
+        resolved_ks: list[int] = []
+        seen: set[int] = set()
+        for raw_k in self.k_values:
+            k = len(ranked_global) if raw_k == -1 else raw_k
+            if k <= 0 or k > len(ranked_global) or k in seen:
+                continue
+            seen.add(k)
+            resolved_ks.append(k)
+
         patching_sweep: list[dict[str, Any]] = []
 
-        for k in self.k_values:
-            if k > len(ranked_global):
-                continue
+        for k in resolved_ks:
 
             top_k_indices = ranked_global[:k]
 

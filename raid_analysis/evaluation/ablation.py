@@ -29,7 +29,10 @@ class AblationEvaluator(Evaluator):
     baseline is computed over multiple random draws for comparison.
 
     Args:
-        k_values: List of neuron counts to ablate.
+        k_values: List of neuron counts to ablate. Use ``-1`` as a sentinel
+            to ablate the full selected set (``k = len(selection.ranking)``
+            per fold). Duplicates and values exceeding the selected-set size
+            are dropped; valid values preserve their YAML order.
         method: Ablation method (``"mean"`` or ``"zero"``).
         n_random_seeds: Number of random draws for the random-k baseline.
     """
@@ -67,11 +70,18 @@ class AblationEvaluator(Evaluator):
         n_features = test_activations.shape[1]
         train_mean = selection.train_mean
 
+        resolved_ks: list[int] = []
+        seen: set[int] = set()
+        for raw_k in self.k_values:
+            k = len(ranked_global) if raw_k == -1 else raw_k
+            if k <= 0 or k > len(ranked_global) or k in seen:
+                continue
+            seen.add(k)
+            resolved_ks.append(k)
+
         ablation_sweep: list[dict[str, Any]] = []
 
-        for k in self.k_values:
-            if k > len(ranked_global):
-                continue
+        for k in resolved_ks:
 
             # Selected top-k ablation
             top_k_indices = ranked_global[:k]

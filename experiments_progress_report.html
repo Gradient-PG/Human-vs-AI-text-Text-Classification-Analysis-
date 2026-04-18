@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI vs Human Text Detection - Experiments Progress Report</title>
+<style>
+  :root {
+    --bg: #fafafa;
+    --fg: #1a1a1a;
+    --muted: #555;
+    --border: #d0d0d0;
+    --accent: #2b5278;
+    --accent-bg: #eaf2fb;
+    --warn-bg: #fff4e5;
+    --warn-border: #e69a2e;
+    --good-bg: #e8f5ea;
+    --good-border: #4c9a5a;
+    --bad-bg: #fdeaea;
+    --bad-border: #c04a4a;
+    --code-bg: #f2f2f2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--fg);
+    background: var(--bg);
+    margin: 0;
+    padding: 0;
+  }
+  .layout { display: flex; max-width: 1400px; margin: 0 auto; }
+  nav.toc {
+    flex: 0 0 260px;
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    max-height: 100vh;
+    overflow-y: auto;
+    padding: 20px 16px;
+    border-right: 1px solid var(--border);
+    font-size: 13.5px;
+    background: #f3f3f3;
+  }
+  nav.toc h3 {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+  }
+  nav.toc ul { list-style: none; padding-left: 0; margin: 0 0 16px 0; }
+  nav.toc ul ul { padding-left: 14px; margin-top: 2px; }
+  nav.toc a {
+    color: var(--fg);
+    text-decoration: none;
+    display: block;
+    padding: 2px 0;
+  }
+  nav.toc a:hover { color: var(--accent); }
+  main {
+    flex: 1;
+    padding: 24px 36px 64px 36px;
+    max-width: 1100px;
+  }
+  h1 { font-size: 28px; margin: 0 0 4px 0; }
+  h2 {
+    font-size: 22px;
+    margin-top: 36px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--accent);
+  }
+  h3 { font-size: 18px; margin-top: 26px; }
+  h4 { font-size: 15.5px; margin-top: 18px; color: var(--muted); }
+  p, ul, ol { margin: 8px 0 12px 0; }
+  ul, ol { padding-left: 22px; }
+  li { margin: 3px 0; }
+  code {
+    font-family: "JetBrains Mono", Consolas, Menlo, monospace;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 13px;
+  }
+  pre {
+    background: var(--code-bg);
+    padding: 12px 14px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  pre code { background: transparent; padding: 0; }
+
+  table {
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 14px;
+    min-width: 60%;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    text-align: left;
+  }
+  th { background: #eee; font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr:nth-child(even) td { background: #f7f7f7; }
+
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--accent-bg);
+    padding: 10px 14px;
+    margin: 12px 0;
+    border-radius: 0 4px 4px 0;
+  }
+  .callout.warn { border-color: var(--warn-border); background: var(--warn-bg); }
+  .callout.good { border-color: var(--good-border); background: var(--good-bg); }
+  .callout.bad  { border-color: var(--bad-border);  background: var(--bad-bg); }
+  .callout .label {
+    display: inline-block;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 8px;
+  }
+
+  .meta {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 18px;
+  }
+  .meta strong { color: var(--fg); }
+
+  .pill {
+    display: inline-block;
+    font-size: 11.5px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    background: #ddd;
+    color: #333;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .pill.prelim { background: #f5dca5; color: #6a4500; }
+  .pill.planned { background: #cfe0f5; color: #274772; }
+  .pill.done { background: #cfe7d0; color: #1f5a2e; }
+  .pill.drop { background: #e8c4c4; color: #6a2222; }
+
+  .footnote { font-size: 12.5px; color: var(--muted); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+
+  /* Pipeline diagram */
+  .diagram {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #ffffff;
+    padding: 18px 20px 22px 20px;
+    margin: 16px 0 20px 0;
+  }
+  .phase {
+    margin: 0 0 14px 0;
+    padding: 10px 12px 14px 12px;
+    border-radius: 5px;
+    border: 1px solid #dbe4ec;
+    background: #f7faff;
+  }
+  .phase + .phase { margin-top: 10px; }
+  .phase-header {
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .phase-header .phase-num {
+    background: var(--accent);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+  }
+  .phase-header .phase-sub {
+    color: var(--muted);
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 12px;
+  }
+  .nodes { display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .node {
+    border: 1px solid #b7c7d4;
+    background: #ffffff;
+    border-radius: 5px;
+    padding: 7px 12px;
+    font-size: 13px;
+    line-height: 1.4;
+    min-width: 70%;
+    max-width: 92%;
+    text-align: center;
+  }
+  .node.data   { background: #eef5ff; border-color: #9db8d3; }
+  .node.code   { background: #fff7e6; border-color: #e0b877; font-family: "JetBrains Mono", Consolas, Menlo, monospace; font-size: 12.5px; }
+  .node.output { background: #eaf5ec; border-color: #87b594; }
+  .node.split  { background: #f3e8f7; border-color: #b590c6; }
+  .node.warn   { background: #fdeaea; border-color: #c89292; }
+  .node small  { display: block; color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+  .node code   { background: transparent; padding: 0; font-size: 12.5px; }
+
+  .arrow {
+    width: 2px;
+    background: #8aa0b5;
+    height: 18px;
+    position: relative;
+  }
+  .arrow::after {
+    content: "";
+    position: absolute;
+    bottom: -1px; left: 50%;
+    transform: translateX(-50%);
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 7px solid #8aa0b5;
+  }
+  .arrow.labeled::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11.5px;
+    color: var(--muted);
+    white-space: nowrap;
+    font-family: "JetBrains Mono", Consolas, Menlo, monospace;
+  }
+
+  .fold-loop {
+    border: 2px dashed #8aa0b5;
+    border-radius: 6px;
+    padding: 10px 14px 14px 14px;
+    margin: 6px 0;
+    background: #fbfcfd;
+    position: relative;
+  }
+  .fold-loop::before {
+    content: "for each (seed, fold)";
+    position: absolute;
+    top: -10px; left: 14px;
+    background: #ffffff;
+    padding: 0 8px;
+    font-size: 11.5px;
+    color: var(--muted);
+    font-family: "JetBrains Mono", Consolas, Menlo, monospace;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin: 8px 0;
+  }
+  .two-col .col-header {
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: 6px;
+  }
+  .two-col .col { display: flex; flex-direction: column; align-items: center; }
+
+  .step-label {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    margin-right: 6px;
+  }
+  .step-caption {
+    font-size: 12px;
+    color: var(--muted);
+    margin: 4px 0 2px 0;
+    text-align: center;
+  }
+
+  .eval-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: 6px;
+    width: 100%;
+  }
+  .eval-card {
+    border: 1px solid #b7c7d4;
+    background: #ffffff;
+    border-radius: 4px;
+    padding: 6px 9px;
+    font-size: 12.5px;
+    line-height: 1.4;
+  }
+  .eval-card .t { font-weight: 600; color: var(--accent); font-size: 12px; display: block; margin-bottom: 2px; }
+  .eval-card.drop { background: #fdeaea; border-color: #c89292; }
+  .eval-card.drop .t { color: #8a3a3a; }
+
+  .tag {
+    display: inline-block;
+    font-size: 10.5px;
+    background: #dbe4ec;
+    color: #355068;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-left: 4px;
+    letter-spacing: 0.3px;
+  }
+
+  @media (max-width: 900px) {
+    .layout { flex-direction: column; }
+    nav.toc { position: static; max-height: none; width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+    .two-col { grid-template-columns: 1fr; }
+    .eval-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav class="toc">
+  <h3>Contents</h3>
+  <ul>
+    <li><a href="#scope">1. Scope &amp; Status</a></li>
+    <li><a href="#pipeline">2. Pipeline</a>
+      <ul>
+        <li><a href="#pipeline-overview">2.1 Overview</a></li>
+        <li><a href="#pipeline-data">2.2 Data &amp; Splits</a></li>
+        <li><a href="#pipeline-selection">2.3 Selection (L1)</a></li>
+        <li><a href="#pipeline-eval">2.4 Eval Probe (L2)</a></li>
+        <li><a href="#pipeline-runner">2.5 Runner Contract</a></li>
+        <li><a href="#pipeline-deps">2.6 Dependent Experiments</a></li>
+      </ul>
+    </li>
+    <li><a href="#results">3. Results</a>
+      <ul>
+        <li><a href="#res-sparse">3.1 Sparse Probe</a></li>
+        <li><a href="#res-ablation">3.2 Ablation</a></li>
+        <li><a href="#res-patching">3.3 Patching</a></li>
+        <li><a href="#res-confound">3.4 Confound</a></li>
+        <li><a href="#res-auc">3.5 AUC Comparison</a></li>
+        <li><a href="#res-crossgen">3.6 Cross-generator (GPT-4 vs Mistral)</a></li>
+      </ul>
+    </li>
+    <li><a href="#methodology">4. Methodological Findings</a>
+      <ul>
+        <li><a href="#meth-redundancy">4.1 Redundancy Story</a></li>
+        <li><a href="#meth-confound">4.2 Per-Neuron Confound Test</a></li>
+        <li><a href="#meth-selection">4.3 Selection vs Evaluation Separation</a></li>
+      </ul>
+    </li>
+    <li><a href="#plan">5. Plan Going Forward</a>
+      <ul>
+        <li><a href="#plan-tier1">5.1 New Experiments</a></li>
+        <li><a href="#plan-changes">5.2 Pipeline Changes</a></li>
+        <li><a href="#plan-tiered">5.3 Tiered Generator Strategy</a></li>
+        <li><a href="#plan-budget">5.4 Compute Budget Plan</a></li>
+      </ul>
+    </li>
+    <li><a href="#open">6. Open Decisions</a></li>
+    <li><a href="#appendix">Appendix: Per-fold Metrics</a></li>
+  </ul>
+</nav>
+
+<main>
+
+<h1>AI vs Human Text Detection &mdash; Experiments Progress Report</h1>
+<div class="meta">
+  <strong>Internal report</strong> for consultation with Miłosz and external research collaborators.<br>
+  Covers runs <code>20260418_011033</code> (GPT-4) and <code>20260418_011044</code> (Mistral).
+  Both: seed 42 only, 5 folds, 2,000 samples, <code>k = -1</code> (&ldquo;full selected set&rdquo;) included in ablation/patching sweeps.<br>
+  <em>Not a paper draft.</em> Decisions and framings here are working positions, not finalized claims.
+</div>
+
+<div class="callout warn">
+  <span class="label">Preliminary</span>
+  All results are from single-seed development runs on two generators (GPT-4, Mistral):
+  <strong>seed=42 only, n_samples=2000, n_folds=5</strong>. Per-fold variation on domain-level metrics is large, so domain-stratified numbers have low per-fold precision &mdash; averaged across 5 folds but not validated across seeds. The target final run uses 3 seeds &times; 5 folds, ~5,000 samples, expanded C grid, and adds cross-domain generalization + restricted probe. Quantitative numbers here may shift; qualitative findings (accuracy ranking, ablation insensitivity, monotone patching) are expected to be stable.
+</div>
+
+<!-- ================================================================= -->
+<h2 id="scope">1. Scope &amp; Status</h2>
+
+<p><strong>Research goal.</strong> Identify internal mechanisms in a language-model representation that drive AI-vs-human text detection, with a secondary interest in whether a small selected neuron set is sufficient for accurate classification (&ldquo;smaller model&rdquo; claim).</p>
+
+<p><strong>This report covers.</strong></p>
+<ul>
+  <li>What the pipeline actually does &mdash; exact description of each step, grounded in the current code.</li>
+  <li>Results from the preliminary GPT-4 run.</li>
+  <li>Methodological issues surfaced during analysis.</li>
+  <li>Concrete plan for the final run within our ~3-day compute budget.</li>
+</ul>
+
+<p><strong>Experiments in catalog.</strong></p>
+<table>
+  <thead><tr><th>Experiment</th><th>Status</th><th>Role</th></tr></thead>
+  <tbody>
+    <tr><td><code>sparse_probe</code></td><td><span class="pill done">run</span></td><td>Primary: L1 feature selection + L2 accuracy.</td></tr>
+    <tr><td><code>ablation</code></td><td><span class="pill done">run</span></td><td>Dependent: necessity test on selected neurons.</td></tr>
+    <tr><td><code>patching</code></td><td><span class="pill done">run</span></td><td>Dependent: sufficiency test on selected neurons.</td></tr>
+    <tr><td><code>confound</code></td><td><span class="pill drop">to remove</span></td><td>Per-neuron domain/length statistics (decided to drop; see <a href="#meth-confound">&sect;4.2</a>).</td></tr>
+    <tr><td><code>auc_comparison</code></td><td><span class="pill done">run</span></td><td>Compare L1 vs univariate AUC selection. <strong>Promoted</strong> after Mistral run showed AUC selector collapses (see <a href="#res-auc">&sect;3.5</a>).</td></tr>
+    <tr><td><code>characterize</code></td><td><span class="pill planned">planned</span></td><td>Multi-generator analysis of shared stable neurons. Not yet executed.</td></tr>
+    <tr><td><code>cross_domain</code> (new)</td><td><span class="pill planned">planned</span></td><td>Leave-one-domain-out generalization. See <a href="#plan-tier1">&sect;5.1</a>.</td></tr>
+    <tr><td><code>restricted_probe</code> (new)</td><td><span class="pill planned">planned</span></td><td>L2 trained only on selected neurons (&ldquo;smaller model&rdquo; test). See <a href="#plan-tier1">&sect;5.1</a>.</td></tr>
+    <tr><td><code>domain_probe</code> (new, diagnostic)</td><td><span class="pill planned">planned</span></td><td>Predict domain from selected neurons as confound sanity check.</td></tr>
+  </tbody>
+</table>
+
+<!-- ================================================================= -->
+<h2 id="pipeline">2. Pipeline</h2>
+
+<h3 id="pipeline-overview">2.1 Overview</h3>
+
+<p>End-to-end schematic of the current pipeline (mirrors <code>ARCHITECTURE.md</code> style). Planned additions (cross-domain splitter, restricted-feature probe, domain probe) are not yet wired in and are marked explicitly in &sect;5.</p>
+
+<div class="diagram" role="img" aria-label="End-to-end pipeline diagram">
+
+  <!-- ========== PHASE 0 ========== -->
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num">Phase 0</span>
+      <span>Data preparation</span>
+      <span class="phase-sub">done once, persisted on disk; immutable for given (BERT, RAID, n, seed)</span>
+    </div>
+    <div class="nodes">
+      <div class="node data">HuggingFace RAID dataset <small>liamdugan/raid &mdash; 11 generators &times; 6 domains</small></div>
+      <div class="arrow labeled" data-label="download_raid.py"></div>
+      <div class="node data">data/raw/raid/ <small>per-(domain, model) CSVs</small></div>
+      <div class="arrow labeled" data-label="load_raid() + DatasetTokenizer (BERT tokenizer)"></div>
+      <div class="node data">data/processed/raid_{generator}/ <small>tokenized DatasetDict</small></div>
+      <div class="arrow labeled" data-label="ActivationExtractor (frozen BERT, CLS, 12 layers)"></div>
+      <div class="node output">
+        results/activations_raid_{generator}/
+        <small>layer_{1..12}_activations.npy &nbsp;|&nbsp; labels.npy &nbsp;|&nbsp; sample_metadata.npz (text_lengths, domain_ids, domain_names) &nbsp;|&nbsp; metadata.json</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== PHASE 1 ========== -->
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num">Phase 1</span>
+      <span>Experiment setup</span>
+      <span class="phase-sub">per run</span>
+    </div>
+    <div class="nodes">
+      <div class="node data">Experiment YAML <small>config/experiments/*.yaml</small></div>
+      <div class="arrow labeled" data-label="load_experiment_data(): concat layers &rarr; (N, 9216); _balanced_subsample; SampleMetadata"></div>
+      <div class="node code">activations (N, 9216) &nbsp;|&nbsp; labels (N,) &nbsp;|&nbsp; metadata</div>
+      <div class="arrow labeled" data-label="generate_multi_seed_splits(): StratifiedKFold on (label &times; domain)"></div>
+      <div class="node split">splits_by_seed = &#123;seed: [CVSplit &times; n_folds]&#125; &rarr; splits.json</div>
+    </div>
+    <p class="step-caption" style="margin-top:10px;">
+      <span class="tag">dependent experiments</span>
+      ablation / patching / confound declare <code>source_experiment: sparse_probe</code>;
+      <code>load_source_selections</code> reads <code>SelectionResult</code> + <code>train_mean</code> from the sparse_probe run dir, hands them in as <code>precomputed_selections</code> (Step 1 skipped).
+    </p>
+  </div>
+
+  <!-- ========== PHASE 2 ========== -->
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num">Phase 2</span>
+      <span>Experiment loop</span>
+      <span class="phase-sub">method-agnostic; train/test separation enforced by runner.py</span>
+    </div>
+
+    <div class="fold-loop">
+      <div class="two-col">
+        <div class="col">
+          <div class="col-header">Train fold</div>
+          <div class="node code">acts[train_idx] &nbsp;|&nbsp; labels[train_idx]</div>
+        </div>
+        <div class="col">
+          <div class="col-header">Test fold</div>
+          <div class="node code">acts[test_idx] &nbsp;|&nbsp; labels[test_idx] &nbsp;|&nbsp; meta[test_idx]</div>
+        </div>
+      </div>
+
+      <div class="nodes" style="margin-top:6px;">
+        <p class="step-caption"><span class="step-label">Step 1</span>Selection &mdash; train fold only (or precomputed)</p>
+        <div class="arrow"></div>
+        <div class="node">
+          <strong>SparseProbeSelector</strong> (primary)
+          <small>inner StratifiedShuffleSplit &middot; C sweep + knee detection &middot; L1 LogReg (saga) on 9216 features</small>
+          <small style="margin-top:4px;"><em>Dependent experiments:</em> <code>load_source_selections(...)</code> &mdash; reuse exact same neurons</small>
+        </div>
+        <div class="arrow"></div>
+        <div class="node data">
+          <strong>SelectionResult</strong>
+          <small><code>neuron_indices</code> &middot; <code>ranking</code> (by |coef|) &middot; <code>probe</code>+<code>scaler</code> (L1 diagnostic) &middot; <code>train_mean</code> (for mean-ablation) &middot; <code>metadata</code> (C, sweep, knee)</small>
+        </div>
+
+        <p class="step-caption" style="margin-top:12px;"><span class="step-label">Step 2</span>Evaluation probe &mdash; train fold only, independent of selector</p>
+        <div class="arrow"></div>
+        <div class="node">
+          <strong>train_eval_probe()</strong>
+          <small>StandardScaler.fit(train) &middot; L2 LogReg (lbfgs) on <em>all</em> 9216 features &rarr; <code>eval_probe</code></small>
+        </div>
+
+        <p class="step-caption" style="margin-top:12px;"><span class="step-label">Step 3</span>Evaluation &mdash; test fold + frozen selection + frozen eval_probe</p>
+        <div class="arrow"></div>
+        <div class="node code" style="text-align:left;">
+          evaluator.evaluate(test_acts, test_labels, test_meta, selection, eval_probe)
+        </div>
+
+        <div class="eval-grid">
+          <div class="eval-card">
+            <span class="t">probe_accuracy</span>
+            score <code>eval_probe</code> on test &rarr; accuracy, AUC, F1
+          </div>
+          <div class="eval-card">
+            <span class="t">ablation</span>
+            for each k in <code>k_values</code>: replace top-k columns with <code>selection.train_mean</code>; score eval_probe; random-k baseline &times; <code>n_random_seeds</code>
+          </div>
+          <div class="eval-card">
+            <span class="t">patching</span>
+            valid humans (same-domain AI exists); for each of <code>n_shuffles</code>: domain-permuted AI donor &rarr; copy <code>donor[:,top_k]</code> into <code>base[:,top_k]</code>; flip = <code>eval_probe.predict</code> == 1; random-k baseline &times; <code>n_random_draws</code>
+          </div>
+          <div class="eval-card drop">
+            <span class="t">confound <span class="tag" style="background:#e8c4c4;color:#6a2222;">to remove</span></span>
+            per-neuron Spearman(act, text_length), ANOVA(act, domain_id) on <em>pooled</em> test fold
+          </div>
+        </div>
+
+        <div class="arrow" style="margin-top:10px;"></div>
+        <div class="node output">
+          <strong>FoldResult</strong>
+          <small>fold_idx &middot; seed &middot; neuron_indices &middot; metrics (evaluator-specific)</small>
+        </div>
+
+        <p class="step-caption" style="margin-top:8px;"><em>&#8626; repeat for all (seed, fold)</em></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== PHASE 3 ========== -->
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num">Phase 3</span>
+      <span>Aggregation &amp; persistence</span>
+    </div>
+    <div class="nodes">
+      <div class="node code">all FoldResults</div>
+      <div class="arrow labeled" data-label="_aggregate_metrics (mean/std/min/max); _compute_neuron_stability (primary only)"></div>
+      <div class="node output" style="text-align:left;">
+        <strong>results/experiments/&#123;run_id&#125;/&#123;experiment&#125;/&#123;generator&#125;/</strong>
+        <small style="text-align:left;">
+          <code>config.yaml</code> &mdash; exact config used<br>
+          <code>splits.json</code> &mdash; fold indices (reused by dependents)<br>
+          <code>seed_&#123;s&#125;/fold_&#123;k&#125;/</code>
+          &nbsp;&nbsp;<code>selection.json</code> (if primary) &middot;
+          <code>train_mean.npy</code> &middot;
+          <code>probe_weights.npy</code> (L1, if primary)<br>
+          &nbsp;&nbsp;<code>l2_probe_weights.npy</code> &middot;
+          <code>l2_probe_intercept.npy</code> &middot;
+          <code>l2_scaler_mean.npy</code> &middot;
+          <code>l2_scaler_scale.npy</code><br>
+          &nbsp;&nbsp;<code>eval_metrics.json</code> &mdash; per-fold metrics + nested sweeps<br>
+          <code>aggregate.json</code> &mdash; cross-fold scalar summary + neuron stability (if applicable)
+        </small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p>The pipeline is a method-agnostic CV fold loop driven by <code>raid_analysis/experiments/runner.py</code>. Every experiment plugs into the same loop by supplying a <em>selector</em> (how neurons are chosen) and an <em>evaluator</em> (how the chosen set is scored). The primary experiment (<code>sparse_probe</code>) performs selection; dependent experiments (<code>ablation</code>, <code>patching</code>, <code>confound</code>) reuse its per-fold selections without re-doing selection, via <code>source_loader.load_source_selections</code>.</p>
+
+<p>Per fold the runner strictly enforces a three-step train/test separation:</p>
+<ol>
+  <li><strong>Step 1 &mdash; Selection</strong>: either <code>selector.select(train_acts, train_labels)</code> or a precomputed <code>SelectionResult</code> is loaded. Selection never sees test data.</li>
+  <li><strong>Step 2 &mdash; Evaluation probe</strong>: a fresh L2 logistic regression (<code>train_eval_probe</code>) is fit on the full train fold using <em>all features</em>. The eval probe is the fixed measurement instrument; it is not retrained per evaluator.</li>
+  <li><strong>Step 3 &mdash; Evaluation</strong>: <code>evaluator.evaluate(test_acts, test_labels, test_meta, selection, eval_probe)</code>. Evaluators see test data and the frozen artifacts from steps 1&ndash;2.</li>
+</ol>
+
+<h3 id="pipeline-data">2.2 Data &amp; Splits</h3>
+<ul>
+  <li><strong>Activations</strong>: concatenation of all transformer layers, loaded per-generator from <code>results/activations_raid_&lt;slug&gt;/</code>. Global feature axis has <code>D = n_layers &times; hidden_dim</code>. For GPT-2 this is <code>12 &times; 768 = 9,216</code>.</li>
+  <li><strong>Balanced subsampling</strong>: <code>_balanced_subsample</code> in <code>data/loading.py</code> draws <code>max_samples / 2</code> per class with seed 42. Current run uses <code>max_samples = 2000</code>; target final run: ~5000.</li>
+  <li><strong>Splits</strong>: <code>StratifiedKFold</code> with a <strong>label &times; domain</strong> stratification key. Each fold has balanced class and domain representation, which is required for same-domain patching pairs and domain-level confound diagnostics.</li>
+  <li><strong>Metadata</strong> (<code>SampleMetadata</code>): <code>text_lengths</code>, <code>domain_ids</code>, <code>domain_names</code>. There is no explicit &ldquo;generator&rdquo; field &mdash; generator identity is implicit in which activation directory is loaded.</li>
+  <li><strong>Splits are persisted</strong> as <code>splits.json</code> per experiment and reused across dependent experiments for the same run_id.</li>
+</ul>
+
+<h3 id="pipeline-selection">2.3 Selection: SparseProbeSelector (L1)</h3>
+<p>Implementation: <code>raid_analysis/selection/sparse_probe.py</code>.</p>
+
+<h4>C sweep and knee detection</h4>
+<ol>
+  <li>Split the outer train fold into inner train (80%) / inner val (20%) via <code>StratifiedShuffleSplit</code>.</li>
+  <li>For each <code>C &isin; C_values</code> (default <code>[0.001, 0.01, 0.1, 1.0, 10.0]</code>), fit L1 logistic regression (<code>penalty='l1'</code>, <code>solver='saga'</code>) on inner train; record <code>(C, val_accuracy, n_nonzero)</code>.</li>
+  <li>Pick the <strong>knee</strong> in the <code>(n_nonzero, val_accuracy)</code> curve using the maximum-perpendicular-distance heuristic: draw a chord from the sparsest to densest point, pick the point farthest from the chord. Returns the <code>C_values</code> index.</li>
+  <li>Refit L1 on the <em>full</em> outer train fold at that knee <code>C</code>. Report selected neurons and a ranking by absolute coefficient magnitude.</li>
+</ol>
+
+<h4>SelectionResult payload (persisted per fold)</h4>
+<ul>
+  <li><code>neuron_indices</code>: set of <code>(layer, neuron)</code> tuples with non-zero coefficients.</li>
+  <li><code>ranking</code>: <code>(layer, neuron)</code> ordered by descending <code>|coef|</code> (used as top-k order in ablation and patching).</li>
+  <li><code>probe</code>, <code>scaler</code>: the fitted L1 probe and its <code>StandardScaler</code> (used only for the diagnostic <code>selector_test_accuracy</code>).</li>
+  <li><code>train_mean</code>: per-dimension training-fold mean (used by mean ablation to avoid test leakage).</li>
+  <li><code>metadata</code>: <code>C</code>, <code>solver</code>, <code>n_nonzero</code>, <code>n_features</code>, <code>train_accuracy</code>, <code>sweep_curve</code>, <code>knee_idx</code>, <code>knee_C</code>, <code>C_values</code>.</li>
+</ul>
+
+<h3 id="pipeline-eval">2.4 Evaluation Probe (L2)</h3>
+<p>Implementation: <code>raid_analysis/evaluation/probe_factory.py</code>.</p>
+<ul>
+  <li><code>StandardScaler</code> fit on the <em>full</em> train fold activations.</li>
+  <li><code>LogisticRegression(C=eval_probe_C, solver='lbfgs', ...)</code> &mdash; L2 default, all D features.</li>
+  <li>Serialized per fold as <code>l2_probe_weights.npy</code>, <code>l2_probe_intercept.npy</code>, <code>l2_scaler_mean.npy</code>, <code>l2_scaler_scale.npy</code>.</li>
+  <li><strong>The L2 probe is independent of what the selector chose.</strong> This is the critical design fact that shapes ablation interpretation (see <a href="#meth-redundancy">&sect;4.1</a>).</li>
+</ul>
+
+<h3 id="pipeline-runner">2.5 Runner Contract</h3>
+<pre><code>for (seed, fold) in splits_by_seed:
+    train_acts  = activations[fold.train_idx]
+    train_lbl   = labels[fold.train_idx]
+    test_acts   = activations[fold.test_idx]
+    test_lbl    = labels[fold.test_idx]
+    test_meta   = metadata[fold.test_idx]
+
+    selection = selector.select(train_acts, train_lbl, random_state=seed)
+                 # OR: precomputed_selections[(seed, fold_idx)]
+
+    eval_probe = train_eval_probe(train_acts, train_lbl, C=..., ...)  # L2, all features
+
+    metrics = evaluator.evaluate(test_acts, test_lbl, test_meta, selection, eval_probe)
+    # save selection (if not precomputed), eval_probe, metrics</code></pre>
+<p>Aggregation across folds is done in <code>_aggregate_metrics</code>: mean/std/min/max over scalar metrics. Nested metrics (e.g. <code>ablation_sweep</code> lists) are <em>not</em> averaged into <code>aggregate.json</code>; they live per-fold in <code>eval_metrics.json</code>.</p>
+
+<h3 id="pipeline-deps">2.6 Dependent Experiments</h3>
+<p>Ablation, patching, and confound all set <code>source_experiment: sparse_probe</code> in YAML. The runner:</p>
+<ol>
+  <li>Resolves <code>source_dir</code> to <code>results/experiments/&lt;run_id&gt;/sparse_probe/&lt;generator&gt;</code>.</li>
+  <li>Loads <code>SelectionResult</code> per fold via <code>load_source_selections</code> (reads <code>selection.json</code> + <code>train_mean.npy</code>).</li>
+  <li>Passes these as <code>precomputed_selections</code>; Step 1 is skipped. Step 2 (L2 probe) is still fit fresh from the current config.</li>
+</ol>
+<p>Reuse ensures ablation/patching/confound operate on <em>exactly</em> the same neuron sets, rankings, and splits as the primary sparse_probe run.</p>
+
+<h4>Ablation evaluator (<code>evaluation/ablation.py</code>)</h4>
+<ul>
+  <li>For each <code>k</code> in <code>k_values</code>, take top-k global indices from <code>selection.ranking</code>.</li>
+  <li>Mean-ablate those columns in test activations: replace with <code>selection.train_mean[idx]</code>. Score L2 eval probe.</li>
+  <li>Random-k baseline: draw <code>n_random_seeds</code> random k-subsets (seed 42 &mdash; this is deterministic across folds; see <a href="#meth-selection">&sect;4.3</a>).</li>
+  <li>Report per-k: <code>selected_acc</code>, <code>selected_drop</code>, <code>random_acc_mean/std</code>, <code>random_drop_mean/std</code>.</li>
+</ul>
+
+<h4>Patching evaluator (<code>evaluation/patching.py</code>)</h4>
+<ul>
+  <li>Restrict to human test samples (<code>label==0</code>) that have at least one same-domain AI sample in the test fold (<code>valid_humans</code>).</li>
+  <li>Compute <code>base_preds = eval_probe.predict(base_acts)</code> once.</li>
+  <li>For each of <code>n_shuffles</code> random donor assignments (permuted within domain), copy <code>donor_activations[:, top_k_indices]</code> into <code>base_acts[:, top_k_indices]</code>. Score <code>eval_probe.predict(patched)</code>. A &ldquo;flip&rdquo; is human (<code>0</code>) &rarr; AI (<code>1</code>).</li>
+  <li>Flip rate per shuffle = flips / |valid_humans|. Mean/std over shuffles.</li>
+  <li>Random-k baseline: <code>n_random_draws</code> random neuron subsets; for each, run <code>n_shuffles</code> pairings and report mean per-draw, then mean/std across draws.</li>
+  <li>Per-domain breakdown at the largest <code>k</code> used.</li>
+</ul>
+
+<h4>Confound evaluator (<code>evaluation/confound.py</code>, to be removed)</h4>
+<ul>
+  <li>For each selected neuron, on the pooled test fold: Spearman(<code>act</code>, <code>text_length</code>) and one-way ANOVA(<code>act</code>, <code>domain_id</code>).</li>
+  <li>&ldquo;Flagged&rdquo; if p &lt; 0.05 under either test. No multiple-comparison correction. <strong>Tests are on pooled human+AI samples</strong>, which conflates class signal with domain association (see <a href="#meth-confound">&sect;4.2</a>).</li>
+</ul>
+
+<!-- ================================================================= -->
+<h2 id="results">3. Results</h2>
+
+<div class="meta">
+  Runs: <strong><code>20260418_011033</code></strong> (gpt4) and <strong><code>20260418_011044</code></strong> (mistral). Seed: <strong>42</strong> only. Folds: <strong>5</strong>. Samples per run: <strong>2000</strong> (balanced). Features: <strong>D = 9,216</strong>. Test size per fold: 400. Extended k-sweep enabled (<code>k = -1</code> sentinel &rarr; full per-fold selected set).
+  <br><br>
+  <em>&sect;3.1&ndash;3.5 use GPT-4 as the main reference for continuity with the previous report (run <code>20260416_003851</code>, identical config). Mistral is introduced inline in the ablation/patching tables and discussed as its own subsection in &sect;3.6.</em>
+</div>
+
+<h3 id="res-sparse">3.1 Sparse Probe (primary)</h3>
+
+<h4>GPT-4 (run <code>20260418_011033</code>)</h4>
+<table>
+  <thead><tr><th>Metric</th><th class="num">Mean</th><th class="num">Std</th><th class="num">Min</th><th class="num">Max</th></tr></thead>
+  <tbody>
+    <tr><td>Accuracy (L2 eval probe)</td><td class="num">0.9820</td><td class="num">0.0064</td><td class="num">0.9725</td><td class="num">0.9900</td></tr>
+    <tr><td>AUC-ROC</td><td class="num">0.9983</td><td class="num">0.0012</td><td class="num">0.9961</td><td class="num">0.9994</td></tr>
+    <tr><td>F1</td><td class="num">0.9819</td><td class="num">0.0065</td><td class="num">0.9722</td><td class="num">0.9899</td></tr>
+    <tr><td>Selector (L1) test accuracy</td><td class="num">0.9805</td><td class="num">0.0066</td><td class="num">0.9700</td><td class="num">0.9875</td></tr>
+    <tr><td>n_selected per fold</td><td class="num">166.6</td><td class="num">6.4</td><td class="num">155</td><td class="num">173</td></tr>
+  </tbody>
+</table>
+
+<h4>Mistral (run <code>20260418_011044</code>)</h4>
+<table>
+  <thead><tr><th>Metric</th><th class="num">Mean</th><th class="num">Std</th><th class="num">Min</th><th class="num">Max</th></tr></thead>
+  <tbody>
+    <tr><td>Accuracy (L2 eval probe)</td><td class="num">0.9130</td><td class="num">0.0154</td><td class="num">0.8925</td><td class="num">0.9375</td></tr>
+    <tr><td>AUC-ROC</td><td class="num">0.9703</td><td class="num">0.0054</td><td class="num">0.9639</td><td class="num">0.9799</td></tr>
+    <tr><td>F1</td><td class="num">0.9103</td><td class="num">0.0166</td><td class="num">0.8877</td><td class="num">0.9361</td></tr>
+    <tr><td>Selector (L1) test accuracy</td><td class="num">0.8985</td><td class="num">0.0193</td><td class="num">0.8775</td><td class="num">0.9300</td></tr>
+    <tr><td>n_selected per fold</td><td class="num">401.2</td><td class="num">21.0</td><td class="num">366</td><td class="num">431</td></tr>
+  </tbody>
+</table>
+
+<p>The L1 sweep consistently lands at <code>C = 0.1</code> (knee index 2 of 5). Representative sweep curve (fold 0):</p>
+<table>
+  <thead><tr><th class="num">C</th><th class="num">val_accuracy</th><th class="num">n_nonzero</th></tr></thead>
+  <tbody>
+    <tr><td class="num">0.001</td><td class="num">0.500</td><td class="num">0</td></tr>
+    <tr><td class="num">0.01</td><td class="num">0.972</td><td class="num">38</td></tr>
+    <tr><td class="num"><strong>0.1</strong></td><td class="num"><strong>0.984</strong></td><td class="num"><strong>174</strong></td></tr>
+    <tr><td class="num">1.0</td><td class="num">0.988</td><td class="num">857</td></tr>
+    <tr><td class="num">10.0</td><td class="num">0.988</td><td class="num">6970</td></tr>
+  </tbody>
+</table>
+
+<h4>Stable neurons (&ge; 80% of folds)</h4>
+<p>109 neurons across 12 layers qualify as stable. Distribution skews toward later layers &mdash; layer 12 alone contributes 29 stable neurons, 20 of which appear in every fold.</p>
+
+<table>
+  <thead><tr><th>Layer group</th><th class="num">Stable neurons</th><th class="num">100% (all folds)</th></tr></thead>
+  <tbody>
+    <tr><td>Layers 1&ndash;4</td><td class="num">23</td><td class="num">10</td></tr>
+    <tr><td>Layers 5&ndash;8</td><td class="num">26</td><td class="num">14</td></tr>
+    <tr><td>Layers 9&ndash;10</td><td class="num">18</td><td class="num">9</td></tr>
+    <tr><td>Layer 11</td><td class="num">13</td><td class="num">8</td></tr>
+    <tr><td>Layer 12</td><td class="num">29</td><td class="num">20</td></tr>
+    <tr><th>Total</th><th class="num">109</th><th class="num">61</th></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <span class="label">Takeaway</span>
+  <strong>Very strong classification performance from a sparse set on GPT-4</strong>: ~167 / 9,216 features (~1.8%) achieve 98.2% accuracy and 99.8% AUC. Stability is high, concentrated in final layers. <strong>Mistral is meaningfully harder</strong>: ~401 / 9,216 features (~4.4%) only reach 91.3% accuracy / 97.0% AUC. Both support the hypothesis that a small subset of features carries the signal &mdash; but the subset size and achievable accuracy depend strongly on the generator (see &sect;3.6).
+</div>
+
+<h3 id="res-ablation">3.2 Ablation <span class="pill prelim">ceiling confirmed</span></h3>
+
+<p>Mean-ablation of top-k selected neurons vs random-k. Numbers below are <strong>5-fold means</strong>. Baseline accuracy is the L2 eval probe scored on unmodified test activations (GPT-4 &asymp; 0.982; Mistral &asymp; 0.913). <code>k = n_selected</code> is the full per-fold selected set (GPT-4: 155&ndash;173 neurons; Mistral: 366&ndash;431 neurons).</p>
+
+<h4>GPT-4 (run <code>20260418_011033</code>)</h4>
+<table>
+  <thead><tr><th class="num">k</th><th class="num">Selected drop (mean)</th><th class="num">Selected drop (fold min)</th><th class="num">Selected drop (fold max)</th><th class="num">Random drop (mean)</th></tr></thead>
+  <tbody>
+    <tr><td class="num">10</td><td class="num">+0.0000</td><td class="num">&minus;0.0025</td><td class="num">+0.0025</td><td class="num">&minus;0.0004</td></tr>
+    <tr><td class="num">20</td><td class="num">+0.0000</td><td class="num">&minus;0.0025</td><td class="num">+0.0025</td><td class="num">&minus;0.0003</td></tr>
+    <tr><td class="num">50</td><td class="num">&minus;0.0005</td><td class="num">&minus;0.0050</td><td class="num">+0.0025</td><td class="num">&minus;0.0006</td></tr>
+    <tr><td class="num">100</td><td class="num">&minus;0.0005</td><td class="num">&minus;0.0050</td><td class="num">+0.0050</td><td class="num">&minus;0.0009</td></tr>
+    <tr><th class="num">n_selected (~167)</th><th class="num">+0.0005</th><th class="num">&minus;0.0025</th><th class="num">+0.0075</th><th class="num">&minus;0.0010</th></tr>
+  </tbody>
+</table>
+
+<h4>Mistral (run <code>20260418_011044</code>)</h4>
+<table>
+  <thead><tr><th class="num">k</th><th class="num">Selected drop (mean)</th><th class="num">Selected drop (fold min)</th><th class="num">Selected drop (fold max)</th><th class="num">Random drop (mean)</th></tr></thead>
+  <tbody>
+    <tr><td class="num">10</td><td class="num">+0.0005</td><td class="num">&minus;0.0025</td><td class="num">+0.0075</td><td class="num">+0.0010</td></tr>
+    <tr><td class="num">20</td><td class="num">+0.0020</td><td class="num">&minus;0.0025</td><td class="num">+0.0100</td><td class="num">+0.0009</td></tr>
+    <tr><td class="num">50</td><td class="num">+0.0035</td><td class="num">+0.0000</td><td class="num">+0.0100</td><td class="num">+0.0017</td></tr>
+    <tr><td class="num">100</td><td class="num">+0.0050</td><td class="num">&minus;0.0025</td><td class="num">+0.0125</td><td class="num">+0.0020</td></tr>
+    <tr><td class="num">200</td><td class="num">+0.0125</td><td class="num">+0.0025</td><td class="num">+0.0200</td><td class="num">+0.0023</td></tr>
+    <tr><th class="num">n_selected (~401)</th><th class="num">+0.0135</th><th class="num">+0.0025</th><th class="num">+0.0225</th><th class="num">+0.0034</th></tr>
+  </tbody>
+</table>
+
+<div class="callout good">
+  <span class="label">Ceiling finding</span>
+  Even ablating the <em>entire</em> selected set leaves the L2 eval probe essentially unharmed. GPT-4: average drop <strong>+0.0005</strong> (0.05 percentage points); Mistral: <strong>+0.0135</strong> (1.35 percentage points, slightly detectable but trivial relative to the 91% baseline). The k-sweep stopping at 100 in the previous run left this open; now the ceiling is measured, not extrapolated.
+</div>
+
+<div class="callout warn">
+  <span class="label">Interpretation</span>
+  <strong>This is not a bug.</strong> The L2 eval probe uses all 9,216 features; removing even the full L1-selected set (167 for GPT-4, 401 for Mistral) still leaves thousands of correlated features intact. Mean ablation also keeps values in-distribution, which is the right methodological choice but limits disruptive power. The finding is:
+  <em>the AI-vs-human signal is distributed redundantly across many features; no subset recoverable by L1 is individually necessary for the global probe.</em> Combined with the clear patching sufficiency result (&sect;3.3), this is a coherent redundancy story &mdash; and it now holds on both generators.
+</div>
+
+<h3 id="res-patching">3.3 Patching <span class="pill done">monotone, strong at full selected set</span></h3>
+
+<p>Same-domain patching of AI donor activations into human base samples, with <code>n_shuffles=20</code> and <code>n_random_draws=20</code>. Numbers below are <strong>5-fold means</strong>. <code>k = n_selected</code> row is the full per-fold selected set (GPT-4: 155&ndash;173; Mistral: 366&ndash;431).</p>
+
+<h4>GPT-4 (run <code>20260418_011033</code>)</h4>
+<table>
+  <thead><tr><th class="num">k</th><th class="num">Selected flip rate</th><th class="num">Random flip rate</th><th class="num">Ratio</th></tr></thead>
+  <tbody>
+    <tr><td class="num">10</td><td class="num">0.0007</td><td class="num">0.0000</td><td class="num">&mdash;</td></tr>
+    <tr><td class="num">20</td><td class="num">0.0036</td><td class="num">0.0000</td><td class="num">&mdash;</td></tr>
+    <tr><td class="num">50</td><td class="num">0.0087</td><td class="num">0.0004</td><td class="num">~21&times;</td></tr>
+    <tr><td class="num">100</td><td class="num">0.0206</td><td class="num">0.0010</td><td class="num">~20&times;</td></tr>
+    <tr><th class="num">n_selected (~167)</th><th class="num">0.0359</th><th class="num">0.0020</th><th class="num">~18&times;</th></tr>
+  </tbody>
+</table>
+
+<h4>Mistral (run <code>20260418_011044</code>)</h4>
+<table>
+  <thead><tr><th class="num">k</th><th class="num">Selected flip rate</th><th class="num">Random flip rate</th><th class="num">Ratio</th></tr></thead>
+  <tbody>
+    <tr><td class="num">10</td><td class="num">0.0087</td><td class="num">0.0023</td><td class="num">~3.8&times;</td></tr>
+    <tr><td class="num">20</td><td class="num">0.0138</td><td class="num">0.0036</td><td class="num">~3.8&times;</td></tr>
+    <tr><td class="num">50</td><td class="num">0.0291</td><td class="num">0.0062</td><td class="num">~4.7&times;</td></tr>
+    <tr><td class="num">100</td><td class="num">0.0533</td><td class="num">0.0088</td><td class="num">~6.0&times;</td></tr>
+    <tr><td class="num">200</td><td class="num">0.1136</td><td class="num">0.0126</td><td class="num">~9.0&times;</td></tr>
+    <tr><th class="num">n_selected (~401)</th><th class="num">0.2573</th><th class="num">0.0216</th><th class="num">~12&times;</th></tr>
+  </tbody>
+</table>
+
+<h4>Per-domain flip rate at <code>n_selected</code> (5-fold mean)</h4>
+<table>
+  <thead>
+    <tr>
+      <th>Domain</th>
+      <th class="num">GPT-4 mean</th>
+      <th class="num">GPT-4 fold std</th>
+      <th class="num">Mistral mean</th>
+      <th class="num">Mistral fold std</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>abstracts</td><td class="num">0.047</td><td class="num">0.035</td><td class="num">0.264</td><td class="num">0.030</td></tr>
+    <tr><td>books</td><td class="num">0.020</td><td class="num">0.015</td><td class="num">0.226</td><td class="num">0.037</td></tr>
+    <tr><td>news</td><td class="num">0.055</td><td class="num">0.065</td><td class="num">0.248</td><td class="num">0.081</td></tr>
+    <tr><td>reddit</td><td class="num">0.030</td><td class="num">0.039</td><td class="num">0.297</td><td class="num">0.088</td></tr>
+    <tr><td>reviews</td><td class="num">0.035</td><td class="num">0.039</td><td class="num">0.283</td><td class="num">0.052</td></tr>
+    <tr><td>wiki</td><td class="num">0.031</td><td class="num">0.024</td><td class="num">0.234</td><td class="num">0.123</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <span class="label">Per-domain caveat</span>
+  Domain-level flip rates have <em>large fold-to-fold variance</em> on this single-seed run (e.g. GPT-4 news spans 0.4% to 16.3% across the 5 folds; Mistral wiki spans 12% to 37%). With ~30&ndash;40 same-domain human bases per fold, per-domain means are noisy. Do not draw per-domain conclusions from these numbers until multi-seed is in. The generator-level aggregate is stable; the per-domain ordering is not.
+</div>
+
+<div class="callout good">
+  <span class="label">Interpretation</span>
+  <p>The extended k-sweep (new <code>k = -1</code> sentinel) reshapes the story. Four things stand out:</p>
+  <ol>
+    <li><strong>Flip rate grows monotonically with k all the way to the full selected set on both generators.</strong> No saturation in the selected range &mdash; adding every selected neuron keeps adding sufficiency signal. This is the expected signature of a distributed-but-targeted representation.</li>
+    <li><strong>At <code>k = n_selected</code>, the ratio to random is ~18&times; (GPT-4) and ~12&times; (Mistral).</strong> Both far outside any plausible noise band. The ratio is the scientifically meaningful signal and is consistent across generators.</li>
+    <li><strong>Absolute flip rates are now non-trivial.</strong> GPT-4: 3.6% at <code>n_selected</code> (vs 1.65% at k=100 in the previous report); Mistral: <strong>25.7%</strong> at <code>n_selected</code>. The concern from the previous run (&ldquo;is the absolute rate just noise?&rdquo;) is largely retired.</li>
+    <li><strong>GPT-4 is harder to flip than Mistral.</strong> GPT-4&rsquo;s L2 probe is very confident (AUC 0.998), so a patched sample must traverse a larger margin; Mistral&rsquo;s probe (AUC 0.970) has more borderline samples that a targeted patch can reliably tip. See &sect;3.6.</li>
+  </ol>
+</div>
+
+<div class="callout">
+  <span class="label">Is the absolute rate still a problem?</span>
+  Substantially less so after the full-set sweep. GPT-4 at 3.6% average (vs 0.20% random) and Mistral at 25.7% (vs 2.16% random) are clearly above any plausible noise. The remaining honest caveats:
+  <ul>
+    <li><em>Flip rate is a thresholded metric.</em> Probability-shift &Delta;P(AI) would be more sensitive and is still planned (&sect;5.1 (G)).</li>
+    <li><em>Single-seed.</em> Generator-level aggregate is stable (5-fold std is tight: GPT-4 selected flip at <code>n_selected</code> is 0.036 ± 0.005 across folds), but per-domain breakdowns are not (see callout above).</li>
+    <li><em>No saturation.</em> If the representation were concentrated, flip rate should plateau well before <code>n_selected</code>. Continued growth is itself informative &mdash; it confirms the redundancy story from ablation.</li>
+  </ul>
+</div>
+
+<h3 id="res-confound">3.4 Confound <span class="pill drop">to remove</span></h3>
+
+<p>Per-neuron test on pooled test fold:</p>
+<table>
+  <thead><tr><th>Statistic</th><th class="num">Mean flagged</th><th class="num">% of selected</th></tr></thead>
+  <tbody>
+    <tr><td>Domain ANOVA (p &lt; 0.05)</td><td class="num">165.2</td><td class="num">99.2%</td></tr>
+    <tr><td>Text-length Spearman (p &lt; 0.05)</td><td class="num">110.8</td><td class="num">66.5%</td></tr>
+    <tr><td>Either (flagged)</td><td class="num">165.2</td><td class="num">99.2%</td></tr>
+  </tbody>
+</table>
+
+<p>Example extremes (fold 0): neuron (9, 123) has domain F = 69.1, p &approx; 0; neuron (1, 452) has text-length &rho; = &minus;0.71. Only one neuron (3, 497) was not flagged.</p>
+
+<div class="callout bad">
+  <span class="label">Decision: drop this experiment</span>
+  The pooled test cannot distinguish (a) &ldquo;neuron encodes domain independently of class&rdquo; from (b) &ldquo;neuron encodes AI-vs-human signal that happens to manifest differently per domain&rdquo;. 99% flagged is also uninformative at the population level. The experiment will be removed from the pipeline; cross-domain generalization (&sect;5.1) is the replacement, and a domain probe baseline serves as the cheap diagnostic.
+</div>
+
+<h3 id="res-auc">3.5 AUC Comparison <span class="pill done">promoted: methodology finding</span></h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th class="num">GPT-4 &mdash; AUC</th>
+      <th class="num">GPT-4 &mdash; L1</th>
+      <th class="num">Mistral &mdash; AUC</th>
+      <th class="num">Mistral &mdash; L1</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>n_selected (mean)</td><td class="num">514</td><td class="num">167</td><td class="num"><strong>1.8</strong></td><td class="num">401</td></tr>
+    <tr><td>Baseline accuracy</td><td class="num" colspan="2">0.982</td><td class="num" colspan="2">0.913</td></tr>
+    <tr><td>Ablation drop at <code>n_selected</code></td><td class="num">+0.008</td><td class="num">+0.0005</td><td class="num">+0.001</td><td class="num">+0.014</td></tr>
+    <tr><td>Jaccard overlap (L1 &cap; AUC)</td><td class="num" colspan="2">0.121 (73 shared)</td><td class="num" colspan="2"><strong>0.001 (&lt;1 shared)</strong></td></tr>
+  </tbody>
+</table>
+
+<p>Two findings, one mild and one striking:</p>
+<ol>
+  <li><strong>On GPT-4</strong>, AUC and L1 pick largely disjoint neuron sets (Jaccard ~12%). AUC picks ~3&times; more neurons with a slightly larger ablation effect. Low overlap is expected because univariate AUC ranks by marginal discriminability while L1 solves a sparse multivariate problem with feature correlations.</li>
+  <li><strong>On Mistral, the AUC selector essentially fails</strong>: it passes its discrimination threshold on ~1.8 neurons out of 9,216. L1 finds 401. This is not a tuning artifact &mdash; it says Mistral&rsquo;s class signal has no individually strongly-discriminative neurons; the signal is joint across features. Univariate methods cannot recover it.</li>
+</ol>
+
+<div class="callout good">
+  <span class="label">Updated decision: keep and promote</span>
+  Previously planned to de-prioritize this experiment. The Mistral result changes that: it is a concrete, quantitative demonstration that univariate feature selection is insufficient for the cross-generator detection task, and that L1 multivariate selection is the methodologically necessary choice. This is a useful sentence for the paper&rsquo;s methods section and a good sanity check to run on every new generator.
+</div>
+
+<h3 id="res-crossgen">3.6 Cross-generator preliminary (GPT-4 vs Mistral)</h3>
+
+<p>Two generators, identical pipeline. This is the first look at whether our interpretability claims transfer beyond GPT-4. Still single-seed, still 2,000 samples &mdash; call it a smoke test, not a validation.</p>
+
+<h4>Side-by-side summary</h4>
+<table>
+  <thead>
+    <tr><th>Metric</th><th class="num">GPT-4</th><th class="num">Mistral</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>L2 probe accuracy</td><td class="num">0.982</td><td class="num">0.913</td></tr>
+    <tr><td>L2 probe AUC</td><td class="num">0.998</td><td class="num">0.970</td></tr>
+    <tr><td>L1 <code>n_selected</code> (mean per fold)</td><td class="num">167</td><td class="num">401</td></tr>
+    <tr><td>Stable neurons (&ge; 80% folds)</td><td class="num">109</td><td class="num">216</td></tr>
+    <tr><td>AUC selector <code>n_selected</code></td><td class="num">514</td><td class="num"><strong>1.8</strong></td></tr>
+    <tr><td>Ablation drop at full selected set</td><td class="num">+0.0005</td><td class="num">+0.014</td></tr>
+    <tr><td>Patching flip at full selected set</td><td class="num">0.036</td><td class="num"><strong>0.257</strong></td></tr>
+    <tr><td>Patching ratio to random at full selected set</td><td class="num">~18&times;</td><td class="num">~12&times;</td></tr>
+  </tbody>
+</table>
+
+<h4>What&rsquo;s consistent across generators</h4>
+<ul>
+  <li><strong>Ablation is weak on both.</strong> Full-set ablation drops accuracy by 0.05 pp (GPT-4) and 1.35 pp (Mistral). The L2 probe routes around the removed set either way &mdash; the redundancy story is not a GPT-4-specific artifact.</li>
+  <li><strong>Patching is monotonically increasing with k on both</strong>, with no saturation in the selected range. Same signature of distributed-but-targeted causal signal.</li>
+  <li><strong>Ratio to random at <code>n_selected</code> is in the same order of magnitude</strong> (~18&times; vs ~12&times;). The scientifically meaningful signal is reproduced.</li>
+  <li><strong>L1 selection works on both</strong> generators out of the box; univariate AUC selection does not generalize (see &sect;3.5).</li>
+</ul>
+
+<h4>What differs</h4>
+<ul>
+  <li><strong>Detection difficulty.</strong> GPT-4 is much easier to separate from human text (98.2%) than Mistral (91.3%). Absolute flip rates also track this: Mistral&rsquo;s L2 probe is less confident, so more samples sit close to the boundary, so patching flips them more easily.</li>
+  <li><strong>Signal distribution.</strong> Mistral needs 2.4&times; more neurons at the L1 knee (401 vs 167) to reach its lower accuracy ceiling, and the AUC selector collapses entirely. Read: Mistral&rsquo;s AI-vs-human signal is more diffuse &mdash; fewer strongly-discriminative individual features, more need for joint feature combinations.</li>
+  <li><strong>Absolute patching magnitude.</strong> Mistral at 25.7% is in a different regime from GPT-4 at 3.6%. Both support sufficiency; their magnitudes should not be compared directly without adjusting for the baseline probe&rsquo;s confidence.</li>
+</ul>
+
+<div class="callout">
+  <span class="label">Interpretation (tentative)</span>
+  The qualitative story is remarkably stable: L1 selection finds a sparse-but-redundant set of causally-active features in both representations. The generator-level differences (probe confidence, selected-set size, AUC selector failure) are substantive and worth analyzing in their own right &mdash; they are the first hint that our method describes different detection regimes rather than a single canonical &ldquo;AI detection circuit&rdquo;. One more generator with a third architecture (e.g. LLaMA variant) would turn this into a real triangulation rather than a single comparison.
+</div>
+
+<div class="callout warn">
+  <span class="label">What this is NOT yet</span>
+  Seed=42 only on both generators; 2,000 samples; no cross-domain test; no restricted-feature probe. Per-domain patching breakdowns are not reliable at this sample size (see &sect;3.3 caveat). The numbers here are sufficient to frame hypotheses for the final run; they are not sufficient to close them.
+</div>
+
+<!-- ================================================================= -->
+<h2 id="methodology">4. Methodological Findings</h2>
+
+<h3 id="meth-redundancy">4.1 Redundancy story (ablation &harr; patching)</h3>
+<p>The apparent contradiction &mdash; &ldquo;ablation is weak, patching works&rdquo; &mdash; is not a contradiction once one recognizes that:</p>
+<ol>
+  <li>Ablation tests <strong>necessity</strong> against an L2 probe that has access to <em>all</em> 9,216 features. In a redundant representation, removing a small fraction is compensated by the remainder.</li>
+  <li>Patching tests <strong>sufficiency</strong> by <em>injecting</em> genuine AI-class signal on human rows. Wrong-class signal in selected features competes with human signal elsewhere and occasionally wins; random-feature injections essentially never win.</li>
+</ol>
+<p>The extended k-sweep (&sect;3.2, &sect;3.3) makes this quantitative on both generators: ablating the <em>full</em> selected set drops accuracy by 0.05 pp (GPT-4) and 1.35 pp (Mistral), while patching the full set achieves 3.6% and 25.7% flip rates respectively &mdash; in both cases 12&ndash;18&times; above random. The two experiments measure opposite properties of the same redundant, distributed representation; both confirm it.</p>
+
+<p>An alternative &ldquo;restricted eval probe&rdquo; design (L2 trained only on selected features) was considered and rejected because it trivializes the high-k end of the ablation sweep (you ablate the whole input). It is worth running separately for the <em>smaller-model</em> claim &mdash; see <a href="#plan-tier1">&sect;5.1</a>.</p>
+
+<h3 id="meth-confound">4.2 Per-neuron confound test &mdash; why we are dropping it</h3>
+<ul>
+  <li><strong>Pooled tests conflate class with domain.</strong> A genuine AI detector whose activation varies across domains <em>because AI text differs stylistically across domains</em> produces a significant domain ANOVA, even though nothing confounding is happening.</li>
+  <li><strong>No multiple-comparison correction.</strong> Fixable but doesn&rsquo;t rescue the deeper issue.</li>
+  <li><strong>Marginal &ne; confounded classification.</strong> Per-neuron marginal tests do not tell you whether the classifier&rsquo;s decision boundary actually depends on domain. Cross-domain generalization does.</li>
+  <li><strong>99% flagged is uninformative.</strong> The result does not discriminate hypotheses.</li>
+</ul>
+<p>The simpler, stronger alternative is a combination of (i) leave-one-domain-out generalization and (ii) a domain probe trained on selected features. Both are in the plan.</p>
+
+<h3 id="meth-selection">4.3 Selection vs evaluation separation (minor notes)</h3>
+<ul>
+  <li>The L1 selection probe is persisted but only used for the diagnostic <code>selector_test_accuracy</code> metric. The evaluator always scores a <em>fresh</em> L2 probe. Good separation.</li>
+  <li>Ablation random-k uses <code>np.random.RandomState(42)</code> per call, which is the same seed for every k and every fold. Random-k baselines are therefore highly correlated across the sweep. Not wrong, but worth noting; future versions should derive the random seed from fold/seed/k.</li>
+  <li>Patching similarly uses a fixed seed for shuffles and neuron draws. Same caveat.</li>
+  <li><code>LogisticRegression</code> with <code>penalty='l1'</code>, <code>solver='saga'</code> &mdash; verified correct against sklearn docs (initial concern retracted).</li>
+</ul>
+
+<!-- ================================================================= -->
+<h2 id="plan">5. Plan Going Forward</h2>
+
+<h3 id="plan-tier1">5.1 New experiments</h3>
+
+<h4>(A) Cross-domain generalization <span class="pill planned">primary</span></h4>
+<ul>
+  <li>Leave-one-domain-out: train on 5 domains, test on the 6th. Repeat 6 times.</li>
+  <li><strong>Full pipeline</strong> per fold: run L1 selection and fit L2 eval probe on the 5 training domains, evaluate on the held-out domain.</li>
+  <li>Report: per-domain held-out accuracy, average across held-out domains, overlap of selected neurons across the 6 runs (additional stability signal).</li>
+  <li>This directly tests the paper&rsquo;s interpretability claim (&ldquo;neurons encode AI-vs-human signal, not domain&rdquo;) and its smaller-model-transfer claim.</li>
+  <li>Implementation cost: a new splitter in <code>data/splits.py</code> (~50 LoC); no runner/evaluator changes.</li>
+</ul>
+
+<h4>(B) Restricted probe / &ldquo;smaller model&rdquo; test <span class="pill planned">primary</span></h4>
+<ul>
+  <li>Take the stable neuron set (or per-fold selected set).</li>
+  <li>Train an L2 probe <em>only</em> on those features on the train fold; evaluate on the test fold.</li>
+  <li>Report: accuracy with ~167 features vs baseline (~9,216 features). Also cross-domain version (combines with (A)).</li>
+  <li>Implementation cost: new evaluator variant or a flag on <code>ProbeAccuracyEvaluator</code> to accept a feature-restriction.</li>
+</ul>
+
+<h4>(C) Domain probe baseline <span class="pill planned">diagnostic</span></h4>
+<ul>
+  <li>Train an L2 probe on activations to predict <em>domain</em> (6-class). Two variants: all 9,216 features vs only selected neurons.</li>
+  <li>If selected neurons predict domain at near chance (16.7%) / only modestly above, they don&rsquo;t encode domain appreciably. If they predict it near-perfectly, there&rsquo;s a legitimate confound concern.</li>
+  <li>Cheap: one extra evaluator, runs once per fold.</li>
+</ul>
+
+<h4>(D) Multi-seed validation <span class="pill planned">mandatory</span></h4>
+<ul>
+  <li>Current seeds: <code>[42]</code>. Target: at least <code>[42, 123, 456]</code>.</li>
+  <li>Stability threshold unchanged at 0.8 (&ge; 12/15 across 3 seeds &times; 5 folds).</li>
+  <li>Multiplies runtime by seed count.</li>
+</ul>
+
+<h4>(E) Characterize <span class="pill planned">multi-generator</span></h4>
+<ul>
+  <li>Already in the catalog but not run. Compares stable neuron sets across generators.</li>
+  <li>Executed after primary runs on headline generators are done.</li>
+</ul>
+
+<h4>(F) Sample size sensitivity <span class="pill planned">supplementary</span></h4>
+<ul>
+  <li>Standalone, outside main pipeline. Re-run sparse_probe at n &isin; {1000, 2000, 5000, all} to check stability of findings.</li>
+  <li>Single generator, single seed sufficient.</li>
+</ul>
+
+<h4>(G) Patching / ablation &mdash; extended k sweep + probability shift <span class="pill done">partially done</span></h4>
+<ul>
+  <li><span class="pill done">done</span> Extended <code>k_values</code> with a <code>-1</code> sentinel interpreted as <code>n_selected</code> in both <code>AblationEvaluator</code> and <code>PatchingEvaluator</code> (see <code>raid_analysis/evaluation/ablation.py</code> and <code>patching.py</code>). Applied in runs <code>20260418_011033</code> and <code>20260418_011044</code>. Outcome summarised in &sect;3.2 / &sect;3.3: ablation has a clear ceiling (negligible drop even at full set); patching shows monotone growth with no saturation up to <code>n_selected</code>.</li>
+  <li><span class="pill planned">still planned</span> Add small <strong>supersets</strong> beyond <code>n_selected</code> (e.g. 200, 300) to probe whether flip rate keeps climbing past the L1 knee or plateaus &mdash; cheap diagnostic for how exhaustive the selected set really is.</li>
+  <li><span class="pill planned">still planned</span> Add a <strong>probability-shift</strong> metric alongside flip rate: mean &Delta;P(AI) = <code>eval_probe.predict_proba(patched)[:,1] - eval_probe.predict_proba(base)[:,1]</code>, reported per k, per domain, with random-k baseline. This is continuous and complementary to the thresholded flip metric (see &sect;3.3 callout). Purely an evaluator upgrade; no selection changes required.</li>
+</ul>
+
+<h3 id="plan-changes">5.2 Pipeline changes</h3>
+<ul>
+  <li><strong>Remove</strong> <code>confound</code> evaluator, its config, and factory registration.</li>
+  <li><strong>Add</strong> leave-one-domain-out splitter to <code>data/splits.py</code>.</li>
+  <li><strong>Add</strong> restricted-feature evaluator or flag.</li>
+  <li><strong>Add</strong> domain-prediction evaluator.</li>
+  <li><span class="pill done">done</span> <strong>Dynamic k</strong> (= per-fold <code>n_selected</code>) supported via <code>k = -1</code> sentinel in both <code>AblationEvaluator</code> and <code>PatchingEvaluator</code>. <span class="pill planned">still planned</span> Emit a probability-shift metric in addition to flip rate.</li>
+  <li><strong>Fix</strong> random seeding in ablation/patching baselines to depend on fold/seed/k (low priority; purely hygiene).</li>
+</ul>
+
+<h3 id="plan-tiered">5.3 Tiered generator strategy</h3>
+
+<p>Given 11 generators and ~3 days of final compute, not all generators receive the same analysis.</p>
+
+<table>
+  <thead><tr><th>Tier</th><th>Generators</th><th>Experiments</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Headline (2&ndash;3)</td>
+      <td>Tentative: one from each family (GPT-4, a Mistral, a LLaMA). Final selection TBD, criteria: architecture-family spread first, size/generation second.</td>
+      <td>Full suite: sparse_probe, ablation, patching, cross-domain, restricted probe, domain probe, multi-seed.</td>
+    </tr>
+    <tr>
+      <td>Reduced (rest)</td>
+      <td>Remaining 8&ndash;9 generators.</td>
+      <td>sparse_probe only (standard 5-fold, maybe 1 seed).</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Paper placement: headline generators in main text, reduced-suite generators in an appendix (&ldquo;we verified the approach across N generators&rdquo;). Decided at writing time; for now the structural choice is what matters.</p>
+
+<h3 id="plan-budget">5.4 Compute budget plan</h3>
+
+<p>Current run wall-clock (2k samples, 1 seed, 5 folds, GPT-4, C grid of 5): ~2h for the full pipeline. Target final run changes that parameter vector substantially:</p>
+<ul>
+  <li>n_samples: 2000 &rarr; ~5000 (~2.5&times;)</li>
+  <li>C values: 5 &rarr; more (TBD; likely 1.5&ndash;2&times; in the sweep step only)</li>
+  <li>seeds: 1 &rarr; 3 (3&times;)</li>
+  <li>cross-domain folds: 5 random &rarr; 6 leave-one-out on top of k-fold (additional run; roughly 1&times; per headline generator)</li>
+  <li>generators: 1 &rarr; 2&ndash;3 headline (full) + 8&ndash;9 reduced (sparse_probe only)</li>
+</ul>
+
+<div class="callout warn">
+  <span class="label">Action before committing</span>
+  Pick one generator (GPT-4), run one full pipeline cycle at target settings (5k samples, expanded C grid, 1 seed, including cross-domain) on the best available GPU. Measure wall-clock. Multiply:
+  <pre><code>total_hours &asymp; single_cycle_hours
+             &times; seed_count
+             &times; headline_generator_count
+             + sparse_probe_hours &times; reduced_generator_count</code></pre>
+  If this exceeds ~60h (2.5 days, with buffer), reduce to 2 headline generators or drop a seed. Do this measurement <em>before</em> launching the final run.
+</div>
+
+<!-- ================================================================= -->
+<h2 id="open">6. Open Decisions (deferred)</h2>
+<ul>
+  <li>Final choice of headline generators (architecture spread + size/generation axis). Decide after compute measurement.</li>
+  <li>Paper framing for the &ldquo;ugly&rdquo; case where cross-domain accuracy drops substantially. Working position: acknowledge it, interpret as &ldquo;for real-world transfer, selection must happen on the full domain distribution of the target deployment&rdquo;. Do not hide it.</li>
+  <li>Whether to include the AUC-vs-L1 comparison in the paper or keep in internal notes only.</li>
+  <li>Whether to derive random seeds in ablation/patching baselines from fold/seed/k. Low-priority hygiene fix.</li>
+  <li>What to do with the &ldquo;restricted probe + cross-domain&rdquo; combination if it shows a different stable-neuron pattern than same-domain CV &mdash; scientifically interesting or confusing-for-the-paper?</li>
+</ul>
+
+<!-- ================================================================= -->
+<h2 id="appendix">Appendix: Per-fold Metrics (seed 42, all folds)</h2>
+
+<h4>Sparse probe by fold &mdash; GPT-4 (<code>20260418_011033</code>)</h4>
+<table>
+  <thead><tr><th class="num">Fold</th><th class="num">Accuracy</th><th class="num">F1</th><th class="num">n_selected</th></tr></thead>
+  <tbody>
+    <tr><td class="num">0</td><td class="num">0.9775</td><td class="num">0.9777</td><td class="num">173</td></tr>
+    <tr><td class="num">1</td><td class="num">0.9825</td><td class="num">0.9825</td><td class="num">169</td></tr>
+    <tr><td class="num">2</td><td class="num">0.9900</td><td class="num">0.9899</td><td class="num">171</td></tr>
+    <tr><td class="num">3</td><td class="num">0.9725</td><td class="num">0.9722</td><td class="num">155</td></tr>
+    <tr><td class="num">4</td><td class="num">0.9875</td><td class="num">0.9875</td><td class="num">165</td></tr>
+    <tr class="footnote"><td colspan="4"><em>AUC is reported per-fold as <code>null</code> in the raw eval files (only aggregated). Aggregate AUC = 0.9983 ± 0.0012 (&sect;3.1).</em></td></tr>
+  </tbody>
+</table>
+
+<h4>Sparse probe by fold &mdash; Mistral (<code>20260418_011044</code>)</h4>
+<table>
+  <thead><tr><th class="num">Fold</th><th class="num">Accuracy</th><th class="num">F1</th><th class="num">n_selected</th></tr></thead>
+  <tbody>
+    <tr><td class="num">0</td><td class="num">0.8925</td><td class="num">0.8877</td><td class="num">397</td></tr>
+    <tr><td class="num">1</td><td class="num">0.9200</td><td class="num">0.9171</td><td class="num">403</td></tr>
+    <tr><td class="num">2</td><td class="num">0.9025</td><td class="num">0.8982</td><td class="num">431</td></tr>
+    <tr><td class="num">3</td><td class="num">0.9125</td><td class="num">0.9123</td><td class="num">366</td></tr>
+    <tr><td class="num">4</td><td class="num">0.9375</td><td class="num">0.9361</td><td class="num">409</td></tr>
+    <tr class="footnote"><td colspan="4"><em>Aggregate AUC = 0.9703 ± 0.0054 (&sect;3.1).</em></td></tr>
+  </tbody>
+</table>
+
+<h4>Files referenced</h4>
+<ul>
+  <li><code>scripts/experiments/run_experiment.py</code> &mdash; CLI orchestrator.</li>
+  <li><code>raid_analysis/experiments/runner.py</code> &mdash; method-agnostic CV loop.</li>
+  <li><code>raid_analysis/experiments/factory.py</code> &mdash; selector/evaluator registry.</li>
+  <li><code>raid_analysis/selection/sparse_probe.py</code> &mdash; L1 selector + knee detection.</li>
+  <li><code>raid_analysis/evaluation/probe_factory.py</code> &mdash; L2 eval probe.</li>
+  <li><code>raid_analysis/evaluation/ablation.py</code>, <code>patching.py</code>, <code>confound.py</code> &mdash; evaluators.</li>
+  <li><code>raid_analysis/evaluation/causal.py</code> &mdash; <code>ablate_neurons</code>, <code>patch_neurons</code> primitives.</li>
+  <li><code>raid_analysis/data/splits.py</code> &mdash; stratified CV splits (label &times; domain).</li>
+  <li><code>config/experiments/*.yaml</code> &mdash; one YAML per experiment.</li>
+  <li><code>results/experiments/20260418_011033/</code> &mdash; GPT-4 outputs (seed 42, 5 folds, extended k-sweep).</li>
+  <li><code>results/experiments/20260418_011044/</code> &mdash; Mistral outputs (seed 42, 5 folds, extended k-sweep).</li>
+  <li><code>results/experiments/20260416_003851/</code> &mdash; prior GPT-4 development run referenced in earlier versions of this report.</li>
+</ul>
+
+<hr>
+<p class="footnote">Report updated 2026-04-18 to incorporate <code>20260418_011033</code> (GPT-4) and <code>20260418_011044</code> (Mistral) runs with the extended k-sweep (<code>k = -1</code> sentinel). Next revision: multi-seed results + third generator.</p>
+
+</main>
+</div>
+</body>
+</html>

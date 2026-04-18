@@ -33,7 +33,7 @@ EXPERIMENT_ORDER = [
     "sparse_probe",
     "ablation",
     "patching",
-    "confound",
+    # "confound",
     "auc_comparison",
     "characterize",
 ]
