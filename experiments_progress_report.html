@@ -355,22 +355,25 @@
         <li><a href="#res-patching">3.3 Patching</a></li>
         <li><a href="#res-confound">3.4 Confound</a></li>
         <li><a href="#res-auc">3.5 AUC Comparison</a></li>
-        <li><a href="#res-crossgen">3.6 Cross-generator (GPT-4 vs Mistral)</a></li>
+        <li><a href="#res-crossgen">3.6 Cross-generator characterize (5 gen)</a></li>
+        <li><a href="#res-restricted">3.7 Restricted Probe (consistency check)</a></li>
       </ul>
     </li>
     <li><a href="#methodology">4. Methodological Findings</a>
       <ul>
         <li><a href="#meth-redundancy">4.1 Redundancy Story</a></li>
         <li><a href="#meth-confound">4.2 Per-Neuron Confound Test</a></li>
-        <li><a href="#meth-selection">4.3 Selection vs Evaluation Separation</a></li>
+        <li><a href="#meth-interventions-scope">4.3 Intervention target (per-fold vs stable set)</a></li>
+        <li><a href="#meth-selection">4.4 Selection vs Evaluation Separation</a></li>
+        <li><a href="#meth-stability">4.5 Sample-size &amp; C stability sweep</a></li>
+        <li><a href="#publishability">4.6 Publishability Assessment</a></li>
       </ul>
     </li>
     <li><a href="#plan">5. Plan Going Forward</a>
       <ul>
         <li><a href="#plan-tier1">5.1 New Experiments</a></li>
-        <li><a href="#plan-changes">5.2 Pipeline Changes</a></li>
-        <li><a href="#plan-tiered">5.3 Tiered Generator Strategy</a></li>
-        <li><a href="#plan-budget">5.4 Compute Budget Plan</a></li>
+        <li><a href="#plan-tiered">5.2 Tiered Generator Strategy</a></li>
+        <li><a href="#plan-budget">5.3 Compute Budget</a></li>
       </ul>
     </li>
     <li><a href="#open">6. Open Decisions</a></li>
@@ -382,44 +385,34 @@
 
 <h1>AI vs Human Text Detection &mdash; Experiments Progress Report</h1>
 <div class="meta">
-  <strong>Internal report</strong> for consultation with Miłosz and external research collaborators.<br>
-  Covers runs <code>20260418_011033</code> (GPT-4) and <code>20260418_011044</code> (Mistral).
-  Both: seed 42 only, 5 folds, 2,000 samples, <code>k = -1</code> (&ldquo;full selected set&rdquo;) included in ablation/patching sweeps.<br>
+  <strong>Internal report</strong> for consultation with external research collaborators.<br>
+  Headline run: <code>20260426_20_full_c0005_n7500_seeds3</code> &mdash; <strong>5 generators</strong> (gpt4, gpt2, mistral-chat, llama-chat, cohere-chat),
+  seeds <code>[42, 123, 456]</code> &times; 5 folds = <strong>15 cells per (generator, experiment)</strong>, 7,500 balanced samples, fixed <code>C = 0.005</code> (L1, <code>liblinear</code>),
+  <code>k = -1</code> (&ldquo;full selected set&rdquo;) included in ablation/patching sweeps.<br>
+  Methodology auxiliary: multi-generator stability grid <code>stability_grid_gpt4_llama_mistral</code> (K = 15 stratified subsamples per N &times; 7 sample sizes &times; 4 C values &times; 3 generators) used to choose <code>C</code> and <code>N</code> &mdash; see &sect;4.5.<br>
+  Generator-set change vs previous (N = 5,000, single-seed) run: <strong>chatgpt replaced with gpt2</strong> &mdash; chatgpt was redundant with gpt4 (both OpenAI, both RLHF, near-identical Jaccard); gpt2 adds an architectural axis (base/non-RLHF) and serves as the easy-end difficulty counterpart to cohere-chat.<br>
   <em>Not a paper draft.</em> Decisions and framings here are working positions, not finalized claims.
-</div>
-
-<div class="callout warn">
-  <span class="label">Preliminary</span>
-  All results are from single-seed development runs on two generators (GPT-4, Mistral):
-  <strong>seed=42 only, n_samples=2000, n_folds=5</strong>. Per-fold variation on domain-level metrics is large, so domain-stratified numbers have low per-fold precision &mdash; averaged across 5 folds but not validated across seeds. The target final run uses 3 seeds &times; 5 folds, ~5,000 samples, expanded C grid, and adds cross-domain generalization + restricted probe. Quantitative numbers here may shift; qualitative findings (accuracy ranking, ablation insensitivity, monotone patching) are expected to be stable.
 </div>
 
 <!-- ================================================================= -->
 <h2 id="scope">1. Scope &amp; Status</h2>
 
-<p><strong>Research goal.</strong> Identify internal mechanisms in a language-model representation that drive AI-vs-human text detection, with a secondary interest in whether a small selected neuron set is sufficient for accurate classification (&ldquo;smaller model&rdquo; claim).</p>
-
-<p><strong>This report covers.</strong></p>
-<ul>
-  <li>What the pipeline actually does &mdash; exact description of each step, grounded in the current code.</li>
-  <li>Results from the preliminary GPT-4 run.</li>
-  <li>Methodological issues surfaced during analysis.</li>
-  <li>Concrete plan for the final run within our ~3-day compute budget.</li>
-</ul>
+<p><strong>Research goal.</strong> Identify internal mechanisms in a language-model representation that drive AI-vs-human text detection, with a secondary interest in whether a small selected neuron set is sufficient for accurate classification.</p>
 
 <p><strong>Experiments in catalog.</strong></p>
 <table>
   <thead><tr><th>Experiment</th><th>Status</th><th>Role</th></tr></thead>
   <tbody>
-    <tr><td><code>sparse_probe</code></td><td><span class="pill done">run</span></td><td>Primary: L1 feature selection + L2 accuracy.</td></tr>
-    <tr><td><code>ablation</code></td><td><span class="pill done">run</span></td><td>Dependent: necessity test on selected neurons.</td></tr>
-    <tr><td><code>patching</code></td><td><span class="pill done">run</span></td><td>Dependent: sufficiency test on selected neurons.</td></tr>
-    <tr><td><code>confound</code></td><td><span class="pill drop">to remove</span></td><td>Per-neuron domain/length statistics (decided to drop; see <a href="#meth-confound">&sect;4.2</a>).</td></tr>
-    <tr><td><code>auc_comparison</code></td><td><span class="pill done">run</span></td><td>Compare L1 vs univariate AUC selection. <strong>Promoted</strong> after Mistral run showed AUC selector collapses (see <a href="#res-auc">&sect;3.5</a>).</td></tr>
-    <tr><td><code>characterize</code></td><td><span class="pill planned">planned</span></td><td>Multi-generator analysis of shared stable neurons. Not yet executed.</td></tr>
-    <tr><td><code>cross_domain</code> (new)</td><td><span class="pill planned">planned</span></td><td>Leave-one-domain-out generalization. See <a href="#plan-tier1">&sect;5.1</a>.</td></tr>
-    <tr><td><code>restricted_probe</code> (new)</td><td><span class="pill planned">planned</span></td><td>L2 trained only on selected neurons (&ldquo;smaller model&rdquo; test). See <a href="#plan-tier1">&sect;5.1</a>.</td></tr>
-    <tr><td><code>domain_probe</code> (new, diagnostic)</td><td><span class="pill planned">planned</span></td><td>Predict domain from selected neurons as confound sanity check.</td></tr>
+    <tr><td><code>sparse_probe</code></td><td><span class="pill done">run &times; 5 gen &times; 3 seeds</span></td><td>Primary: L1 feature selection + L2 accuracy.</td></tr>
+    <tr><td><code>ablation</code></td><td><span class="pill done">run &times; 5 gen &times; 3 seeds</span></td><td>Dependent: necessity test on selected neurons.</td></tr>
+    <tr><td><code>patching</code></td><td><span class="pill done">run &times; 5 gen &times; 3 seeds</span></td><td>Dependent: sufficiency test on selected neurons.</td></tr>
+    <tr><td><code>confound</code></td><td><span class="pill drop">kept, uninformative</span></td><td>Per-neuron domain/length statistics. Re-ran but flags &ge; 99.9% of selected on every generator (see <a href="#meth-confound">&sect;4.2</a>); replaced by domain probe in plan.</td></tr>
+    <tr><td><code>auc_comparison</code></td><td><span class="pill done">run &times; 5 gen &times; 3 seeds</span></td><td>Compare L1 vs univariate AUC selection. Pattern is now generator-dependent (parsimony argument on gpt4/mistral/llama; AUC&approx;L1 on gpt2; AUC &lt; L1 on cohere). See <a href="#res-auc">&sect;3.5</a>.</td></tr>
+    <tr><td><code>characterize</code></td><td><span class="pill done">run, 5-gen</span></td><td>Multi-generator analysis of shared stable neurons. See <a href="#res-crossgen">&sect;3.6</a>.</td></tr>
+    <tr><td><code>restricted_probe</code></td><td><span class="pill done">run &times; 5 gen &times; 3 seeds</span></td><td>L2 on selected neurons only + ablate-complement. <strong>Consistency check</strong> (L1 test accuracy already shows the same thing). See <a href="#res-restricted">&sect;3.7</a>.</td></tr>
+    <tr><td><code>sample_size_stability</code></td><td><span class="pill done">run, 3 gen (gpt4, llama-chat, mistral)</span></td><td>K-draw stratified subsampling sweep used to justify fixed <code>C</code> and <code>N</code>. See <a href="#meth-stability">&sect;4.5</a>.</td></tr>
+    <tr><td><code>logo</code> (new)</td><td><span class="pill planned">planned</span></td><td>Leave-one-generator-out generalization. Train on N&minus;1 generators, evaluate on the held-out generator. Tests whether selected circuits transfer across generators not seen during selection. <strong>Primary remaining experiment</strong> (&sect;5.1&nbsp;A).</td></tr>
+    <tr><td>Multi-seed validation</td><td><span class="pill done">done, seeds [42, 123, 456]</span></td><td>15 cells per (generator, experiment); per-cell mean &plusmn; std reported throughout &sect;3.</td></tr>
   </tbody>
 </table>
 
@@ -499,7 +492,7 @@
         <div class="arrow"></div>
         <div class="node">
           <strong>SparseProbeSelector</strong> (primary)
-          <small>inner StratifiedShuffleSplit &middot; C sweep + knee detection &middot; L1 LogReg (saga) on 9216 features</small>
+          <small>fixed C = 0.005 &middot; L1 LogReg (liblinear, max_iter=1000) on 9216 features</small>
           <small style="margin-top:4px;"><em>Dependent experiments:</em> <code>load_source_selections(...)</code> &mdash; reuse exact same neurons</small>
         </div>
         <div class="arrow"></div>
@@ -592,8 +585,8 @@
 
 <h3 id="pipeline-data">2.2 Data &amp; Splits</h3>
 <ul>
-  <li><strong>Activations</strong>: concatenation of all transformer layers, loaded per-generator from <code>results/activations_raid_&lt;slug&gt;/</code>. Global feature axis has <code>D = n_layers &times; hidden_dim</code>. For GPT-2 this is <code>12 &times; 768 = 9,216</code>.</li>
-  <li><strong>Balanced subsampling</strong>: <code>_balanced_subsample</code> in <code>data/loading.py</code> draws <code>max_samples / 2</code> per class with seed 42. Current run uses <code>max_samples = 2000</code>; target final run: ~5000.</li>
+  <li><strong>Activations</strong>: concatenation of all transformer layers, loaded per-generator from <code>results/activations_raid_&lt;slug&gt;/</code>. Global feature axis has <code>D = n_layers &times; hidden_dim</code>. For BERT-base this is <code>12 &times; 768 = 9,216</code>.</li>
+  <li><strong>Balanced subsampling</strong>: <code>_balanced_subsample</code> in <code>data/loading.py</code> draws <code>max_samples / 2</code> per class with seed 42. <strong>Headline run uses <code>max_samples = 7,500</code></strong> &mdash; bumped from 5,000 because the multi-generator stability sweep (&sect;4.5) showed Jaccard rising another +0.07 to +0.11 between N = 5,000 and N = 7,500 (largest gain on mistral) and the cross-generator Jaccard spread tightening from ~7 pp to ~2.7 pp. N = 10,000 was not chosen because the available pool caps K = 1, so stability there is unmeasurable.</li>
   <li><strong>Splits</strong>: <code>StratifiedKFold</code> with a <strong>label &times; domain</strong> stratification key. Each fold has balanced class and domain representation, which is required for same-domain patching pairs and domain-level confound diagnostics.</li>
   <li><strong>Metadata</strong> (<code>SampleMetadata</code>): <code>text_lengths</code>, <code>domain_ids</code>, <code>domain_names</code>. There is no explicit &ldquo;generator&rdquo; field &mdash; generator identity is implicit in which activation directory is loaded.</li>
   <li><strong>Splits are persisted</strong> as <code>splits.json</code> per experiment and reused across dependent experiments for the same run_id.</li>
@@ -602,13 +595,17 @@
 <h3 id="pipeline-selection">2.3 Selection: SparseProbeSelector (L1)</h3>
 <p>Implementation: <code>raid_analysis/selection/sparse_probe.py</code>.</p>
 
-<h4>C sweep and knee detection</h4>
+<h4>Fixed-C selection (current default)</h4>
 <ol>
-  <li>Split the outer train fold into inner train (80%) / inner val (20%) via <code>StratifiedShuffleSplit</code>.</li>
-  <li>For each <code>C &isin; C_values</code> (default <code>[0.001, 0.01, 0.1, 1.0, 10.0]</code>), fit L1 logistic regression (<code>penalty='l1'</code>, <code>solver='saga'</code>) on inner train; record <code>(C, val_accuracy, n_nonzero)</code>.</li>
-  <li>Pick the <strong>knee</strong> in the <code>(n_nonzero, val_accuracy)</code> curve using the maximum-perpendicular-distance heuristic: draw a chord from the sparsest to densest point, pick the point farthest from the chord. Returns the <code>C_values</code> index.</li>
-  <li>Refit L1 on the <em>full</em> outer train fold at that knee <code>C</code>. Report selected neurons and a ranking by absolute coefficient magnitude.</li>
+  <li>Fit L1 logistic regression (<code>penalty='l1'</code>, <code>solver='liblinear'</code>, <code>max_iter=1000</code>) on the full outer train fold at <strong><code>C = 0.005</code></strong>.</li>
+  <li>Report selected neurons (non-zero coefficients) and a ranking by descending <code>|coef|</code>.</li>
 </ol>
+<p>Selector C and the headline N were chosen jointly via the multi-generator stability sweep in &sect;4.5: <code>C = 0.005</code> at <code>N = 7,500</code> gives the highest pairwise Jaccard (0.72&ndash;0.75 across gpt4 / llama-chat / mistral; min-over-3-gen 0.724) among the C values we tested, while remaining cheap to fit (~30 s per fold). The previous &ldquo;knee detection over a 5-point C sweep&rdquo; pipeline is still implemented but bypassed (single-element <code>C_values</code> list short-circuits it).</p>
+
+<div class="callout">
+  <span class="label">Solver change</span>
+  Switched from <code>saga</code> (stochastic average gradient) to <code>liblinear</code> (coordinate descent). Both produce valid L1 solutions, but <code>liblinear</code> is dramatically more aggressive at producing exact zeros on this kind of high-dimensional, underdetermined problem &mdash; e.g. on GPT-4 at the same C, <code>saga</code> at <code>max_iter=5000</code> retained 167 features per fold while <code>liblinear</code> at <code>max_iter=1000</code> retains 74.1 &plusmn; 2.9 (at N = 7,500) with negligible accuracy difference. Speed improvement is ~10&ndash;100&times; per fold. The earlier 167-feature numbers are an artifact of saga's slower convergence on L1 sparsity, not a different signal.
+</div>
 
 <h4>SelectionResult payload (persisted per fold)</h4>
 <ul>
@@ -616,7 +613,7 @@
   <li><code>ranking</code>: <code>(layer, neuron)</code> ordered by descending <code>|coef|</code> (used as top-k order in ablation and patching).</li>
   <li><code>probe</code>, <code>scaler</code>: the fitted L1 probe and its <code>StandardScaler</code> (used only for the diagnostic <code>selector_test_accuracy</code>).</li>
   <li><code>train_mean</code>: per-dimension training-fold mean (used by mean ablation to avoid test leakage).</li>
-  <li><code>metadata</code>: <code>C</code>, <code>solver</code>, <code>n_nonzero</code>, <code>n_features</code>, <code>train_accuracy</code>, <code>sweep_curve</code>, <code>knee_idx</code>, <code>knee_C</code>, <code>C_values</code>.</li>
+  <li><code>metadata</code>: <code>C</code>, <code>solver</code>, <code>n_nonzero</code>, <code>n_features</code>, <code>train_accuracy</code>, single-point <code>sweep_curve</code>.</li>
 </ul>
 
 <h3 id="pipeline-eval">2.4 Evaluation Probe (L2)</h3>
@@ -681,477 +678,591 @@
 <!-- ================================================================= -->
 <h2 id="results">3. Results</h2>
 
-<div class="meta">
-  Runs: <strong><code>20260418_011033</code></strong> (gpt4) and <strong><code>20260418_011044</code></strong> (mistral). Seed: <strong>42</strong> only. Folds: <strong>5</strong>. Samples per run: <strong>2000</strong> (balanced). Features: <strong>D = 9,216</strong>. Test size per fold: 400. Extended k-sweep enabled (<code>k = -1</code> sentinel &rarr; full per-fold selected set).
-  <br><br>
-  <em>&sect;3.1&ndash;3.5 use GPT-4 as the main reference for continuity with the previous report (run <code>20260416_003851</code>, identical config). Mistral is introduced inline in the ablation/patching tables and discussed as its own subsection in &sect;3.6.</em>
-</div>
-
 <h3 id="res-sparse">3.1 Sparse Probe (primary)</h3>
 
-<h4>GPT-4 (run <code>20260418_011033</code>)</h4>
+<p>L2 evaluation probe accuracy on the per-fold L1-selected feature set. <strong>15 cells per generator</strong> (seeds <code>[42, 123, 456]</code> &times; 5 folds), <code>n_samples = 7,500</code>, fixed <code>C = 0.005</code>. <strong>Pairwise fold-Jaccard</strong> is over all 105 fold-pairs of selected sets within a generator. <strong>n_stable</strong> = neurons appearing in <em>all</em> 15 folds (from <code>aggregate.json:n_stable_neurons</code>); <strong>n_observed</strong> = total distinct neurons selected at least once.</p>
+
 <table>
-  <thead><tr><th>Metric</th><th class="num">Mean</th><th class="num">Std</th><th class="num">Min</th><th class="num">Max</th></tr></thead>
+  <thead>
+    <tr>
+      <th>Generator</th>
+      <th class="num">val acc (mean &plusmn; std)</th>
+      <th class="num">train acc (mean &plusmn; std)</th>
+      <th class="num">n_selected (mean &plusmn; std)</th>
+      <th class="num">pairwise Jaccard (15 folds)</th>
+      <th class="num">n_stable / n_observed</th>
+    </tr>
+  </thead>
   <tbody>
-    <tr><td>Accuracy (L2 eval probe)</td><td class="num">0.9820</td><td class="num">0.0064</td><td class="num">0.9725</td><td class="num">0.9900</td></tr>
-    <tr><td>AUC-ROC</td><td class="num">0.9983</td><td class="num">0.0012</td><td class="num">0.9961</td><td class="num">0.9994</td></tr>
-    <tr><td>F1</td><td class="num">0.9819</td><td class="num">0.0065</td><td class="num">0.9722</td><td class="num">0.9899</td></tr>
-    <tr><td>Selector (L1) test accuracy</td><td class="num">0.9805</td><td class="num">0.0066</td><td class="num">0.9700</td><td class="num">0.9875</td></tr>
-    <tr><td>n_selected per fold</td><td class="num">166.6</td><td class="num">6.4</td><td class="num">155</td><td class="num">173</td></tr>
+    <tr><td>gpt4</td><td class="num">0.9879 &plusmn; 0.0026</td><td class="num">0.9697 &plusmn; 0.0009</td><td class="num">74.1 &plusmn; 2.9</td><td class="num">0.7634 &plusmn; 0.0365</td><td class="num">60 / 106</td></tr>
+    <tr><td>gpt2</td><td class="num">0.9591 &plusmn; 0.0031</td><td class="num">0.9021 &plusmn; 0.0017</td><td class="num">84.7 &plusmn; 4.1</td><td class="num">0.6701 &plusmn; 0.0418</td><td class="num">60 / 146</td></tr>
+    <tr><td>mistral-chat</td><td class="num">0.9708 &plusmn; 0.0043</td><td class="num">0.9343 &plusmn; 0.0013</td><td class="num">57.8 &plusmn; 2.9</td><td class="num">0.7240 &plusmn; 0.0461</td><td class="num">45 / 99</td></tr>
+    <tr><td>llama-chat</td><td class="num">0.9862 &plusmn; 0.0030</td><td class="num">0.9568 &plusmn; 0.0014</td><td class="num">63.6 &plusmn; 1.7</td><td class="num">0.7563 &plusmn; 0.0404</td><td class="num">48 / 91</td></tr>
+    <tr><td>cohere-chat</td><td class="num"><strong>0.9052</strong> &plusmn; 0.0076</td><td class="num">0.8614 &plusmn; 0.0024</td><td class="num">72.3 &plusmn; 3.1</td><td class="num">0.7490 &plusmn; 0.0388</td><td class="num">62 / 113</td></tr>
   </tbody>
 </table>
 
-<h4>Mistral (run <code>20260418_011044</code>)</h4>
+<p><strong>Takeaway.</strong> Across 5 generators, <strong>0.5&ndash;0.9% of features</strong> (45&ndash;62 fully-stable neurons out of 9,216) suffice to detect AI text at 90.5&ndash;98.8% val accuracy &mdash; with cohere-chat as the structural difficulty floor (90.5%) and gpt2 as the difficulty mid-point (95.9%, the only non-RLHF generator in the panel). Selection sizes are tight (CV 2&ndash;5%) and pairwise fold-Jaccard sits at 0.67&ndash;0.76 &mdash; within a hair of the multi-generator C&times;N sweep numbers (0.72&ndash;0.75 at this point; &sect;4.5), confirming the selection is reproducible across seeds. gpt2 has the loosest fold Jaccard (0.67) and the largest pool of ever-observed neurons (146), consistent with a slightly noisier selector at this difficulty. Layer-wise distribution analysed in &sect;3.6 (characterize).</p>
+
+<h3 id="res-ablation">3.2 Ablation <span class="pill prelim">redundancy holds on 4/5; cohere weakens</span></h3>
+
+<p>Mean-ablation of top-k selected neurons vs random-k baselines. Numbers are <strong>15-cell means &plusmn; std</strong> (3 seeds &times; 5 folds). Per-cell numbers come from <code>&lt;gen&gt;/seed_&lt;S&gt;/fold_&lt;F&gt;/eval_metrics.json:metrics.ablation_sweep</code>. <code>k = full</code> = each fold's actual <code>n_selected</code> (53&ndash;92 neurons depending on generator/cell). Each cell is <strong>accuracy drop = baseline &minus; ablated</strong> (positive = drop).</p>
+
+<h4>Selected-set ablation drop at <code>k = full</code> (15-cell summary)</h4>
 <table>
-  <thead><tr><th>Metric</th><th class="num">Mean</th><th class="num">Std</th><th class="num">Min</th><th class="num">Max</th></tr></thead>
+  <thead><tr><th>Generator</th><th class="num">Baseline acc</th><th class="num">Selected drop (k = full)</th><th class="num">Random drop (k = full)</th></tr></thead>
   <tbody>
-    <tr><td>Accuracy (L2 eval probe)</td><td class="num">0.9130</td><td class="num">0.0154</td><td class="num">0.8925</td><td class="num">0.9375</td></tr>
-    <tr><td>AUC-ROC</td><td class="num">0.9703</td><td class="num">0.0054</td><td class="num">0.9639</td><td class="num">0.9799</td></tr>
-    <tr><td>F1</td><td class="num">0.9103</td><td class="num">0.0166</td><td class="num">0.8877</td><td class="num">0.9361</td></tr>
-    <tr><td>Selector (L1) test accuracy</td><td class="num">0.8985</td><td class="num">0.0193</td><td class="num">0.8775</td><td class="num">0.9300</td></tr>
-    <tr><td>n_selected per fold</td><td class="num">401.2</td><td class="num">21.0</td><td class="num">366</td><td class="num">431</td></tr>
+    <tr><td>gpt4</td><td class="num">0.9879</td><td class="num">+0.0003 &plusmn; 0.0012</td><td class="num">+0.0001 &plusmn; 0.0003</td></tr>
+    <tr><td>gpt2</td><td class="num">0.9591</td><td class="num">+0.0011 &plusmn; 0.0031</td><td class="num">+0.0000 &plusmn; 0.0008</td></tr>
+    <tr><td>mistral-chat</td><td class="num">0.9708</td><td class="num">+0.0010 &plusmn; 0.0021</td><td class="num">+0.0000 &plusmn; 0.0008</td></tr>
+    <tr><td>llama-chat</td><td class="num">0.9862</td><td class="num">+0.0011 &plusmn; 0.0014</td><td class="num">+0.0002 &plusmn; 0.0004</td></tr>
+    <tr><td>cohere-chat</td><td class="num">0.9052</td><td class="num"><strong>+0.0106 &plusmn; 0.0054</strong></td><td class="num">+0.0006 &plusmn; 0.0010</td></tr>
   </tbody>
 </table>
 
-<p>The L1 sweep consistently lands at <code>C = 0.1</code> (knee index 2 of 5). Representative sweep curve (fold 0):</p>
+<h4>k-sweep curves (15-cell means, selected drop only)</h4>
 <table>
-  <thead><tr><th class="num">C</th><th class="num">val_accuracy</th><th class="num">n_nonzero</th></tr></thead>
+  <thead>
+    <tr>
+      <th class="num">k</th>
+      <th class="num">gpt4</th>
+      <th class="num">gpt2</th>
+      <th class="num">mistral-chat</th>
+      <th class="num">llama-chat</th>
+      <th class="num">cohere-chat</th>
+    </tr>
+  </thead>
   <tbody>
-    <tr><td class="num">0.001</td><td class="num">0.500</td><td class="num">0</td></tr>
-    <tr><td class="num">0.01</td><td class="num">0.972</td><td class="num">38</td></tr>
-    <tr><td class="num"><strong>0.1</strong></td><td class="num"><strong>0.984</strong></td><td class="num"><strong>174</strong></td></tr>
-    <tr><td class="num">1.0</td><td class="num">0.988</td><td class="num">857</td></tr>
-    <tr><td class="num">10.0</td><td class="num">0.988</td><td class="num">6970</td></tr>
-  </tbody>
-</table>
-
-<h4>Stable neurons (&ge; 80% of folds)</h4>
-<p>109 neurons across 12 layers qualify as stable. Distribution skews toward later layers &mdash; layer 12 alone contributes 29 stable neurons, 20 of which appear in every fold.</p>
-
-<table>
-  <thead><tr><th>Layer group</th><th class="num">Stable neurons</th><th class="num">100% (all folds)</th></tr></thead>
-  <tbody>
-    <tr><td>Layers 1&ndash;4</td><td class="num">23</td><td class="num">10</td></tr>
-    <tr><td>Layers 5&ndash;8</td><td class="num">26</td><td class="num">14</td></tr>
-    <tr><td>Layers 9&ndash;10</td><td class="num">18</td><td class="num">9</td></tr>
-    <tr><td>Layer 11</td><td class="num">13</td><td class="num">8</td></tr>
-    <tr><td>Layer 12</td><td class="num">29</td><td class="num">20</td></tr>
-    <tr><th>Total</th><th class="num">109</th><th class="num">61</th></tr>
+    <tr><td class="num">1</td><td class="num">+0.0000</td><td class="num">&minus;0.0001</td><td class="num">&minus;0.0001</td><td class="num">+0.0001</td><td class="num">&minus;0.0001</td></tr>
+    <tr><td class="num">2</td><td class="num">+0.0000</td><td class="num">+0.0000</td><td class="num">+0.0001</td><td class="num">+0.0001</td><td class="num">&minus;0.0003</td></tr>
+    <tr><td class="num">5</td><td class="num">+0.0001</td><td class="num">&minus;0.0001</td><td class="num">+0.0004</td><td class="num">+0.0002</td><td class="num">+0.0011</td></tr>
+    <tr><td class="num">10</td><td class="num">+0.0001</td><td class="num">&minus;0.0005</td><td class="num">+0.0004</td><td class="num">+0.0002</td><td class="num">+0.0018</td></tr>
+    <tr><td class="num">20</td><td class="num">+0.0000</td><td class="num">&minus;0.0003</td><td class="num">+0.0005</td><td class="num">+0.0005</td><td class="num">+0.0019</td></tr>
+    <tr><td class="num">50</td><td class="num">+0.0003</td><td class="num">+0.0009</td><td class="num">+0.0010</td><td class="num">+0.0009</td><td class="num">+0.0066</td></tr>
+    <tr><th class="num">full</th><th class="num">+0.0003</th><th class="num">+0.0011</th><th class="num">+0.0010</th><th class="num">+0.0011</th><th class="num">+0.0106</th></tr>
   </tbody>
 </table>
 
 <div class="callout">
-  <span class="label">Takeaway</span>
-  <strong>Very strong classification performance from a sparse set on GPT-4</strong>: ~167 / 9,216 features (~1.8%) achieve 98.2% accuracy and 99.8% AUC. Stability is high, concentrated in final layers. <strong>Mistral is meaningfully harder</strong>: ~401 / 9,216 features (~4.4%) only reach 91.3% accuracy / 97.0% AUC. Both support the hypothesis that a small subset of features carries the signal &mdash; but the subset size and achievable accuracy depend strongly on the generator (see &sect;3.6).
-</div>
-
-<h3 id="res-ablation">3.2 Ablation <span class="pill prelim">ceiling confirmed</span></h3>
-
-<p>Mean-ablation of top-k selected neurons vs random-k. Numbers below are <strong>5-fold means</strong>. Baseline accuracy is the L2 eval probe scored on unmodified test activations (GPT-4 &asymp; 0.982; Mistral &asymp; 0.913). <code>k = n_selected</code> is the full per-fold selected set (GPT-4: 155&ndash;173 neurons; Mistral: 366&ndash;431 neurons).</p>
-
-<h4>GPT-4 (run <code>20260418_011033</code>)</h4>
-<table>
-  <thead><tr><th class="num">k</th><th class="num">Selected drop (mean)</th><th class="num">Selected drop (fold min)</th><th class="num">Selected drop (fold max)</th><th class="num">Random drop (mean)</th></tr></thead>
-  <tbody>
-    <tr><td class="num">10</td><td class="num">+0.0000</td><td class="num">&minus;0.0025</td><td class="num">+0.0025</td><td class="num">&minus;0.0004</td></tr>
-    <tr><td class="num">20</td><td class="num">+0.0000</td><td class="num">&minus;0.0025</td><td class="num">+0.0025</td><td class="num">&minus;0.0003</td></tr>
-    <tr><td class="num">50</td><td class="num">&minus;0.0005</td><td class="num">&minus;0.0050</td><td class="num">+0.0025</td><td class="num">&minus;0.0006</td></tr>
-    <tr><td class="num">100</td><td class="num">&minus;0.0005</td><td class="num">&minus;0.0050</td><td class="num">+0.0050</td><td class="num">&minus;0.0009</td></tr>
-    <tr><th class="num">n_selected (~167)</th><th class="num">+0.0005</th><th class="num">&minus;0.0025</th><th class="num">+0.0075</th><th class="num">&minus;0.0010</th></tr>
-  </tbody>
-</table>
-
-<h4>Mistral (run <code>20260418_011044</code>)</h4>
-<table>
-  <thead><tr><th class="num">k</th><th class="num">Selected drop (mean)</th><th class="num">Selected drop (fold min)</th><th class="num">Selected drop (fold max)</th><th class="num">Random drop (mean)</th></tr></thead>
-  <tbody>
-    <tr><td class="num">10</td><td class="num">+0.0005</td><td class="num">&minus;0.0025</td><td class="num">+0.0075</td><td class="num">+0.0010</td></tr>
-    <tr><td class="num">20</td><td class="num">+0.0020</td><td class="num">&minus;0.0025</td><td class="num">+0.0100</td><td class="num">+0.0009</td></tr>
-    <tr><td class="num">50</td><td class="num">+0.0035</td><td class="num">+0.0000</td><td class="num">+0.0100</td><td class="num">+0.0017</td></tr>
-    <tr><td class="num">100</td><td class="num">+0.0050</td><td class="num">&minus;0.0025</td><td class="num">+0.0125</td><td class="num">+0.0020</td></tr>
-    <tr><td class="num">200</td><td class="num">+0.0125</td><td class="num">+0.0025</td><td class="num">+0.0200</td><td class="num">+0.0023</td></tr>
-    <tr><th class="num">n_selected (~401)</th><th class="num">+0.0135</th><th class="num">+0.0025</th><th class="num">+0.0225</th><th class="num">+0.0034</th></tr>
-  </tbody>
-</table>
-
-<div class="callout good">
-  <span class="label">Ceiling finding</span>
-  Even ablating the <em>entire</em> selected set leaves the L2 eval probe essentially unharmed. GPT-4: average drop <strong>+0.0005</strong> (0.05 percentage points); Mistral: <strong>+0.0135</strong> (1.35 percentage points, slightly detectable but trivial relative to the 91% baseline). The k-sweep stopping at 100 in the previous run left this open; now the ceiling is measured, not extrapolated.
-</div>
-
-<div class="callout warn">
   <span class="label">Interpretation</span>
-  <strong>This is not a bug.</strong> The L2 eval probe uses all 9,216 features; removing even the full L1-selected set (167 for GPT-4, 401 for Mistral) still leaves thousands of correlated features intact. Mean ablation also keeps values in-distribution, which is the right methodological choice but limits disruptive power. The finding is:
-  <em>the AI-vs-human signal is distributed redundantly across many features; no subset recoverable by L1 is individually necessary for the global probe.</em> Combined with the clear patching sufficiency result (&sect;3.3), this is a coherent redundancy story &mdash; and it now holds on both generators.
+  For <strong>gpt4 / gpt2 / mistral / llama</strong> the full-set drop sits at 0.03&ndash;0.11&thinsp;pp &mdash; within noise of the random-ablation baseline (0.0&ndash;0.02&thinsp;pp). The redundancy claim survives there: the L2 probe uses all 9,216 features, so removing &le; 1% of them leaves thousands of correlated features intact. <strong>cohere-chat is now the clear deviation</strong>: 1.06&thinsp;&plusmn;&thinsp;0.54&thinsp;pp drop at <code>k = full</code> vs. 0.06&thinsp;pp random drop &mdash; almost an order of magnitude above noise &mdash; and the cohere drop grows monotonically from <code>k = 5</code> upward, unlike the others. The previous N = 5,000 single-seed run capped this at 0.30&thinsp;pp; with 15 cells the cohere ablation effect is real but small (51% std/mean, statistically meaningful). Reading: the selected set on cohere is <em>partially</em> distributed-redundant and <em>partially</em> localised, whereas on the other four generators the redundancy is essentially complete.
 </div>
 
-<h3 id="res-patching">3.3 Patching <span class="pill done">monotone, strong at full selected set</span></h3>
+<p class="footnote"><em>Note on per-k aggregation:</em> the runner's <code>aggregate.json</code> does not currently store per-k ablation_sweep means; the table above is reconstructed from the 15 per-(seed, fold) <code>eval_metrics.json</code> files. A planned runner enhancement (~40 LoC in <code>_aggregate_metrics</code>) will surface these aggregates directly.</p>
 
-<p>Same-domain patching of AI donor activations into human base samples, with <code>n_shuffles=20</code> and <code>n_random_draws=20</code>. Numbers below are <strong>5-fold means</strong>. <code>k = n_selected</code> row is the full per-fold selected set (GPT-4: 155&ndash;173; Mistral: 366&ndash;431).</p>
+<h3 id="res-patching">3.3 Patching <span class="pill done">monotone &amp; sufficient across 5 generators</span></h3>
 
-<h4>GPT-4 (run <code>20260418_011033</code>)</h4>
+<p>Same-domain patching of AI donor activations into human base samples, <code>n_shuffles = 20</code>, <code>n_random_draws = 20</code>. <strong>15-cell means &plusmn; std</strong> (3 seeds &times; 5 folds). <code>k = full</code> = each fold's actual <code>n_selected</code> (53&ndash;92 neurons depending on generator/cell). Headline metric is the <em>selected flip rate</em>; ratio is shown but is fragile at low k where the random denominator is ~10<sup>&minus;4</sup> (see &sect;3.3 footnote).</p>
+
+<h4>Selected flip rate, k-sweep (15-cell mean &plusmn; std)</h4>
 <table>
-  <thead><tr><th class="num">k</th><th class="num">Selected flip rate</th><th class="num">Random flip rate</th><th class="num">Ratio</th></tr></thead>
+  <thead>
+    <tr>
+      <th class="num">k</th>
+      <th class="num">gpt4</th>
+      <th class="num">gpt2</th>
+      <th class="num">mistral-chat</th>
+      <th class="num">llama-chat</th>
+      <th class="num">cohere-chat</th>
+    </tr>
+  </thead>
   <tbody>
-    <tr><td class="num">10</td><td class="num">0.0007</td><td class="num">0.0000</td><td class="num">&mdash;</td></tr>
-    <tr><td class="num">20</td><td class="num">0.0036</td><td class="num">0.0000</td><td class="num">&mdash;</td></tr>
-    <tr><td class="num">50</td><td class="num">0.0087</td><td class="num">0.0004</td><td class="num">~21&times;</td></tr>
-    <tr><td class="num">100</td><td class="num">0.0206</td><td class="num">0.0010</td><td class="num">~20&times;</td></tr>
-    <tr><th class="num">n_selected (~167)</th><th class="num">0.0359</th><th class="num">0.0020</th><th class="num">~18&times;</th></tr>
+    <tr><td class="num">1</td><td class="num">0.0002 &plusmn; 0.0003</td><td class="num">0.0005 &plusmn; 0.0004</td><td class="num">0.0006 &plusmn; 0.0006</td><td class="num">0.0007 &plusmn; 0.0008</td><td class="num">0.0013 &plusmn; 0.0008</td></tr>
+    <tr><td class="num">5</td><td class="num">0.0009 &plusmn; 0.0009</td><td class="num">0.0017 &plusmn; 0.0009</td><td class="num">0.0020 &plusmn; 0.0011</td><td class="num">0.0014 &plusmn; 0.0011</td><td class="num">0.0058 &plusmn; 0.0026</td></tr>
+    <tr><td class="num">10</td><td class="num">0.0015 &plusmn; 0.0011</td><td class="num">0.0029 &plusmn; 0.0010</td><td class="num">0.0034 &plusmn; 0.0011</td><td class="num">0.0027 &plusmn; 0.0016</td><td class="num">0.0099 &plusmn; 0.0033</td></tr>
+    <tr><td class="num">20</td><td class="num">0.0035 &plusmn; 0.0019</td><td class="num">0.0058 &plusmn; 0.0016</td><td class="num">0.0056 &plusmn; 0.0014</td><td class="num">0.0049 &plusmn; 0.0021</td><td class="num">0.0202 &plusmn; 0.0054</td></tr>
+    <tr><td class="num">50</td><td class="num">0.0080 &plusmn; 0.0027</td><td class="num">0.0171 &plusmn; 0.0031</td><td class="num">0.0148 &plusmn; 0.0025</td><td class="num">0.0086 &plusmn; 0.0030</td><td class="num">0.0543 &plusmn; 0.0088</td></tr>
+    <tr><th class="num">full</th><th class="num">0.0123 &plusmn; 0.0034</th><th class="num">0.0313 &plusmn; 0.0056</th><th class="num">0.0173 &plusmn; 0.0028</th><th class="num">0.0107 &plusmn; 0.0038</th><th class="num">0.0815 &plusmn; 0.0132</th></tr>
   </tbody>
 </table>
 
-<h4>Mistral (run <code>20260418_011044</code>)</h4>
+<h4>Selected-vs-random ratio at <code>k = full</code> (15-cell summary)</h4>
 <table>
-  <thead><tr><th class="num">k</th><th class="num">Selected flip rate</th><th class="num">Random flip rate</th><th class="num">Ratio</th></tr></thead>
+  <thead><tr><th>Generator</th><th class="num">Selected flip</th><th class="num">Random flip</th><th class="num">Ratio (mean &plusmn; std)</th></tr></thead>
   <tbody>
-    <tr><td class="num">10</td><td class="num">0.0087</td><td class="num">0.0023</td><td class="num">~3.8&times;</td></tr>
-    <tr><td class="num">20</td><td class="num">0.0138</td><td class="num">0.0036</td><td class="num">~3.8&times;</td></tr>
-    <tr><td class="num">50</td><td class="num">0.0291</td><td class="num">0.0062</td><td class="num">~4.7&times;</td></tr>
-    <tr><td class="num">100</td><td class="num">0.0533</td><td class="num">0.0088</td><td class="num">~6.0&times;</td></tr>
-    <tr><td class="num">200</td><td class="num">0.1136</td><td class="num">0.0126</td><td class="num">~9.0&times;</td></tr>
-    <tr><th class="num">n_selected (~401)</th><th class="num">0.2573</th><th class="num">0.0216</th><th class="num">~12&times;</th></tr>
+    <tr><td>gpt4</td><td class="num">0.0123 &plusmn; 0.0034</td><td class="num">~0.0001</td><td class="num">~125&times; (very noisy<sup>*</sup>)</td></tr>
+    <tr><td>gpt2</td><td class="num">0.0313 &plusmn; 0.0056</td><td class="num">~0.0031</td><td class="num">10.21 &plusmn; 2.34</td></tr>
+    <tr><td>mistral-chat</td><td class="num">0.0173 &plusmn; 0.0028</td><td class="num">~0.0008</td><td class="num">23.48 &plusmn; 20.03</td></tr>
+    <tr><td>llama-chat</td><td class="num">0.0107 &plusmn; 0.0038</td><td class="num">~0.0009</td><td class="num">12.40 &plusmn; 6.28</td></tr>
+    <tr><td>cohere-chat</td><td class="num"><strong>0.0815 &plusmn; 0.0132</strong></td><td class="num">~0.0078</td><td class="num">10.53 &plusmn; 1.85</td></tr>
   </tbody>
 </table>
+<p class="footnote"><sup>*</sup>gpt4's per-cell ratio mean is 125 with std 265 because the random-flip denominator at <code>k = full</code> is ~8 &times; 10<sup>&minus;4</sup> &mdash; tiny shifts in the denominator move the per-cell ratio by orders of magnitude. The robust signal is the selected flip-rate column, which is a clean monotone everywhere; the ratio at low k is illustrative only.</p>
 
-<h4>Per-domain flip rate at <code>n_selected</code> (5-fold mean)</h4>
+<h4>Per-domain selected flip rate at <code>k = full</code> (15-cell mean &plusmn; std)</h4>
 <table>
   <thead>
     <tr>
       <th>Domain</th>
-      <th class="num">GPT-4 mean</th>
-      <th class="num">GPT-4 fold std</th>
-      <th class="num">Mistral mean</th>
-      <th class="num">Mistral fold std</th>
+      <th class="num">gpt4</th>
+      <th class="num">gpt2</th>
+      <th class="num">mistral-chat</th>
+      <th class="num">llama-chat</th>
+      <th class="num">cohere-chat</th>
     </tr>
   </thead>
   <tbody>
-    <tr><td>abstracts</td><td class="num">0.047</td><td class="num">0.035</td><td class="num">0.264</td><td class="num">0.030</td></tr>
-    <tr><td>books</td><td class="num">0.020</td><td class="num">0.015</td><td class="num">0.226</td><td class="num">0.037</td></tr>
-    <tr><td>news</td><td class="num">0.055</td><td class="num">0.065</td><td class="num">0.248</td><td class="num">0.081</td></tr>
-    <tr><td>reddit</td><td class="num">0.030</td><td class="num">0.039</td><td class="num">0.297</td><td class="num">0.088</td></tr>
-    <tr><td>reviews</td><td class="num">0.035</td><td class="num">0.039</td><td class="num">0.283</td><td class="num">0.052</td></tr>
-    <tr><td>wiki</td><td class="num">0.031</td><td class="num">0.024</td><td class="num">0.234</td><td class="num">0.123</td></tr>
+    <tr><td>abstracts</td><td class="num">0.0144 &plusmn; 0.0095</td><td class="num">0.0308 &plusmn; 0.0116</td><td class="num">0.0179 &plusmn; 0.0070</td><td class="num">0.0147 &plusmn; 0.0112</td><td class="num">0.0989 &plusmn; 0.0260</td></tr>
+    <tr><td>books</td><td class="num">0.0108 &plusmn; 0.0085</td><td class="num">0.0193 &plusmn; 0.0106</td><td class="num">0.0092 &plusmn; 0.0087</td><td class="num">0.0121 &plusmn; 0.0101</td><td class="num"><strong>0.1006 &plusmn; 0.0213</strong></td></tr>
+    <tr><td>news</td><td class="num">0.0161 &plusmn; 0.0089</td><td class="num"><strong>0.0492 &plusmn; 0.0141</strong></td><td class="num">0.0211 &plusmn; 0.0069</td><td class="num">0.0101 &plusmn; 0.0071</td><td class="num">0.0967 &plusmn; 0.0244</td></tr>
+    <tr><td>reddit</td><td class="num">0.0105 &plusmn; 0.0065</td><td class="num">0.0322 &plusmn; 0.0142</td><td class="num">0.0134 &plusmn; 0.0062</td><td class="num">0.0076 &plusmn; 0.0059</td><td class="num">0.0750 &plusmn; 0.0175</td></tr>
+    <tr><td>reviews</td><td class="num">0.0097 &plusmn; 0.0103</td><td class="num">0.0196 &plusmn; 0.0093</td><td class="num">0.0062 &plusmn; 0.0059</td><td class="num">0.0114 &plusmn; 0.0086</td><td class="num">0.0548 &plusmn; 0.0199</td></tr>
+    <tr><td>wiki</td><td class="num">0.0125 &plusmn; 0.0117</td><td class="num">0.0365 &plusmn; 0.0146</td><td class="num"><strong>0.0354 &plusmn; 0.0158</strong></td><td class="num">0.0083 &plusmn; 0.0068</td><td class="num">0.0626 &plusmn; 0.0197</td></tr>
   </tbody>
 </table>
-
-<div class="callout warn">
-  <span class="label">Per-domain caveat</span>
-  Domain-level flip rates have <em>large fold-to-fold variance</em> on this single-seed run (e.g. GPT-4 news spans 0.4% to 16.3% across the 5 folds; Mistral wiki spans 12% to 37%). With ~30&ndash;40 same-domain human bases per fold, per-domain means are noisy. Do not draw per-domain conclusions from these numbers until multi-seed is in. The generator-level aggregate is stable; the per-domain ordering is not.
-</div>
-
-<div class="callout good">
-  <span class="label">Interpretation</span>
-  <p>The extended k-sweep (new <code>k = -1</code> sentinel) reshapes the story. Four things stand out:</p>
-  <ol>
-    <li><strong>Flip rate grows monotonically with k all the way to the full selected set on both generators.</strong> No saturation in the selected range &mdash; adding every selected neuron keeps adding sufficiency signal. This is the expected signature of a distributed-but-targeted representation.</li>
-    <li><strong>At <code>k = n_selected</code>, the ratio to random is ~18&times; (GPT-4) and ~12&times; (Mistral).</strong> Both far outside any plausible noise band. The ratio is the scientifically meaningful signal and is consistent across generators.</li>
-    <li><strong>Absolute flip rates are now non-trivial.</strong> GPT-4: 3.6% at <code>n_selected</code> (vs 1.65% at k=100 in the previous report); Mistral: <strong>25.7%</strong> at <code>n_selected</code>. The concern from the previous run (&ldquo;is the absolute rate just noise?&rdquo;) is largely retired.</li>
-    <li><strong>GPT-4 is harder to flip than Mistral.</strong> GPT-4&rsquo;s L2 probe is very confident (AUC 0.998), so a patched sample must traverse a larger margin; Mistral&rsquo;s probe (AUC 0.970) has more borderline samples that a targeted patch can reliably tip. See &sect;3.6.</li>
-  </ol>
-</div>
+<p class="footnote">Random per-domain breakdown is not currently surfaced by the patching evaluator (random is reported globally only). Listed as a runner enhancement (&sect;5.1&nbsp;G).</p>
 
 <div class="callout">
-  <span class="label">Is the absolute rate still a problem?</span>
-  Substantially less so after the full-set sweep. GPT-4 at 3.6% average (vs 0.20% random) and Mistral at 25.7% (vs 2.16% random) are clearly above any plausible noise. The remaining honest caveats:
-  <ul>
-    <li><em>Flip rate is a thresholded metric.</em> Probability-shift &Delta;P(AI) would be more sensitive and is still planned (&sect;5.1 (G)).</li>
-    <li><em>Single-seed.</em> Generator-level aggregate is stable (5-fold std is tight: GPT-4 selected flip at <code>n_selected</code> is 0.036 ± 0.005 across folds), but per-domain breakdowns are not (see callout above).</li>
-    <li><em>No saturation.</em> If the representation were concentrated, flip rate should plateau well before <code>n_selected</code>. Continued growth is itself informative &mdash; it confirms the redundancy story from ablation.</li>
-  </ul>
+  <span class="label">Interpretation</span>
+  Selected flip rate grows <strong>monotonically with k on every generator</strong> &mdash; the saturation/sufficiency curve survives without exception. Headline ratios at <code>k = full</code>: 10&times; (gpt2), 12&times; (llama), 11&times; (cohere), 23&times; (mistral); gpt4 sits at &asymp;125&times; only because its random baseline is ~10<sup>&minus;4</sup> (i.e. shuffled features barely flip the prediction at all), inflating the ratio with high variance. The first four sit inside the previous &ldquo;8&ndash;56&times;&rdquo; range; gpt4 is anomalously high but for a benign reason. <strong>Selected neurons are sufficient to push human predictions toward AI on all five generators.</strong> Absolute flip rates span an order of magnitude (1.1&ndash;8.2%): cohere-chat is the most easily perturbed (probe least confident, 90.5% baseline), llama-chat the least (1.1%). Per-domain pattern: cohere is uniformly high across domains (5&ndash;10%); gpt2 has a strong news/reddit/wiki signal (3&ndash;5%) and weaker books/reviews (~2%); the chat-RLHF generators (gpt4, mistral, llama) sit at 1&ndash;3.5% across the board. Combined with ablation (&sect;3.2), the selected set is <strong>sufficient but, on 4/5 generators, not individually necessary</strong> &mdash; the redundancy story (&sect;4.1).
 </div>
 
-<h3 id="res-confound">3.4 Confound <span class="pill drop">to remove</span></h3>
+<h3 id="res-confound">3.4 Confound <span class="pill drop">re-ran, still uninformative</span></h3>
 
-<p>Per-neuron test on pooled test fold:</p>
+<p>Per-neuron domain-ANOVA and text-length Spearman on the pooled test fold. Re-ran across all 15 cells per generator at N = 7,500. Fractions are mean &plusmn; std of <code>n_flagged / n_selected</code> over the 15 cells.</p>
+
 <table>
-  <thead><tr><th>Statistic</th><th class="num">Mean flagged</th><th class="num">% of selected</th></tr></thead>
+  <thead><tr><th>Generator</th><th class="num">frac flagged (any test)</th><th class="num">frac flagged text-length</th><th class="num">frac flagged domain</th></tr></thead>
   <tbody>
-    <tr><td>Domain ANOVA (p &lt; 0.05)</td><td class="num">165.2</td><td class="num">99.2%</td></tr>
-    <tr><td>Text-length Spearman (p &lt; 0.05)</td><td class="num">110.8</td><td class="num">66.5%</td></tr>
-    <tr><td>Either (flagged)</td><td class="num">165.2</td><td class="num">99.2%</td></tr>
+    <tr><td>gpt4</td><td class="num">0.9991 &plusmn; 0.0035</td><td class="num">0.8126 &plusmn; 0.0346</td><td class="num">0.9991 &plusmn; 0.0035</td></tr>
+    <tr><td>gpt2</td><td class="num">1.0000 &plusmn; 0.0000</td><td class="num">0.8087 &plusmn; 0.0150</td><td class="num">0.9920 &plusmn; 0.0059</td></tr>
+    <tr><td>mistral-chat</td><td class="num">1.0000 &plusmn; 0.0000</td><td class="num">0.7867 &plusmn; 0.0497</td><td class="num">1.0000 &plusmn; 0.0000</td></tr>
+    <tr><td>llama-chat</td><td class="num">1.0000 &plusmn; 0.0000</td><td class="num">0.8815 &plusmn; 0.0277</td><td class="num">1.0000 &plusmn; 0.0000</td></tr>
+    <tr><td>cohere-chat</td><td class="num">1.0000 &plusmn; 0.0000</td><td class="num">0.7726 &plusmn; 0.0290</td><td class="num">1.0000 &plusmn; 0.0000</td></tr>
   </tbody>
 </table>
 
-<p>Example extremes (fold 0): neuron (9, 123) has domain F = 69.1, p &approx; 0; neuron (1, 452) has text-length &rho; = &minus;0.71. Only one neuron (3, 497) was not flagged.</p>
+<p>Essentially every selected neuron is flagged on every generator (&ge; 99.9%). This reproduces the previous run exactly and confirms the methodological caveat in &sect;4.2: the pooled-sample marginal cannot distinguish &ldquo;genuine detector whose activation varies because AI text differs per domain&rdquo; from &ldquo;domain confound.&rdquo; Replacement: cross-domain generalisation (&sect;5.1&nbsp;A) and a domain probe (&sect;5.1&nbsp;C). Kept in pipeline only as a sanity-check that nothing has changed; no new information.</p>
 
-<div class="callout bad">
-  <span class="label">Decision: drop this experiment</span>
-  The pooled test cannot distinguish (a) &ldquo;neuron encodes domain independently of class&rdquo; from (b) &ldquo;neuron encodes AI-vs-human signal that happens to manifest differently per domain&rdquo;. 99% flagged is also uninformative at the population level. The experiment will be removed from the pipeline; cross-domain generalization (&sect;5.1) is the replacement, and a domain probe baseline serves as the cheap diagnostic.
-</div>
+<h3 id="res-auc">3.5 AUC Comparison <span class="pill done">parsimony + two structural exceptions</span></h3>
 
-<h3 id="res-auc">3.5 AUC Comparison <span class="pill done">promoted: methodology finding</span></h3>
+<p>Univariate AUC selector vs multivariate L1, both ablated against the L2 eval probe. <strong>15-cell means &plusmn; std</strong>. AUC and L1 ablation drops are computed against the same per-cell baseline.</p>
 
 <table>
   <thead>
     <tr>
-      <th>Metric</th>
-      <th class="num">GPT-4 &mdash; AUC</th>
-      <th class="num">GPT-4 &mdash; L1</th>
-      <th class="num">Mistral &mdash; AUC</th>
-      <th class="num">Mistral &mdash; L1</th>
+      <th>Generator</th>
+      <th class="num">L1 n_sel</th>
+      <th class="num">AUC n_sel</th>
+      <th class="num">AUC / L1 ratio</th>
+      <th class="num">Baseline acc</th>
+      <th class="num">L1 ablation drop</th>
+      <th class="num">AUC ablation drop</th>
     </tr>
   </thead>
   <tbody>
-    <tr><td>n_selected (mean)</td><td class="num">514</td><td class="num">167</td><td class="num"><strong>1.8</strong></td><td class="num">401</td></tr>
-    <tr><td>Baseline accuracy</td><td class="num" colspan="2">0.982</td><td class="num" colspan="2">0.913</td></tr>
-    <tr><td>Ablation drop at <code>n_selected</code></td><td class="num">+0.008</td><td class="num">+0.0005</td><td class="num">+0.001</td><td class="num">+0.014</td></tr>
-    <tr><td>Jaccard overlap (L1 &cap; AUC)</td><td class="num" colspan="2">0.121 (73 shared)</td><td class="num" colspan="2"><strong>0.001 (&lt;1 shared)</strong></td></tr>
+    <tr><td>gpt4</td><td class="num">74.1 &plusmn; 2.9</td><td class="num">491.3 &plusmn; 11.3</td><td class="num">6.63&times;</td><td class="num">0.9879</td><td class="num">+0.0003 &plusmn; 0.0012</td><td class="num">+0.0102 &plusmn; 0.0026</td></tr>
+    <tr><td>gpt2</td><td class="num">84.7 &plusmn; 4.1</td><td class="num">86.3 &plusmn; 6.7</td><td class="num"><strong>1.02&times;</strong></td><td class="num">0.9591</td><td class="num">+0.0011 &plusmn; 0.0030</td><td class="num">+0.0006 &plusmn; 0.0017</td></tr>
+    <tr><td>mistral-chat</td><td class="num">57.8 &plusmn; 2.9</td><td class="num">238.4 &plusmn; 5.7</td><td class="num">4.12&times;</td><td class="num">0.9708</td><td class="num">+0.0010 &plusmn; 0.0020</td><td class="num">+0.0052 &plusmn; 0.0026</td></tr>
+    <tr><td>llama-chat</td><td class="num">63.6 &plusmn; 1.7</td><td class="num">307.7 &plusmn; 8.2</td><td class="num">4.84&times;</td><td class="num">0.9862</td><td class="num">+0.0011 &plusmn; 0.0013</td><td class="num">+0.0055 &plusmn; 0.0033</td></tr>
+    <tr><td>cohere-chat</td><td class="num">72.3 &plusmn; 3.1</td><td class="num">37.6 &plusmn; 2.6</td><td class="num"><strong>0.52&times;</strong></td><td class="num">0.9052</td><td class="num"><strong>+0.0106 &plusmn; 0.0052</strong></td><td class="num">+0.0028 &plusmn; 0.0027</td></tr>
   </tbody>
 </table>
 
-<p>Two findings, one mild and one striking:</p>
-<ol>
-  <li><strong>On GPT-4</strong>, AUC and L1 pick largely disjoint neuron sets (Jaccard ~12%). AUC picks ~3&times; more neurons with a slightly larger ablation effect. Low overlap is expected because univariate AUC ranks by marginal discriminability while L1 solves a sparse multivariate problem with feature correlations.</li>
-  <li><strong>On Mistral, the AUC selector essentially fails</strong>: it passes its discrimination threshold on ~1.8 neurons out of 9,216. L1 finds 401. This is not a tuning artifact &mdash; it says Mistral&rsquo;s class signal has no individually strongly-discriminative neurons; the signal is joint across features. Univariate methods cannot recover it.</li>
-</ol>
+<p><strong>Three regimes, not one.</strong> The clean &ldquo;univariate needs more features&rdquo; story from the old report only describes 3/5 generators in the new panel:</p>
+<ul>
+  <li><strong>Parsimony regime</strong> (gpt4, mistral, llama): L1 picks 4&ndash;7&times; fewer features than AUC and the L1 ablation drop is <em>smaller</em>. L1 is strictly more parsimonious.</li>
+  <li><strong>Convergence regime</strong> (gpt2): AUC and L1 pick the same number of features (~85) and produce indistinguishable ablation effects (both ~0.001). Univariate is sufficient here. Consistent with gpt2 being the difficulty mid-point, where the multivariate advantage of L1 vanishes because the per-axis signal is already strong enough.</li>
+  <li><strong>Reversal regime</strong> (cohere-chat): AUC picks roughly <em>half</em> the features L1 does (38 vs 72), with a smaller ablation drop. For cohere, top-AUC features are the more efficient encoding. Consistent with &sect;3.2 (the L1 set on cohere has a real necessity contribution &mdash; ablating it costs more than ablating an AUC-equivalent set).</li>
+</ul>
 
-<div class="callout good">
-  <span class="label">Updated decision: keep and promote</span>
-  Previously planned to de-prioritize this experiment. The Mistral result changes that: it is a concrete, quantitative demonstration that univariate feature selection is insufficient for the cross-generator detection task, and that L1 multivariate selection is the methodologically necessary choice. This is a useful sentence for the paper&rsquo;s methods section and a good sanity check to run on every new generator.
-</div>
+<p class="footnote"><em>Methods-claim status:</em> the &ldquo;univariate vs multivariate&rdquo; claim is now generator-dependent, not universal. The cleanest framing for the paper is parsimony on the &ldquo;normal&rdquo; generators with explicit acknowledgement of the gpt2 convergence and cohere reversal as evidence that the dominance of multivariate L1 is not unconditional. The old &ldquo;Mistral collapse&rdquo; framing remains absent (already retracted).</p>
 
-<h3 id="res-crossgen">3.6 Cross-generator preliminary (GPT-4 vs Mistral)</h3>
+<h3 id="res-crossgen">3.6 Cross-generator characterize (5 generators)</h3>
 
-<p>Two generators, identical pipeline. This is the first look at whether our interpretability claims transfer beyond GPT-4. Still single-seed, still 2,000 samples &mdash; call it a smoke test, not a validation.</p>
+<p>Output of the <code>characterize</code> experiment over the per-generator stable sets (neurons selected in <em>all</em> 15 folds; <code>aggregate.json:n_stable_neurons</code>). 5 generators &times; 9,216 features. Per-generator stable sizes: gpt4 = 60, gpt2 = 60, mistral-chat = 45, llama-chat = 48, cohere-chat = 62. <em>Note:</em> the <code>characterize</code> step itself runs once on the aggregated per-generator stable sets and is not multi-seed; the per-generator stable sets it consumes are themselves derived from 15 (seed, fold) cells.</p>
 
-<h4>Side-by-side summary</h4>
+<h4>Layer distribution of stable neurons (counts per generator; layer with most stable in <strong>bold</strong>)</h4>
 <table>
   <thead>
-    <tr><th>Metric</th><th class="num">GPT-4</th><th class="num">Mistral</th></tr>
+    <tr>
+      <th class="num">Layer</th>
+      <th class="num">gpt4</th>
+      <th class="num">gpt2</th>
+      <th class="num">mistral-chat</th>
+      <th class="num">llama-chat</th>
+      <th class="num">cohere-chat</th>
+    </tr>
   </thead>
   <tbody>
-    <tr><td>L2 probe accuracy</td><td class="num">0.982</td><td class="num">0.913</td></tr>
-    <tr><td>L2 probe AUC</td><td class="num">0.998</td><td class="num">0.970</td></tr>
-    <tr><td>L1 <code>n_selected</code> (mean per fold)</td><td class="num">167</td><td class="num">401</td></tr>
-    <tr><td>Stable neurons (&ge; 80% folds)</td><td class="num">109</td><td class="num">216</td></tr>
-    <tr><td>AUC selector <code>n_selected</code></td><td class="num">514</td><td class="num"><strong>1.8</strong></td></tr>
-    <tr><td>Ablation drop at full selected set</td><td class="num">+0.0005</td><td class="num">+0.014</td></tr>
-    <tr><td>Patching flip at full selected set</td><td class="num">0.036</td><td class="num"><strong>0.257</strong></td></tr>
-    <tr><td>Patching ratio to random at full selected set</td><td class="num">~18&times;</td><td class="num">~12&times;</td></tr>
+    <tr><td class="num">1</td><td class="num">1</td><td class="num">4</td><td class="num">4</td><td class="num">0</td><td class="num">5</td></tr>
+    <tr><td class="num">2</td><td class="num">5</td><td class="num">3</td><td class="num">2</td><td class="num">8</td><td class="num">3</td></tr>
+    <tr><td class="num">3</td><td class="num">2</td><td class="num">8</td><td class="num">1</td><td class="num">6</td><td class="num">10</td></tr>
+    <tr><td class="num">4</td><td class="num">5</td><td class="num">4</td><td class="num">3</td><td class="num">1</td><td class="num">0</td></tr>
+    <tr><td class="num">5</td><td class="num">5</td><td class="num">4</td><td class="num">2</td><td class="num">1</td><td class="num">4</td></tr>
+    <tr><td class="num">6</td><td class="num">2</td><td class="num">4</td><td class="num">2</td><td class="num">0</td><td class="num">4</td></tr>
+    <tr><td class="num">7</td><td class="num">5</td><td class="num">3</td><td class="num">4</td><td class="num">8</td><td class="num">4</td></tr>
+    <tr><td class="num">8</td><td class="num">3</td><td class="num">4</td><td class="num">1</td><td class="num">3</td><td class="num">2</td></tr>
+    <tr><td class="num">9</td><td class="num">5</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">3</td></tr>
+    <tr><td class="num">10</td><td class="num">3</td><td class="num">6</td><td class="num">5</td><td class="num">3</td><td class="num">5</td></tr>
+    <tr><td class="num">11</td><td class="num">6</td><td class="num"><strong>11</strong></td><td class="num">5</td><td class="num">2</td><td class="num">3</td></tr>
+    <tr><td class="num">12</td><td class="num"><strong>18</strong></td><td class="num">8</td><td class="num"><strong>16</strong></td><td class="num"><strong>16</strong></td><td class="num"><strong>19</strong></td></tr>
+    <tr><th class="num">Total stable</th><th class="num">60</th><th class="num">60</th><th class="num">45</th><th class="num">48</th><th class="num">62</th></tr>
+    <tr><th class="num">% in L12</th><th class="num">30.0%</th><th class="num">13.3%</th><th class="num">35.6%</th><th class="num">33.3%</th><th class="num">30.6%</th></tr>
   </tbody>
 </table>
 
-<h4>What&rsquo;s consistent across generators</h4>
-<ul>
-  <li><strong>Ablation is weak on both.</strong> Full-set ablation drops accuracy by 0.05 pp (GPT-4) and 1.35 pp (Mistral). The L2 probe routes around the removed set either way &mdash; the redundancy story is not a GPT-4-specific artifact.</li>
-  <li><strong>Patching is monotonically increasing with k on both</strong>, with no saturation in the selected range. Same signature of distributed-but-targeted causal signal.</li>
-  <li><strong>Ratio to random at <code>n_selected</code> is in the same order of magnitude</strong> (~18&times; vs ~12&times;). The scientifically meaningful signal is reproduced.</li>
-  <li><strong>L1 selection works on both</strong> generators out of the box; univariate AUC selection does not generalize (see &sect;3.5).</li>
-</ul>
+<h4>Pairwise Jaccard between per-generator stable sets</h4>
+<table>
+  <thead><tr><th></th><th class="num">gpt4</th><th class="num">gpt2</th><th class="num">mistral</th><th class="num">llama</th><th class="num">cohere</th></tr></thead>
+  <tbody>
+    <tr><th>gpt4</th><td class="num">&mdash;</td><td class="num"><strong>0.0000</strong></td><td class="num">0.1413</td><td class="num">0.1134</td><td class="num">0.1091</td></tr>
+    <tr><th>gpt2</th><td class="num"><strong>0.0000</strong></td><td class="num">&mdash;</td><td class="num">0.0500</td><td class="num">0.0189</td><td class="num">0.0339</td></tr>
+    <tr><th>mistral</th><td class="num">0.1413</td><td class="num">0.0500</td><td class="num">&mdash;</td><td class="num">0.1625</td><td class="num"><strong>0.2442</strong></td></tr>
+    <tr><th>llama</th><td class="num">0.1134</td><td class="num">0.0189</td><td class="num">0.1625</td><td class="num">&mdash;</td><td class="num">0.0784</td></tr>
+    <tr><th>cohere</th><td class="num">0.1091</td><td class="num">0.0339</td><td class="num"><strong>0.2442</strong></td><td class="num">0.0784</td><td class="num">&mdash;</td></tr>
+  </tbody>
+</table>
 
-<h4>What differs</h4>
-<ul>
-  <li><strong>Detection difficulty.</strong> GPT-4 is much easier to separate from human text (98.2%) than Mistral (91.3%). Absolute flip rates also track this: Mistral&rsquo;s L2 probe is less confident, so more samples sit close to the boundary, so patching flips them more easily.</li>
-  <li><strong>Signal distribution.</strong> Mistral needs 2.4&times; more neurons at the L1 knee (401 vs 167) to reach its lower accuracy ceiling, and the AUC selector collapses entirely. Read: Mistral&rsquo;s AI-vs-human signal is more diffuse &mdash; fewer strongly-discriminative individual features, more need for joint feature combinations.</li>
-  <li><strong>Absolute patching magnitude.</strong> Mistral at 25.7% is in a different regime from GPT-4 at 3.6%. Both support sufficiency; their magnitudes should not be compared directly without adjusting for the baseline probe&rsquo;s confidence.</li>
-</ul>
+<h4>Random-null Jaccard baseline</h4>
+<p>For two random size-K<sub>A</sub> and K<sub>B</sub> sets in 9,216 features, expected Jaccard &asymp; K<sub>A</sub>&middot;K<sub>B</sub> / (9216&middot;(K<sub>A</sub>+K<sub>B</sub>) &minus; K<sub>A</sub>&middot;K<sub>B</sub>). Multiple-of-chance per pair:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Pair</th>
+      <th class="num">K<sub>A</sub></th>
+      <th class="num">K<sub>B</sub></th>
+      <th class="num">Observed J</th>
+      <th class="num">Expected J (null)</th>
+      <th class="num">&times; chance</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>cohere &ndash; mistral</td><td class="num">62</td><td class="num">45</td><td class="num">0.2442</td><td class="num">0.0028</td><td class="num"><strong>86.06&times;</strong></td></tr>
+    <tr><td>llama &ndash; mistral</td><td class="num">48</td><td class="num">45</td><td class="num">0.1625</td><td class="num">0.0025</td><td class="num">64.32&times;</td></tr>
+    <tr><td>gpt4 &ndash; mistral</td><td class="num">60</td><td class="num">45</td><td class="num">0.1413</td><td class="num">0.0028</td><td class="num">50.50&times;</td></tr>
+    <tr><td>gpt4 &ndash; llama</td><td class="num">60</td><td class="num">48</td><td class="num">0.1134</td><td class="num">0.0029</td><td class="num">39.08&times;</td></tr>
+    <tr><td>cohere &ndash; gpt4</td><td class="num">62</td><td class="num">60</td><td class="num">0.1091</td><td class="num">0.0033</td><td class="num">32.86&times;</td></tr>
+    <tr><td>cohere &ndash; llama</td><td class="num">62</td><td class="num">48</td><td class="num">0.0784</td><td class="num">0.0029</td><td class="num">26.64&times;</td></tr>
+    <tr><td>gpt2 &ndash; mistral</td><td class="num">60</td><td class="num">45</td><td class="num">0.0500</td><td class="num">0.0028</td><td class="num">17.87&times;</td></tr>
+    <tr><td>cohere &ndash; gpt2</td><td class="num">62</td><td class="num">60</td><td class="num">0.0339</td><td class="num">0.0033</td><td class="num">10.21&times;</td></tr>
+    <tr><td>gpt2 &ndash; llama</td><td class="num">60</td><td class="num">48</td><td class="num">0.0189</td><td class="num">0.0029</td><td class="num">6.50&times;</td></tr>
+    <tr><td>gpt2 &ndash; gpt4</td><td class="num">60</td><td class="num">60</td><td class="num"><strong>0.0000</strong></td><td class="num">0.0033</td><td class="num"><strong>0&times;</strong></td></tr>
+    <tr><th>Mean over 10 pairs</th><th class="num"></th><th class="num"></th><th class="num">0.0952</th><th class="num">0.0030</th><th class="num">~32&times;</th></tr>
+  </tbody>
+</table>
+
+<h4>CAV diagnostics (single-fit on per-generator stable sets)</h4>
+<table>
+  <thead>
+    <tr>
+      <th>Generator</th>
+      <th class="num">cosine sim (CAV vs LR weight)</th>
+      <th class="num">LR accuracy on CAV</th>
+      <th class="num">‖mean diff‖</th>
+      <th class="num">‖LR weight‖</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>gpt4</td><td class="num">0.140</td><td class="num">0.985</td><td class="num">7.344</td><td class="num">47.858</td></tr>
+    <tr><td>gpt2</td><td class="num"><strong>0.071</strong></td><td class="num">0.969</td><td class="num">6.840</td><td class="num">69.054</td></tr>
+    <tr><td>mistral-chat</td><td class="num">0.111</td><td class="num">0.963</td><td class="num">6.379</td><td class="num">58.805</td></tr>
+    <tr><td>llama-chat</td><td class="num">0.129</td><td class="num">0.990</td><td class="num">6.568</td><td class="num">47.216</td></tr>
+    <tr><td>cohere-chat</td><td class="num"><strong>0.057</strong></td><td class="num"><strong>0.903</strong></td><td class="num"><strong>4.691</strong></td><td class="num"><strong>107.010</strong></td></tr>
+  </tbody>
+</table>
+<p class="footnote"><code>characterize</code> currently runs single-fit per generator (no multi-seed structure), so &plusmn; columns are not reported. Wrapping it in the multi-seed loop is &lt; 10 LoC and listed as a runner enhancement (&sect;5.1&nbsp;G).</p>
 
 <div class="callout">
-  <span class="label">Interpretation (tentative)</span>
-  The qualitative story is remarkably stable: L1 selection finds a sparse-but-redundant set of causally-active features in both representations. The generator-level differences (probe confidence, selected-set size, AUC selector failure) are substantive and worth analyzing in their own right &mdash; they are the first hint that our method describes different detection regimes rather than a single canonical &ldquo;AI detection circuit&rdquo;. One more generator with a third architecture (e.g. LLaMA variant) would turn this into a real triangulation rather than a single comparison.
+  <span class="label">Cross-generator pattern</span>
+  <ol>
+    <li><strong>Layer-12 dominance holds for 4/5 generators</strong>: 16&ndash;19 of each chat-RLHF generator's stable neurons live in the final layer (30&ndash;36% of the stable set). <strong>gpt2 is the exception</strong> &mdash; it peaks at L11 (11 stable neurons; 13.3% in L12 vs 30&ndash;36% elsewhere). Reading: BERT's late layers split between a generator-specific late-classification register (L12, all chat-RLHF generators) and a more pretraining-style register (L11, gpt2 only).</li>
+    <li><strong>Generator-specific circuits with above-chance overlap.</strong> Pairwise Jaccard 0.00&ndash;0.24 in absolute terms, but the random-null baseline is ~0.003 &mdash; observed overlap averages <strong>~32&times; chance</strong>, with the strongest pairs being cohere&ndash;mistral (86&times;) and llama&ndash;mistral (64&times;). Reframes the &ldquo;low absolute Jaccard&rdquo; finding from a weakness into a &ldquo;circuits overlap far above chance but are still generator-distinct&rdquo; observation.</li>
+    <li><strong>The structural outlier is gpt2, not cohere.</strong> gpt2 has the lowest cross-generator Jaccard (0&ndash;0.05; gpt2&ndash;gpt4 is exactly 0), the only L11-peaked layer profile, the lowest CAV cosine (0.07 tied with cohere), and the highest LR-weight norm except cohere (69 vs cohere's 107). Cohere &mdash; flagged as the outlier in the previous run &mdash; is in fact the most-overlapped generator with mistral here (J = 0.244, 86&times; chance). The previous &ldquo;cohere is the outlier&rdquo; framing was confounded by chatgpt being in the panel instead of gpt2; once you swap to a base/non-RLHF model, the structural divide is between gpt2 and the four chat-RLHF generators.</li>
+    <li><strong>cohere remains the difficulty floor</strong>: lowest baseline accuracy (0.91), lowest CAV cosine (0.057), smallest mean-difference norm (4.69), largest LR weight norm (107). The signal in cohere is genuinely smaller in magnitude per axis &mdash; the probe compensates with larger weights &mdash; but it overlaps the most with mistral, so it is not structurally isolated.</li>
+  </ol>
 </div>
 
+<h3 id="res-restricted">3.7 Restricted Probe <span class="pill done">two structural gaps now</span></h3>
+
+<p>For each (seed, fold), reusing the L1 selections from <code>sparse_probe</code>, two restricted evaluations are compared against the all-features baseline:</p>
+<ul>
+  <li><strong>smaller model</strong> &mdash; <em>fresh</em> L2 probe on selected columns only;</li>
+  <li><strong>ablate-complement</strong> &mdash; the full L2 probe scored on test activations where every <em>non-selected</em> neuron has been mean-ablated.</li>
+</ul>
+<p>Numbers are <strong>15-cell means &plusmn; std</strong>. <code>gap = smaller drop &minus; ablC drop</code> (negative = ablate-complement framing is harsher).</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Generator</th>
+      <th class="num">Baseline</th>
+      <th class="num">Smaller-model acc (drop)</th>
+      <th class="num">Ablate-complement acc (drop)</th>
+      <th class="num">|gap|</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>gpt4</td><td class="num">0.9879 &plusmn; 0.0027</td><td class="num">0.9717 &plusmn; 0.0049 (&minus;1.62 &plusmn; 0.46&thinsp;pp)</td><td class="num">0.9676 &plusmn; 0.0058 (&minus;2.03 &plusmn; 0.52&thinsp;pp)</td><td class="num">0.41 &plusmn; 0.44&thinsp;pp</td></tr>
+    <tr><td>gpt2</td><td class="num">0.9591 &plusmn; 0.0033</td><td class="num">0.9133 &plusmn; 0.0060 (&minus;4.58 &plusmn; 0.53&thinsp;pp)</td><td class="num">0.8770 &plusmn; 0.0068 (&minus;8.21 &plusmn; 0.71&thinsp;pp)</td><td class="num"><strong>3.63 &plusmn; 0.84&thinsp;pp</strong></td></tr>
+    <tr><td>mistral-chat</td><td class="num">0.9708 &plusmn; 0.0044</td><td class="num">0.9344 &plusmn; 0.0055 (&minus;3.64 &plusmn; 0.58&thinsp;pp)</td><td class="num">0.9251 &plusmn; 0.0047 (&minus;4.57 &plusmn; 0.53&thinsp;pp)</td><td class="num">0.93 &plusmn; 0.43&thinsp;pp</td></tr>
+    <tr><td>llama-chat</td><td class="num">0.9862 &plusmn; 0.0032</td><td class="num">0.9604 &plusmn; 0.0028 (&minus;2.58 &plusmn; 0.45&thinsp;pp)</td><td class="num">0.9490 &plusmn; 0.0053 (&minus;3.72 &plusmn; 0.56&thinsp;pp)</td><td class="num">1.14 &plusmn; 0.43&thinsp;pp</td></tr>
+    <tr><td>cohere-chat</td><td class="num">0.9052 &plusmn; 0.0079</td><td class="num">0.8651 &plusmn; 0.0096 (&minus;4.01 &plusmn; 1.05&thinsp;pp)</td><td class="num">0.8208 &plusmn; 0.0140 (&minus;8.44 &plusmn; 1.35&thinsp;pp)</td><td class="num"><strong>4.43 &plusmn; 1.05&thinsp;pp</strong></td></tr>
+  </tbody>
+</table>
+
 <div class="callout warn">
-  <span class="label">What this is NOT yet</span>
-  Seed=42 only on both generators; 2,000 samples; no cross-domain test; no restricted-feature probe. Per-domain patching breakdowns are not reliable at this sample size (see &sect;3.3 caveat). The numbers here are sufficient to frame hypotheses for the final run; they are not sufficient to close them.
+  <span class="label">Two structural gaps now, not one</span>
+  An L2 probe on 0.6&ndash;0.9% of features loses 1.6&ndash;4.6&thinsp;pp accuracy across the panel &mdash; consistent with the L1 selector&rsquo;s own test accuracy at the same N (&sect;3.1). The interesting comparison is the gap between the two restricted framings, which is a probe of how much the &ldquo;rest of the model&rdquo; contributes to the baseline.
+  <br><br>
+  <strong>Cohere-chat&rsquo;s 4.4&thinsp;pp gap reproduces the previous-run finding (was 4.5&thinsp;pp; now 4.43 &plusmn; 1.05&thinsp;pp).</strong> New: <strong>gpt2 also has a 3.6 &plusmn; 0.8&thinsp;pp gap</strong> &mdash; it joins cohere as a generator where the ablate-complement framing penalises the selected set ~2&times; harder than the smaller-model framing. gpt4 / mistral / llama gaps sit at 0.4 / 0.9 / 1.1&thinsp;pp, comfortably under the 1&thinsp;pp threshold from the old report.
+  <br><br>
+  Reading: on the easier RLHF generators (gpt4, llama, mistral) the selected feature set <em>carries more standalone signal than its baseline-context contribution warrants</em> &mdash; ablating the complement distributionally shifts the probe but doesn&rsquo;t reveal much extra information. On <strong>cohere and gpt2</strong>, by contrast, the rest of the model carries genuine information that the smaller-model framing misses, so removing it via ablation costs an extra ~4&thinsp;pp. This is consistent with cohere&rsquo;s structurally weaker per-axis signal (&sect;3.6) and with gpt2 being a non-RLHF base model whose detection-relevant signal is more dispersed across the network.
 </div>
 
 <!-- ================================================================= -->
 <h2 id="methodology">4. Methodological Findings</h2>
 
 <h3 id="meth-redundancy">4.1 Redundancy story (ablation &harr; patching)</h3>
-<p>The apparent contradiction &mdash; &ldquo;ablation is weak, patching works&rdquo; &mdash; is not a contradiction once one recognizes that:</p>
-<ol>
-  <li>Ablation tests <strong>necessity</strong> against an L2 probe that has access to <em>all</em> 9,216 features. In a redundant representation, removing a small fraction is compensated by the remainder.</li>
-  <li>Patching tests <strong>sufficiency</strong> by <em>injecting</em> genuine AI-class signal on human rows. Wrong-class signal in selected features competes with human signal elsewhere and occasionally wins; random-feature injections essentially never win.</li>
-</ol>
-<p>The extended k-sweep (&sect;3.2, &sect;3.3) makes this quantitative on both generators: ablating the <em>full</em> selected set drops accuracy by 0.05 pp (GPT-4) and 1.35 pp (Mistral), while patching the full set achieves 3.6% and 25.7% flip rates respectively &mdash; in both cases 12&ndash;18&times; above random. The two experiments measure opposite properties of the same redundant, distributed representation; both confirm it.</p>
-
-<p>An alternative &ldquo;restricted eval probe&rdquo; design (L2 trained only on selected features) was considered and rejected because it trivializes the high-k end of the ablation sweep (you ablate the whole input). It is worth running separately for the <em>smaller-model</em> claim &mdash; see <a href="#plan-tier1">&sect;5.1</a>.</p>
+<p>&ldquo;Ablation is weak but patching works&rdquo; is not a contradiction. Ablation tests <strong>necessity</strong> against a probe with 9,216 features &mdash; removing &le;4% is compensated by redundant correlates. Patching tests <strong>sufficiency</strong> by injecting AI-class signal into human rows &mdash; wrong-class signal in selected features competes with human signal elsewhere. Both confirm a redundantly distributed representation (&sect;3.2, &sect;3.3). The restricted probe (&sect;3.7) adds a presentation sentence but no new scientific content.</p>
 
 <h3 id="meth-confound">4.2 Per-neuron confound test &mdash; why we are dropping it</h3>
-<ul>
-  <li><strong>Pooled tests conflate class with domain.</strong> A genuine AI detector whose activation varies across domains <em>because AI text differs stylistically across domains</em> produces a significant domain ANOVA, even though nothing confounding is happening.</li>
-  <li><strong>No multiple-comparison correction.</strong> Fixable but doesn&rsquo;t rescue the deeper issue.</li>
-  <li><strong>Marginal &ne; confounded classification.</strong> Per-neuron marginal tests do not tell you whether the classifier&rsquo;s decision boundary actually depends on domain. Cross-domain generalization does.</li>
-  <li><strong>99% flagged is uninformative.</strong> The result does not discriminate hypotheses.</li>
-</ul>
-<p>The simpler, stronger alternative is a combination of (i) leave-one-domain-out generalization and (ii) a domain probe trained on selected features. Both are in the plan.</p>
+<p>The test pools human+AI and runs per-neuron marginal statistics. A genuine detector whose activation varies across domains <em>because AI text differs per domain</em> will be flagged identically to a confound. 99% flagged, so it discriminates nothing. Replacement: leave-one-generator-out generalization (&sect;5.1&nbsp;A). Domain confounds are addressed methodologically via StratifiedKFold on (label &times; domain) and same-domain donor sampling in the patching experiment; a dedicated domain probe is not required.</p>
 
-<h3 id="meth-selection">4.3 Selection vs evaluation separation (minor notes)</h3>
+<h3 id="meth-interventions-scope">4.3 Which neurons do ablation/patching actually intervene on?</h3>
+<p>Each fold&rsquo;s ablation/patching operates on <em>that fold&rsquo;s</em> L1-selected set, not the aggregated stable set. Using the stable set would leak cross-fold information (stability depends on overlapping training data). Consequence: results strictly say &ldquo;the per-fold selected set is sufficient/not-necessary,&rdquo; not &ldquo;the stable core drives detection.&rdquo; A future appendix experiment could intervene on the stable set directly to close this gap (~30 LoC).</p>
+
+<h3 id="meth-selection">4.4 Selection vs evaluation separation (minor notes)</h3>
 <ul>
-  <li>The L1 selection probe is persisted but only used for the diagnostic <code>selector_test_accuracy</code> metric. The evaluator always scores a <em>fresh</em> L2 probe. Good separation.</li>
-  <li>Ablation random-k uses <code>np.random.RandomState(42)</code> per call, which is the same seed for every k and every fold. Random-k baselines are therefore highly correlated across the sweep. Not wrong, but worth noting; future versions should derive the random seed from fold/seed/k.</li>
-  <li>Patching similarly uses a fixed seed for shuffles and neuron draws. Same caveat.</li>
-  <li><code>LogisticRegression</code> with <code>penalty='l1'</code>, <code>solver='saga'</code> &mdash; verified correct against sklearn docs (initial concern retracted).</li>
+  <li>L1 probe is used only for the diagnostic <code>selector_test_accuracy</code>; all evaluation uses a fresh L2 probe. Good separation.</li>
+  <li>Ablation/patching random-k baselines use a fixed <code>RandomState(42)</code> per call &mdash; correlated across the sweep. Not wrong but worth fixing (derive seed from fold/seed/k).</li>
 </ul>
+
+<h3 id="meth-stability">4.5 Sample size &amp; C selection via multi-generator stability sweep</h3>
+
+<p><em>Why we abandoned knee detection.</em> The original pipeline picked C per-fold via a knee in the <code>(n_nonzero, val_accuracy)</code> curve over 5 C values. This conflated three sources of variation: CV-fold variance, knee-detector geometry, and sample size. In particular, runs at small N would land on degenerate sweep curves (anchor point with 0 features at C = 0.001), pulling the knee toward dense solutions and creating spurious &ldquo;sample-size effects&rdquo; that were really artefacts of the knee anchor.</p>
+
+<p><em>Replacement methodology.</em> Run a <strong>fixed C</strong> at each N and measure selection stability directly via independent stratified subsamples, repeated across multiple generators. For each (generator, N, C):</p>
+<ol>
+  <li>Draw <code>K = 15</code> independent stratified subsamples of size N from the 10k pool (balanced across class &times; domain).</li>
+  <li>For each draw, fit one L1 logistic regression at the fixed C; record the selected neuron set <code>S_k</code>.</li>
+  <li>Compute pairwise Jaccard similarity over <code>{S_1, &hellip;, S_K}</code> (K choose 2 = 105 pairs); report mean as the stability score.</li>
+  <li>Compute the <strong>core stable set</strong>: neurons selected in &ge; 80% of the K draws.</li>
+</ol>
+
+<p>Implementation: <code>scripts/experiments/run_sample_size_stability.py</code>. Total wall-clock for the full grid (3 generators &times; 4 C values &times; 7 N values &times; K = 15): <strong>23 minutes</strong>. Output: <code>results/experiments/stability_grid_gpt4_llama_mistral/grid_summary.json</code>. The three generators (gpt4, llama-chat, mistral) span the difficulty axis: gpt4 is the &ldquo;easy&rdquo; chat-RLHF generator, mistral is the hard end of the chat-RLHF subset, llama sits between. Cohere and gpt2 were not included in the sweep because their activations exhibit different scaling behaviour (sweep was run before the gpt2 swap was decided); whether to also sweep gpt2 is parked as &sect;6 open decision.</p>
+
+<h4>Pairwise Jaccard at C = 0.005, K = 15, across all 3 sweep generators</h4>
+<table>
+  <thead>
+    <tr>
+      <th class="num">N</th>
+      <th class="num">gpt4</th>
+      <th class="num">llama-chat</th>
+      <th class="num">mistral</th>
+      <th class="num">spread (max &minus; min)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="num">500</td><td class="num">&mdash;<sup>*</sup></td><td class="num">&mdash;<sup>*</sup></td><td class="num">&mdash;<sup>*</sup></td><td class="num">&mdash;</td></tr>
+    <tr><td class="num">1000</td><td class="num">0.433</td><td class="num">0.464</td><td class="num">&mdash;<sup>**</sup></td><td class="num">~</td></tr>
+    <tr><td class="num">2000</td><td class="num">0.510</td><td class="num">0.559</td><td class="num">0.343</td><td class="num">0.216</td></tr>
+    <tr><td class="num">3500</td><td class="num">0.617</td><td class="num">0.681</td><td class="num">0.492</td><td class="num">0.189</td></tr>
+    <tr><td class="num">5000</td><td class="num">0.684</td><td class="num">0.670</td><td class="num">0.613</td><td class="num">0.071</td></tr>
+    <tr><td class="num"><strong>7500</strong></td><td class="num"><strong>0.751</strong></td><td class="num"><strong>0.748</strong></td><td class="num"><strong>0.724</strong></td><td class="num"><strong>0.027</strong></td></tr>
+    <tr><td class="num">10000</td><td class="num">K=1<sup>***</sup></td><td class="num">K=1<sup>***</sup></td><td class="num">K=1<sup>***</sup></td><td class="num">&mdash;</td></tr>
+  </tbody>
+</table>
+<p class="footnote"><sup>*</sup>At C = 0.005, N = 500 the L1 problem degenerates on every generator (0 features selected, 50% accuracy). <sup>**</sup>Mistral at N = 1000 selects only 0.2 features mean &mdash; degenerate, Jaccard meaningless. <sup>***</sup>The 10k pool is exhausted at N = 10000, so only K = 1 subsample is possible (no pairwise Jaccard).</p>
+
+<h4>Comparison: Jaccard at N = 7,500 across C values (3 generators)</h4>
+<table>
+  <thead>
+    <tr>
+      <th class="num">C</th>
+      <th class="num">gpt4</th>
+      <th class="num">llama-chat</th>
+      <th class="num">mistral</th>
+      <th class="num">min over 3 gen</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><th class="num">0.005</th><th class="num">0.751</th><th class="num">0.748</th><th class="num">0.724</th><th class="num"><strong>0.724</strong></th></tr>
+    <tr><td class="num">0.01</td><td class="num">0.681</td><td class="num">0.696</td><td class="num">0.637</td><td class="num">0.637</td></tr>
+    <tr><td class="num">0.02</td><td class="num">0.625</td><td class="num">0.616</td><td class="num">0.591</td><td class="num">0.591</td></tr>
+    <tr><td class="num">0.05</td><td class="num">0.535</td><td class="num">0.534</td><td class="num">0.482</td><td class="num">0.482</td></tr>
+  </tbody>
+</table>
+
+<h4>Selected n_features and train accuracy at the chosen point (C = 0.005)</h4>
+<table>
+  <thead>
+    <tr><th class="num">N</th><th class="num">gpt4 n_sel</th><th class="num">llama n_sel</th><th class="num">mistral n_sel</th><th class="num">gpt4 train_acc</th><th class="num">llama train_acc</th><th class="num">mistral train_acc</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="num">5000</td><td class="num">64.5</td><td class="num">53.3</td><td class="num">77.7</td><td class="num">0.966</td><td class="num">0.955</td><td class="num">0.869</td></tr>
+    <tr><td class="num"><strong>7500</strong></td><td class="num"><strong>79.6</strong></td><td class="num"><strong>77.5</strong></td><td class="num"><strong>114.8</strong></td><td class="num"><strong>0.972</strong></td><td class="num"><strong>0.962</strong></td><td class="num"><strong>0.892</strong></td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <span class="label">Decision &amp; justification</span>
+  <ul>
+    <li><strong>C = 0.005</strong> is the most stable C value tested at every N &ge; 2000 <em>for every generator</em>. The min-over-3-gen Jaccard at N = 7,500 is 0.724 for C = 0.005 vs 0.482 for C = 0.05 &mdash; 24-pp gap. Train-accuracy cost is small on the chat-RLHF generators (~2&thinsp;pp) and meaningful only on mistral (8.4 pp at N = 7,500: 0.892 at C = 0.005 vs 0.973 at C = 0.05); for interpretability claims we prioritise stability over peak accuracy.</li>
+    <li><strong>N = 7,500</strong> chosen over N = 5,000 because Jaccard rises +0.07 to +0.11 (largest gain on mistral, +0.111), and the cross-generator Jaccard spread tightens from 0.071 (~7&thinsp;pp) at N = 5,000 to 0.027 (~2.7&thinsp;pp) at N = 7,500. The N = 5,000 → 7,500 jump is the point where the three generators converge to comparable selection stability, which is the property we want for cross-generator claims (&sect;3.6). N = 10,000 cannot be evaluated because K = 1 (the 10k pool is fully consumed).</li>
+    <li><strong>Multi-generator coverage:</strong> 3/5 of the headline generators (gpt4, llama-chat, mistral) sweep cleanly; <strong>this closes the &ldquo;single-generator stability sweep&rdquo; gap from the previous report</strong>. Gpt2 (added to the panel after the sweep) and cohere-chat are not in the grid; they remain as a small open item (&sect;6).</li>
+  </ul>
+</div>
+
+<h3 id="publishability">4.6 Publishability assessment &mdash; what we have vs what we need</h3>
+
+<p>Honest triage of which results carry independent scientific weight, which are supporting material, and what gaps block publication.</p>
+
+<h4>Defensible claims (with current data)</h4>
+<table>
+  <thead><tr><th>#</th><th>Claim</th><th>Evidence</th><th>Strength</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td><strong>The AI-detection signal in BERT is redundantly distributed on 4/5 generators &mdash; selected features are causally sufficient but not individually necessary.</strong> Cohere-chat is a partial exception (real but small ablation cost).</td>
+      <td>Ablation (&sect;3.2): removing the full selected set &rarr; 0.03&ndash;0.11&thinsp;pp drop on gpt4 / gpt2 / mistral / llama (within noise of 0.06&thinsp;pp random baseline); 1.06 &plusmn; 0.54&thinsp;pp on cohere-chat. Patching (&sect;3.3): injecting selected set &rarr; 1.1&ndash;8.2% flip rate, monotone in k on every generator; full-k ratios 10&ndash;24&times; on 4/5 generators (gpt4 ~125&times; with high variance).</td>
+      <td><strong>Strong.</strong> 15 cells per generator (3 seeds &times; 5 folds). The redundancy claim is robust on 4/5 generators; the cohere deviation is small (1&thinsp;pp) and consistent with cohere being the difficulty floor (&sect;3.6). Honest framing for the paper: &ldquo;mostly redundant, with one partially-localised generator&rdquo;.</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><strong>A small, highly stable set of BERT features (0.5&ndash;0.9% of activations) suffices for AI detection across multiple generators.</strong></td>
+      <td>&sect;3.1: 45&ndash;62 fully-stable features per generator (out of 9,216) at 90.5&ndash;98.8% val accuracy. Pairwise fold-Jaccard 0.67&ndash;0.76 across 105 fold pairs per generator (random-null inside one generator &asymp; 0.005, ~140&times; chance). Selection methodology validated independently via the multi-generator stability sweep (&sect;4.5, K = 15 stratified subsamples &times; 3 generators, Jaccard 0.72&ndash;0.75 at chosen C and N).</td>
+      <td><strong>Strong.</strong> Both seed-level and subsample-level stability are now measured and consistent. Closes the &ldquo;single-generator C/N justification&rdquo; gap from the previous report.</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><strong>Detector circuits are largely generator-specific but overlap far above chance (~32&times; null Jaccard across pairs).</strong> Layer-12 dominance holds for 4/5 generators; gpt2 (the only base/non-RLHF model) peaks at L11 instead.</td>
+      <td>&sect;3.6: pairwise stable-set Jaccard 0.00&ndash;0.24 across 10 pairs (mean 0.095 vs random null 0.003 &asymp; 32&times; chance). Strongest pairs cohere&ndash;mistral (86&times;) and llama&ndash;mistral (64&times;); weakest gpt2&ndash;gpt4 (0&times;). 30&ndash;36% of stable neurons in L12 for the chat-RLHF generators; 13.3% for gpt2 (which peaks at L11 instead).</td>
+      <td><strong>Strong.</strong> 5 generators across 4 families (GPT base + GPT chat-RLHF, LLaMA, Mistral, Cohere) and the random-null baseline now contextualises the absolute Jaccard numbers. The L11-vs-L12 split between gpt2 and the chat-RLHF generators is a novel observation worth a paragraph.</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><strong>The non-RLHF generator (gpt2) is the structural outlier in the cross-generator picture, not cohere-chat.</strong> gpt2 has zero stable-set overlap with gpt4, an L11-peaked layer profile, and joins cohere as the second &ldquo;wide restricted-probe gap&rdquo; generator.</td>
+      <td>&sect;3.6 cross-generator Jaccards (gpt2 line: 0.00, 0.05, 0.02, 0.03 vs the other four); &sect;3.6 layer profile (gpt2 13.3% in L12 vs 30&ndash;36% elsewhere); &sect;3.7 restricted-probe gap (gpt2 3.63 &plusmn; 0.84&thinsp;pp, cohere 4.43 &plusmn; 1.05&thinsp;pp; gpt4/mistral/llama 0.4&ndash;1.1&thinsp;pp).</td>
+      <td><strong>Moderate.</strong> Reframes the previous &ldquo;cohere is the outlier&rdquo; claim. Single-axis-of-variation (RLHF vs base); reproducing on a second base model would tighten this. Currently held in reserve as a paragraph rather than a headline.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4>Supporting material (not independently publishable)</h4>
+<ul>
+  <li><strong>Restricted probe (&sect;3.7):</strong> the L1 selector&rsquo;s own test accuracy already proves a linear classifier on the selected features works; the re-trained L2 on the same features at comparable accuracy is expected, not a discovery. The interesting finding is the structural-gap pattern: <strong>cohere and gpt2 are the two &ldquo;wide gap&rdquo; generators (3.6&ndash;4.4&thinsp;pp), the other three are &le; 1.1&thinsp;pp</strong>. Worthwhile as a sub-figure with the smaller-model-vs-ablate-complement framing.</li>
+  <li><strong>AUC vs L1 (&sect;3.5):</strong> three regimes &mdash; parsimony (gpt4/mistral/llama; L1 4&ndash;7&times; smaller, smaller drop), convergence (gpt2; AUC&approx;L1 in count and effect), reversal (cohere; AUC half the size with smaller drop). The clean &ldquo;multivariate is more parsimonious&rdquo; story now requires explicit acknowledgement of two structural exceptions; likely demoted to appendix.</li>
+  <li><strong>Confound (&sect;3.4):</strong> &ge; 99.9% flagged on every generator. Methodologically uninformative; replaced by domain probe (&sect;5.1&nbsp;C) and cross-domain (&sect;5.1&nbsp;A).</li>
+  <li><strong>Sample-size stability (&sect;4.5):</strong> methodology contribution. Goes in methods / appendix.</li>
+</ul>
+
+<h4>Gaps that block publication</h4>
+<ol>
+  <li><strong>Leave-one-generator-out (LOGO) generalisation (&sect;5.1 A) &mdash; the primary remaining experiment.</strong> Without LOGO, a reviewer can ask: &ldquo;you trained and tested on the same generator set &mdash; does any of this transfer?&rdquo; LOGO directly validates the cross-generator characterisation (&sect;3.6) by testing whether circuits selected on N&minus;1 generators still identify text from the held-out Nth generator. With 11 generators available in RAID and the full pipeline running in ~5 h, LOGO is one overnight run. Domain confounds are addressed methodologically: StratifiedKFold on (label &times; domain) prevents domain imbalance, and same-domain donor sampling in the patching experiment already controls for domain transfer. A separate LODO experiment is not required; the methodological defence is documented in &sect;4.2. <em>Status:</em> planned; estimated ~11 h for all 11 generators.</li>
+  <li><span style="text-decoration: line-through; color: var(--muted);"><strong>Multi-seed validation (&sect;5.1 D).</strong></span> <span class="pill done">closed</span> Run with seeds <code>[42, 123, 456]</code>; 15 cells per (generator, experiment); seed-level &plusmn; reported throughout &sect;3.</li>
+  <li><span style="text-decoration: line-through; color: var(--muted);"><strong>Stability sweep generalisation (&sect;4.5).</strong></span> <span class="pill done">closed</span> Sweep run on 3 generators (gpt4, llama-chat, mistral). C = 0.005 is the most-stable C at every N for every generator; min-over-3-gen Jaccard at chosen point (C = 0.005, N = 7,500) = 0.724. Optional follow-up: include gpt2 and cohere-chat in a second pass (&sect;6).</li>
+</ol>
+
+<h4>Tentative paper framing</h4>
+<p><em>&ldquo;Sparse probing across 5 LLM-generated text corpora (1 base + 4 chat-RLHF, spanning 4 model families) reveals that the AI-detection signal in BERT is (a)&nbsp;encoded by a small, highly-stable set of late-layer features (~0.5&ndash;0.9% of activations, fold-Jaccard 0.67&ndash;0.76 across 15 cells per generator); (b)&nbsp;causally sufficient and predominantly redundantly distributed (patching flip-rate monotone in k on every generator; ablation drop within random-baseline noise on 4/5 generators, with one partial exception); and (c)&nbsp;largely generator-specific yet overlapping ~32&times; above chance, with consistent layer-12 dominance for chat-RLHF generators and a layer-11 deviation for the non-RLHF baseline. Generalization across generators is validated via leave-one-generator-out evaluation.&rdquo;</em> We have (a)&ndash;(c); LOGO is the open work item.</p>
 
 <!-- ================================================================= -->
 <h2 id="plan">5. Plan Going Forward</h2>
 
 <h3 id="plan-tier1">5.1 New experiments</h3>
 
-<h4>(A) Cross-domain generalization <span class="pill planned">primary</span></h4>
+<h4>(A) Leave-one-generator-out (LOGO) <span class="pill planned">primary</span></h4>
 <ul>
-  <li>Leave-one-domain-out: train on 5 domains, test on the 6th. Repeat 6 times.</li>
-  <li><strong>Full pipeline</strong> per fold: run L1 selection and fit L2 eval probe on the 5 training domains, evaluate on the held-out domain.</li>
-  <li>Report: per-domain held-out accuracy, average across held-out domains, overlap of selected neurons across the 6 runs (additional stability signal).</li>
-  <li>This directly tests the paper&rsquo;s interpretability claim (&ldquo;neurons encode AI-vs-human signal, not domain&rdquo;) and its smaller-model-transfer claim.</li>
-  <li>Implementation cost: a new splitter in <code>data/splits.py</code> (~50 LoC); no runner/evaluator changes.</li>
+  <li>Train L1 selector and L2 eval probe on N&minus;1 generators, evaluate on the held-out Nth generator. Repeat for all 11 RAID generators.</li>
+  <li>Report: (1) held-out generator accuracy vs within-generator baseline; (2) Jaccard overlap between LOGO-selected stable sets and the full-data stable sets &mdash; high overlap means selection is not driven by any single generator&rsquo;s idiosyncrasies.</li>
+  <li>Optional extension: run patching on the held-out generator using neurons selected from the N&minus;1 training generators. If flip rates remain above random baseline, the causal-sufficiency result generalises across generators &mdash; the strongest possible LOGO result.</li>
+  <li>With base/chat pairs available in RAID (cohere/cohere-chat, mistral/mistral-chat, llama/llama-chat, mpt/mpt-chat), LOGO also enables within-family base-vs-chat transfer tests: does a probe trained on chat generators transfer to the base variant of the same family? This directly tests whether the L11/L12 layer asymmetry reflects genuinely different signal or a shift in where the same signal lives.</li>
+  <li>Domain confounds are addressed methodologically (StratifiedKFold on label &times; domain; same-domain patching) &mdash; LODO is not required. See &sect;4.2.</li>
+  <li>Compute: ~11 h for all 11 generators at ~1 h/generator on liblinear; one overnight run. Verify base/chat distinction in RAID datasheet before running (confirm mistral.csv, llama.csv, cohere.csv, mpt.csv are genuinely non-RLHF checkpoints).</li>
 </ul>
 
-<h4>(B) Restricted probe / &ldquo;smaller model&rdquo; test <span class="pill planned">primary</span></h4>
+<h4>(B) Smaller-model / ablate-complement test <span class="pill done">done</span></h4>
+<p><span class="pill done">done</span> Run on both generators as <code>exp_restricted_probe.py</code>. Result: consistency check passed (&sect;3.7). The cross-domain version (combined with A) would be the genuinely informative test.</p>
+
+<h4>(C) Domain probe baseline <span class="pill drop">dropped &mdash; methodological defence sufficient</span></h4>
+<p>Originally planned as a replacement for the uninformative per-neuron confound test (&sect;4.2). Dropped: StratifiedKFold on (label &times; domain) prevents domain imbalance during selection, and same-domain donor sampling in the patching experiment controls for domain transfer in the sufficiency test. A reviewer objection on domain confounds is addressed in limitations with these two methodological points. If a reviewer specifically requests it post-submission, the domain probe is ~1 h to implement and run.</p>
+
+<h4>(D) Multi-seed validation <span class="pill done">done</span></h4>
+<p><span class="pill done">done</span> Headline run is seeds <code>[42, 123, 456]</code> &times; 5 folds = 15 cells per (generator, experiment). Per-cell mean &plusmn; std reported throughout &sect;3. Wall-clock: ~4.2 h for the full pipeline.</p>
+
+<h4>(E) Characterize <span class="pill done">done, 5-gen</span></h4>
+<p><span class="pill done">done</span> Run on all 5 generators in the headline run. Layer distribution + pairwise Jaccard + random-null Jaccard baseline + CAV diagnostics in &sect;3.6.</p>
+
+<h4>(F) Sample-size &amp; C stability sweep <span class="pill done">done, 3 gen</span></h4>
+<p><span class="pill done">done</span> Implemented as <code>scripts/experiments/run_sample_size_stability.py</code>; refactored to a (generators &times; C &times; N) grid runner. Final sweep: K = 15 stratified subsamples &times; 4 C values &times; 7 sample sizes &times; 3 generators (gpt4, llama-chat, mistral), 23 min total. Justified the headline <code>C = 0.005</code>, <code>N = 7,500</code> choice across all 3 sweep generators (&sect;4.5). Closes &sect;4.6 gap #3 from the previous report. <em>Optional follow-up:</em> sweep gpt2 (~12 min) to claim &ldquo;stable across easy/medium/hard&rdquo; rather than &ldquo;stable across medium/hard&rdquo; (&sect;6).</p>
+
+<h4>(G) Pipeline aggregation enhancements <span class="pill planned">small fix backlog</span></h4>
 <ul>
-  <li>Take the stable neuron set (or per-fold selected set).</li>
-  <li>Train an L2 probe <em>only</em> on those features on the train fold; evaluate on the test fold.</li>
-  <li>Report: accuracy with ~167 features vs baseline (~9,216 features). Also cross-domain version (combines with (A)).</li>
-  <li>Implementation cost: new evaluator variant or a flag on <code>ProbeAccuracyEvaluator</code> to accept a feature-restriction.</li>
+  <li><span class="pill done">done</span> Extended ablation/patching k-sweep to <code>k = full</code> via <code>-1</code> sentinel. Results in &sect;3.2 / &sect;3.3.</li>
+  <li><span class="pill planned">planned</span> <strong>Aggregate nested sweep metrics into <code>aggregate.json</code></strong>. Currently <code>_aggregate_metrics</code> only averages scalars; per-k <code>ablation_sweep</code> / <code>patching_sweep</code> means are reconstructed manually from per-(seed, fold) <code>eval_metrics.json</code> after each run. Fix is ~40 LoC in <code>raid_analysis/experiments/runner.py:_aggregate_metrics</code> (recurse into list-valued metrics keyed by <code>k</code>).</li>
+  <li><span class="pill planned">planned</span> <strong>Surface random per-domain breakdown in patching</strong> (currently the random baseline is reported globally only). ~10 LoC in <code>evaluation/patching.py</code>. Would close the missing column in &sect;3.3's per-domain table.</li>
+  <li><span class="pill planned">planned</span> <strong>Wrap <code>characterize</code> in the multi-seed loop</strong> so CAV diagnostics carry &plusmn; columns. &lt; 10 LoC in <code>experiments/exp_characterize.py</code>; cheap to do alongside the runner aggregation fix.</li>
+  <li><span class="pill planned">planned</span> Probability-shift metric (&Delta;P(AI)) alongside flip rate &mdash; continuous complement to the thresholded metric. Useful especially for cohere-chat (where the probe is least confident, so flip rate may understate the magnitude of intervention).</li>
 </ul>
 
-<h4>(C) Domain probe baseline <span class="pill planned">diagnostic</span></h4>
-<ul>
-  <li>Train an L2 probe on activations to predict <em>domain</em> (6-class). Two variants: all 9,216 features vs only selected neurons.</li>
-  <li>If selected neurons predict domain at near chance (16.7%) / only modestly above, they don&rsquo;t encode domain appreciably. If they predict it near-perfectly, there&rsquo;s a legitimate confound concern.</li>
-  <li>Cheap: one extra evaluator, runs once per fold.</li>
-</ul>
+<h3 id="plan-tiered">5.2 Tiered generator strategy <span class="pill done">tier-1 complete</span></h3>
 
-<h4>(D) Multi-seed validation <span class="pill planned">mandatory</span></h4>
-<ul>
-  <li>Current seeds: <code>[42]</code>. Target: at least <code>[42, 123, 456]</code>.</li>
-  <li>Stability threshold unchanged at 0.8 (&ge; 12/15 across 3 seeds &times; 5 folds).</li>
-  <li>Multiplies runtime by seed count.</li>
-</ul>
+<p>Original tiered plan (2&ndash;3 headline generators, 8&ndash;9 reduced) is obsolete: the multi-seed pipeline runs the full suite on 5 generators in ~4.2 h. We can afford to elevate all 5 to &ldquo;headline&rdquo; and run reduced sparse-probe-only on the remaining RAID generators if we want a wider catalog claim in the appendix.</p>
 
-<h4>(E) Characterize <span class="pill planned">multi-generator</span></h4>
-<ul>
-  <li>Already in the catalog but not run. Compares stable neuron sets across generators.</li>
-  <li>Executed after primary runs on headline generators are done.</li>
-</ul>
-
-<h4>(F) Sample size sensitivity <span class="pill planned">supplementary</span></h4>
-<ul>
-  <li>Standalone, outside main pipeline. Re-run sparse_probe at n &isin; {1000, 2000, 5000, all} to check stability of findings.</li>
-  <li>Single generator, single seed sufficient.</li>
-</ul>
-
-<h4>(G) Patching / ablation &mdash; extended k sweep + probability shift <span class="pill done">partially done</span></h4>
-<ul>
-  <li><span class="pill done">done</span> Extended <code>k_values</code> with a <code>-1</code> sentinel interpreted as <code>n_selected</code> in both <code>AblationEvaluator</code> and <code>PatchingEvaluator</code> (see <code>raid_analysis/evaluation/ablation.py</code> and <code>patching.py</code>). Applied in runs <code>20260418_011033</code> and <code>20260418_011044</code>. Outcome summarised in &sect;3.2 / &sect;3.3: ablation has a clear ceiling (negligible drop even at full set); patching shows monotone growth with no saturation up to <code>n_selected</code>.</li>
-  <li><span class="pill planned">still planned</span> Add small <strong>supersets</strong> beyond <code>n_selected</code> (e.g. 200, 300) to probe whether flip rate keeps climbing past the L1 knee or plateaus &mdash; cheap diagnostic for how exhaustive the selected set really is.</li>
-  <li><span class="pill planned">still planned</span> Add a <strong>probability-shift</strong> metric alongside flip rate: mean &Delta;P(AI) = <code>eval_probe.predict_proba(patched)[:,1] - eval_probe.predict_proba(base)[:,1]</code>, reported per k, per domain, with random-k baseline. This is continuous and complementary to the thresholded flip metric (see &sect;3.3 callout). Purely an evaluator upgrade; no selection changes required.</li>
-</ul>
-
-<h3 id="plan-changes">5.2 Pipeline changes</h3>
-<ul>
-  <li><strong>Remove</strong> <code>confound</code> evaluator, its config, and factory registration.</li>
-  <li><strong>Add</strong> leave-one-domain-out splitter to <code>data/splits.py</code>.</li>
-  <li><strong>Add</strong> restricted-feature evaluator or flag.</li>
-  <li><strong>Add</strong> domain-prediction evaluator.</li>
-  <li><span class="pill done">done</span> <strong>Dynamic k</strong> (= per-fold <code>n_selected</code>) supported via <code>k = -1</code> sentinel in both <code>AblationEvaluator</code> and <code>PatchingEvaluator</code>. <span class="pill planned">still planned</span> Emit a probability-shift metric in addition to flip rate.</li>
-  <li><strong>Fix</strong> random seeding in ablation/patching baselines to depend on fold/seed/k (low priority; purely hygiene).</li>
-</ul>
-
-<h3 id="plan-tiered">5.3 Tiered generator strategy</h3>
-
-<p>Given 11 generators and ~3 days of final compute, not all generators receive the same analysis.</p>
-
-<table>
-  <thead><tr><th>Tier</th><th>Generators</th><th>Experiments</th></tr></thead>
-  <tbody>
-    <tr>
-      <td>Headline (2&ndash;3)</td>
-      <td>Tentative: one from each family (GPT-4, a Mistral, a LLaMA). Final selection TBD, criteria: architecture-family spread first, size/generation second.</td>
-      <td>Full suite: sparse_probe, ablation, patching, cross-domain, restricted probe, domain probe, multi-seed.</td>
-    </tr>
-    <tr>
-      <td>Reduced (rest)</td>
-      <td>Remaining 8&ndash;9 generators.</td>
-      <td>sparse_probe only (standard 5-fold, maybe 1 seed).</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>Paper placement: headline generators in main text, reduced-suite generators in an appendix (&ldquo;we verified the approach across N generators&rdquo;). Decided at writing time; for now the structural choice is what matters.</p>
-
-<h3 id="plan-budget">5.4 Compute budget plan</h3>
-
-<p>Current run wall-clock (2k samples, 1 seed, 5 folds, GPT-4, C grid of 5): ~2h for the full pipeline. Target final run changes that parameter vector substantially:</p>
-<ul>
-  <li>n_samples: 2000 &rarr; ~5000 (~2.5&times;)</li>
-  <li>C values: 5 &rarr; more (TBD; likely 1.5&ndash;2&times; in the sweep step only)</li>
-  <li>seeds: 1 &rarr; 3 (3&times;)</li>
-  <li>cross-domain folds: 5 random &rarr; 6 leave-one-out on top of k-fold (additional run; roughly 1&times; per headline generator)</li>
-  <li>generators: 1 &rarr; 2&ndash;3 headline (full) + 8&ndash;9 reduced (sparse_probe only)</li>
-</ul>
-
-<div class="callout warn">
-  <span class="label">Action before committing</span>
-  Pick one generator (GPT-4), run one full pipeline cycle at target settings (5k samples, expanded C grid, 1 seed, including cross-domain) on the best available GPU. Measure wall-clock. Multiply:
-  <pre><code>total_hours &asymp; single_cycle_hours
-             &times; seed_count
-             &times; headline_generator_count
-             + sparse_probe_hours &times; reduced_generator_count</code></pre>
-  If this exceeds ~60h (2.5 days, with buffer), reduce to 2 headline generators or drop a seed. Do this measurement <em>before</em> launching the final run.
-</div>
+<h3 id="plan-budget">5.3 Compute budget <span class="pill done">measured</span></h3>
+<p>Headline run wall-clock: <strong>~4.2 hours</strong> for 5 generators &times; 6 per-generator experiments + 1 cross-generator characterize at <code>N = 7,500</code>, 3 seeds &times; 5 folds = 15 cells per (generator, experiment). Patching dominates per-generator runtime (~35&ndash;42 min/gen); other experiments are 1&ndash;3 min each. <strong>Pipeline runtime updated:</strong> switched L1 solver from saga to liblinear; full 5-generator pipeline now runs in ~5 h (previously estimated 4&ndash;8 h per run under saga). Adding LOGO (11 generators &times; full pipeline): ~11 h total, one overnight run. Adding optional gpt2 stability sweep: ~12 min. <strong>Total budget for the &ldquo;all gaps closed&rdquo; pipeline: ~16 hours</strong> &mdash; two overnight runs or one weekend day.</p>
 
 <!-- ================================================================= -->
-<h2 id="open">6. Open Decisions (deferred)</h2>
+<h2 id="open">6. Open Decisions</h2>
 <ul>
-  <li>Final choice of headline generators (architecture spread + size/generation axis). Decide after compute measurement.</li>
-  <li>Paper framing for the &ldquo;ugly&rdquo; case where cross-domain accuracy drops substantially. Working position: acknowledge it, interpret as &ldquo;for real-world transfer, selection must happen on the full domain distribution of the target deployment&rdquo;. Do not hide it.</li>
-  <li>Whether to include the AUC-vs-L1 comparison in the paper or keep in internal notes only.</li>
-  <li>Whether to derive random seeds in ablation/patching baselines from fold/seed/k. Low-priority hygiene fix.</li>
-  <li>What to do with the &ldquo;restricted probe + cross-domain&rdquo; combination if it shows a different stable-neuron pattern than same-domain CV &mdash; scientifically interesting or confusing-for-the-paper?</li>
+  <li>Whether to run the full 11-generator LOGO in one pass or prioritise the 4 within-family base/chat pairs (cohere/cohere-chat, mistral/mistral-chat, llama/llama-chat, mpt/mpt-chat) first as a faster validation of the L11/L12 base-vs-RLHF claim. Recommendation: run all 11 in one overnight pass; the within-family pairs are a subset of that run and cost nothing extra. <em>gpt2 saturation watch passed</em> &mdash; gpt2 val_acc 0.959 with n_selected ~85 (saturation rule was val_acc &ge; 0.998 with n_selected &le; 10), so no replacement needed.</li>
+  <li>Whether to keep <code>auc_comparison</code> in main text given the three-regime pattern (parsimony / convergence / reversal). Likely demoted to appendix &mdash; cleanest framing for main text is the per-generator parsimony argument with a footnote.</li>
+  <li>Whether to also stability-sweep gpt2 (~12 min). Now that gpt2 is the structural outlier in &sect;3.6, this would let us claim &ldquo;C = 0.005 stable across easy / medium / hard&rdquo; rather than &ldquo;stable across medium / hard&rdquo;. Cheap; not blocking.</li>
+  <li>Whether to also sweep cohere-chat for completeness, even though the previous run gave consistent C/N behaviour at single-seed. Lower priority than the gpt2 sweep.</li>
 </ul>
 
 <!-- ================================================================= -->
-<h2 id="appendix">Appendix: Per-fold Metrics (seed 42, all folds)</h2>
+<h2 id="appendix">Appendix: Per-fold Metrics (run <code>20260426_20_full_c0005_n7500_seeds3</code>, seeds [42, 123, 456])</h2>
 
-<h4>Sparse probe by fold &mdash; GPT-4 (<code>20260418_011033</code>)</h4>
+<h4>Sparse probe per-cell <code>n_selected</code> (5 generators &times; 15 cells)</h4>
 <table>
-  <thead><tr><th class="num">Fold</th><th class="num">Accuracy</th><th class="num">F1</th><th class="num">n_selected</th></tr></thead>
+  <thead>
+    <tr>
+      <th class="num">Generator</th>
+      <th class="num">(42,0)</th>
+      <th class="num">(42,1)</th>
+      <th class="num">(42,2)</th>
+      <th class="num">(42,3)</th>
+      <th class="num">(42,4)</th>
+      <th class="num">(123,0)</th>
+      <th class="num">(123,1)</th>
+      <th class="num">(123,2)</th>
+      <th class="num">(123,3)</th>
+      <th class="num">(123,4)</th>
+      <th class="num">(456,0)</th>
+      <th class="num">(456,1)</th>
+      <th class="num">(456,2)</th>
+      <th class="num">(456,3)</th>
+      <th class="num">(456,4)</th>
+      <th class="num">mean &plusmn; std</th>
+    </tr>
+  </thead>
   <tbody>
-    <tr><td class="num">0</td><td class="num">0.9775</td><td class="num">0.9777</td><td class="num">173</td></tr>
-    <tr><td class="num">1</td><td class="num">0.9825</td><td class="num">0.9825</td><td class="num">169</td></tr>
-    <tr><td class="num">2</td><td class="num">0.9900</td><td class="num">0.9899</td><td class="num">171</td></tr>
-    <tr><td class="num">3</td><td class="num">0.9725</td><td class="num">0.9722</td><td class="num">155</td></tr>
-    <tr><td class="num">4</td><td class="num">0.9875</td><td class="num">0.9875</td><td class="num">165</td></tr>
-    <tr class="footnote"><td colspan="4"><em>AUC is reported per-fold as <code>null</code> in the raw eval files (only aggregated). Aggregate AUC = 0.9983 ± 0.0012 (&sect;3.1).</em></td></tr>
+    <tr><td>gpt4</td><td class="num">74</td><td class="num">73</td><td class="num">80</td><td class="num">74</td><td class="num">70</td><td class="num">70</td><td class="num">76</td><td class="num">73</td><td class="num">73</td><td class="num">75</td><td class="num">77</td><td class="num">75</td><td class="num">72</td><td class="num">71</td><td class="num">79</td><td class="num"><strong>74.1 &plusmn; 2.9</strong></td></tr>
+    <tr><td>gpt2</td><td class="num">80</td><td class="num">81</td><td class="num">80</td><td class="num">82</td><td class="num">90</td><td class="num">90</td><td class="num">82</td><td class="num">84</td><td class="num">86</td><td class="num">80</td><td class="num">90</td><td class="num">84</td><td class="num">82</td><td class="num">92</td><td class="num">87</td><td class="num"><strong>84.7 &plusmn; 4.1</strong></td></tr>
+    <tr><td>mistral-chat</td><td class="num">59</td><td class="num">53</td><td class="num">62</td><td class="num">56</td><td class="num">58</td><td class="num">60</td><td class="num">61</td><td class="num">55</td><td class="num">55</td><td class="num">62</td><td class="num">60</td><td class="num">54</td><td class="num">60</td><td class="num">57</td><td class="num">55</td><td class="num"><strong>57.8 &plusmn; 2.9</strong></td></tr>
+    <tr><td>llama-chat</td><td class="num">63</td><td class="num">64</td><td class="num">63</td><td class="num">64</td><td class="num">64</td><td class="num">65</td><td class="num">63</td><td class="num">62</td><td class="num">61</td><td class="num">64</td><td class="num">67</td><td class="num">67</td><td class="num">62</td><td class="num">61</td><td class="num">64</td><td class="num"><strong>63.6 &plusmn; 1.7</strong></td></tr>
+    <tr><td>cohere-chat</td><td class="num">71</td><td class="num">72</td><td class="num">72</td><td class="num">73</td><td class="num">72</td><td class="num">65</td><td class="num">76</td><td class="num">72</td><td class="num">76</td><td class="num">72</td><td class="num">69</td><td class="num">73</td><td class="num">79</td><td class="num">70</td><td class="num">73</td><td class="num"><strong>72.3 &plusmn; 3.1</strong></td></tr>
   </tbody>
 </table>
+<p class="footnote">Column header <code>(seed, fold)</code>. std uses population formula (<code>ddof = 0</code>).</p>
 
-<h4>Sparse probe by fold &mdash; Mistral (<code>20260418_011044</code>)</h4>
-<table>
-  <thead><tr><th class="num">Fold</th><th class="num">Accuracy</th><th class="num">F1</th><th class="num">n_selected</th></tr></thead>
-  <tbody>
-    <tr><td class="num">0</td><td class="num">0.8925</td><td class="num">0.8877</td><td class="num">397</td></tr>
-    <tr><td class="num">1</td><td class="num">0.9200</td><td class="num">0.9171</td><td class="num">403</td></tr>
-    <tr><td class="num">2</td><td class="num">0.9025</td><td class="num">0.8982</td><td class="num">431</td></tr>
-    <tr><td class="num">3</td><td class="num">0.9125</td><td class="num">0.9123</td><td class="num">366</td></tr>
-    <tr><td class="num">4</td><td class="num">0.9375</td><td class="num">0.9361</td><td class="num">409</td></tr>
-    <tr class="footnote"><td colspan="4"><em>Aggregate AUC = 0.9703 ± 0.0054 (&sect;3.1).</em></td></tr>
-  </tbody>
-</table>
+<p class="footnote">Per-cell accuracy / F1 / AUC are stored in <code>results/experiments/20260426_20_full_c0005_n7500_seeds3/sparse_probe/&lt;gen&gt;/seed_&lt;S&gt;/fold_&lt;F&gt;/eval_metrics.json</code>. Per-cell patching, ablation, restricted-probe, and AUC-comparison metrics live in their respective sub-directories of the same run dir. Cross-fold scalar aggregates are in <code>aggregate.json</code> per (experiment, generator); per-k <code>ablation_sweep</code> / <code>patching_sweep</code> means are not currently in <code>aggregate.json</code> and are reconstructed from the per-cell <code>eval_metrics.json</code> files (planned runner enhancement &mdash; &sect;5.1&nbsp;G).</p>
 
-<h4>Files referenced</h4>
+<h4>Key files</h4>
 <ul>
-  <li><code>scripts/experiments/run_experiment.py</code> &mdash; CLI orchestrator.</li>
-  <li><code>raid_analysis/experiments/runner.py</code> &mdash; method-agnostic CV loop.</li>
-  <li><code>raid_analysis/experiments/factory.py</code> &mdash; selector/evaluator registry.</li>
-  <li><code>raid_analysis/selection/sparse_probe.py</code> &mdash; L1 selector + knee detection.</li>
-  <li><code>raid_analysis/evaluation/probe_factory.py</code> &mdash; L2 eval probe.</li>
-  <li><code>raid_analysis/evaluation/ablation.py</code>, <code>patching.py</code>, <code>confound.py</code> &mdash; evaluators.</li>
-  <li><code>raid_analysis/evaluation/causal.py</code> &mdash; <code>ablate_neurons</code>, <code>patch_neurons</code> primitives.</li>
-  <li><code>raid_analysis/data/splits.py</code> &mdash; stratified CV splits (label &times; domain).</li>
-  <li><code>config/experiments/*.yaml</code> &mdash; one YAML per experiment.</li>
-  <li><code>results/experiments/20260418_011033/</code> &mdash; GPT-4 outputs (seed 42, 5 folds, extended k-sweep).</li>
-  <li><code>results/experiments/20260418_011044/</code> &mdash; Mistral outputs (seed 42, 5 folds, extended k-sweep).</li>
-  <li><code>results/experiments/20260416_003851/</code> &mdash; prior GPT-4 development run referenced in earlier versions of this report.</li>
+  <li><code>raid_analysis/experiments/runner.py</code> &mdash; CV loop. <code>selection/sparse_probe.py</code> &mdash; L1 selector. <code>evaluation/{probe_factory,ablation,patching,causal}.py</code> &mdash; evaluators.</li>
+  <li><code>raid_analysis/experiments/exp_restricted_probe.py</code> &mdash; restricted probe orchestrator.</li>
+  <li><code>scripts/experiments/run_sample_size_stability.py</code> &mdash; multi-generator K-draw stability sweep used to pick C and N (&sect;4.5).</li>
+  <li><code>config/experiments/sparse_probe.yaml</code> &mdash; locks C = 0.005, max_iter = 1000, solver = liblinear, max_samples = 7500, seeds = [42, 123, 456].</li>
+  <li><code>results/experiments/20260426_20_full_c0005_n7500_seeds3/</code> &mdash; headline run (5 generators, 3 seeds, full pipeline).</li>
+  <li><code>results/experiments/stability_grid_gpt4_llama_mistral/</code> &mdash; multi-generator C/N stability grid used in &sect;4.5 (<code>grid_summary.json</code>).</li>
 </ul>
 
 <hr>
-<p class="footnote">Report updated 2026-04-18 to incorporate <code>20260418_011033</code> (GPT-4) and <code>20260418_011044</code> (Mistral) runs with the extended k-sweep (<code>k = -1</code> sentinel). Next revision: multi-seed results + third generator.</p>
+<p class="footnote">Updated 2026-04-27. Next: leave-one-generator-out (LOGO) experiment (~11 h, all 11 generators); optional gpt2 stability sweep; runner aggregation enhancement (&sect;5.1&nbsp;G) to surface per-k sweep means in <code>aggregate.json</code>.</p>
 
 </main>
 </div>

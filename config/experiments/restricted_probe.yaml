@@ -1,10 +1,5 @@
-experiment: auc_comparison
+experiment: restricted_probe
 source_experiment: sparse_probe
-
-selector: auc
-selector_params:
-  alpha: 0.001
-  auc_threshold: 0.7
 
 n_folds: 5
 seeds: [42, 123, 456]

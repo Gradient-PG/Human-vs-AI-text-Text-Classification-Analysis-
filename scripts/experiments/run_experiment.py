@@ -35,6 +35,7 @@ EXPERIMENT_NAMES = [
     "confound",
     "characterize",
     "auc_comparison",
+    "restricted_probe",
 ]
 
 
@@ -62,7 +63,19 @@ def main() -> None:
         "--generator",
         type=str,
         default="gpt4",
-        help="Generator to run on (default: gpt4).",
+        help=(
+            "Generator to run on (default: gpt4). "
+            "Used by all experiments except characterize."
+        ),
+    )
+    parser.add_argument(
+        "--generators",
+        nargs="+",
+        default=None,
+        help=(
+            "List of generators. Used only by the characterize experiment "
+            "to override the YAML 'generators' field."
+        ),
     )
     parser.add_argument(
         "--source-dir",
@@ -110,21 +123,29 @@ def main() -> None:
 
     config.experiment = args.experiment
 
+    if args.generators is not None and args.experiment == "characterize":
+        config.generators = args.generators
+
     run_id = args.run_id or datetime.now().strftime("%Y%m%d_%H%M%S")
     args.run_id = run_id
 
     # Resolve output directory
     if args.output_dir:
         output_dir = Path(args.output_dir)
+    elif args.experiment == "characterize":
+        output_dir = Path(config.output_dir) / run_id / args.experiment
     else:
         output_dir = (
             Path(config.output_dir) / run_id / args.experiment / args.generator
         )
 
     print(f"Experiment: {args.experiment}")
-    print(f"Generator: {args.generator}")
-    print(f"Run ID:    {run_id}")
-    print(f"Output:    {output_dir}")
+    if args.experiment == "characterize":
+        print(f"Generators: {', '.join(config.generators)}")
+    else:
+        print(f"Generator:  {args.generator}")
+    print(f"Run ID:     {run_id}")
+    print(f"Output:     {output_dir}")
     print()
 
     t0 = time.time()
@@ -133,6 +154,8 @@ def main() -> None:
         _run_characterize(config, args, output_dir)
     elif args.experiment == "auc_comparison":
         _run_auc_comparison(config, args, output_dir)
+    elif args.experiment == "restricted_probe":
+        _run_restricted_probe(config, args, output_dir)
     else:
         _run_standard(config, args, output_dir)
 
@@ -218,7 +241,25 @@ def _run_auc_comparison(config: ExperimentConfig, args, output_dir: Path):
     splits_by_seed = _get_splits(config, labels, metadata, output_dir)
 
     source_dir = _resolve_source(args, config)
+    _check_source_dir(source_dir, config, args)
     run_auc_comparison(
+        activations, labels, metadata, splits_by_seed,
+        config, source_dir, output_dir=output_dir,
+    )
+
+
+def _run_restricted_probe(config: ExperimentConfig, args, output_dir: Path):
+    """Run the smaller-model / ablate-complement experiment (§5.1 (B))."""
+    from raid_analysis.experiments.exp_restricted_probe import (
+        run_restricted_probe,
+    )
+
+    activations, labels, metadata = load_experiment_data(config, args.generator)
+    splits_by_seed = _get_splits(config, labels, metadata, output_dir)
+
+    source_dir = _resolve_source(args, config)
+    _check_source_dir(source_dir, config, args)
+    run_restricted_probe(
         activations, labels, metadata, splits_by_seed,
         config, source_dir, output_dir=output_dir,
     )
@@ -243,15 +284,15 @@ def _run_characterize(config: ExperimentConfig, args, output_dir: Path):
 
         gen_source = source_dir.parent / gen
         if gen_source.exists():
-            sweep_path = gen_source / "sweep_result.json"
-            if sweep_path.exists():
-                with open(sweep_path) as f:
-                    sweep = json.load(f)
+            aggregate_path = gen_source / "aggregate.json"
+            if aggregate_path.exists():
+                with open(aggregate_path) as f:
+                    aggregate = json.load(f)
                 stable_sets[gen] = {
-                    tuple(n) for n in sweep.get("stable_neurons", [])
+                    tuple(n) for n in aggregate.get("stable_neurons", [])
                 }
             else:
-                print(f"  Warning: no sweep_result.json for {gen}, skipping")
+                print(f"  Warning: no aggregate.json for {gen}, skipping")
         else:
             print(f"  Warning: no source directory for {gen} at {gen_source}")
 
@@ -273,6 +314,27 @@ def _resolve_source(args, config: ExperimentConfig) -> Path:
     if config.source_experiment:
         return base / config.source_experiment / args.generator
     return base / "sparse_probe" / args.generator
+
+
+def _check_source_dir(source_dir: Path, config: ExperimentConfig, args) -> None:
+    """Raise a clear error if the source experiment directory is missing."""
+    if not source_dir.exists():
+        source_exp = config.source_experiment or "sparse_probe"
+        raise SystemExit(
+            f"\nError: source experiment directory not found:\n"
+            f"  {source_dir}\n\n"
+            f"'{args.experiment}' depends on '{source_exp}'. "
+            f"Either:\n"
+            f"  (a) Run '{source_exp}' first under the same --run-id:\n"
+            f"      uv run scripts/experiments/run_experiment.py {source_exp} "
+            f"--generator {args.generator} --run-id {args.run_id}\n"
+            f"  (b) Point directly at an existing run with --source-dir:\n"
+            f"      uv run scripts/experiments/run_experiment.py {args.experiment} "
+            f"--generator {args.generator} --source-dir <path/to/{source_exp}/{args.generator}>\n"
+            f"  (c) Use run_all.py, which handles dependencies automatically:\n"
+            f"      uv run scripts/experiments/run_all.py "
+            f"--generators {args.generator}"
+        )
 
 
 if __name__ == "__main__":

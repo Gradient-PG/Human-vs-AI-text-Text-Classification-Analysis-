@@ -35,8 +35,8 @@ class SparseProbeSelector(NeuronSelector):
         self,
         *,
         C_values: list[float],
-        solver: str = "saga",
-        max_iter: int = 5000,
+        solver: str = "liblinear",
+        max_iter: int = 1000,
         random_state: int = 42,
         inner_val_fraction: float = 0.2,
     ) -> None:

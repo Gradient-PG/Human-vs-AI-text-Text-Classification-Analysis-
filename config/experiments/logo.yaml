@@ -1,0 +1,46 @@
+experiment: logo
+
+# All 11 RAID generators. Override via --generators on the CLI to run a subset
+# (e.g. the 4 within-family base/chat pairs first as a quick validation).
+generators:
+  - chatgpt
+  - cohere
+  - cohere-chat
+  - gpt2
+  - gpt3
+  - gpt4
+  - llama-chat
+  - mistral
+  - mistral-chat
+  - mpt
+  - mpt-chat
+
+# Same selector config as sparse_probe -- must match for Jaccard comparisons
+# to be meaningful (same solver).
+selector: sparse_probe
+selector_params:
+  # C is scaled down ~9x relative to sparse_probe (C=0.005) to compensate for
+  # the ~9x larger train pool (N-1 generators x max_samples vs single-generator).
+  # In liblinear L1, the loss term scales with N while the penalty (1/C)*||w||_1
+  # does not, so the same C selects ~9x more neurons at 9x the data.
+  # C=0.0005 restores comparable sparsity (~50-150 neurons) for Jaccard comparison.
+  C_values: [0.0005]
+  solver: liblinear
+  max_iter: 1000
+
+# Evaluation probe settings (same as sparse_probe for comparability)
+eval_probe_C: 1.0
+eval_probe_max_iter: 5000
+
+# Same cap as sparse_probe: max_samples per generator (balanced AI vs human).
+max_samples: 7500
+
+# Seeds: selection is run once per seed per held-out generator.
+# 3 seeds -> 3 measurements of selected_l2 accuracy per generator.
+seeds: [42, 123, 456]
+
+# Fraction of seeds a neuron must appear in to count as "stable" for this fold.
+stability_threshold: 0.8
+
+activations_root: results
+output_dir: results/experiments
