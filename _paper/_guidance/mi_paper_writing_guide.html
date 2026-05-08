@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Writing Quality MI Papers for EMNLP/ACL — A Complete Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Source+Sans+3:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a2e;
+    --paper: #faf8f5;
+    --accent: #c0392b;
+    --accent2: #2c3e50;
+    --gold: #d4a574;
+    --sage: #5a7247;
+    --blue: #2a6496;
+    --light-sage: #e8ede5;
+    --light-blue: #e3eef6;
+    --light-gold: #f5ede3;
+    --light-accent: #fbe9e7;
+    --border: #d5cfc7;
+    --muted: #6b6b7b;
+  }
+  
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    font-family: 'Source Sans 3', Georgia, serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.7;
+    font-size: 17px;
+  }
+
+  /* HERO */
+  .hero {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 80px 40px 60px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 39px,
+      rgba(255,255,255,0.03) 39px,
+      rgba(255,255,255,0.03) 40px
+    );
+  }
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.2rem, 5vw, 3.6rem);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    max-width: 800px;
+    margin: 0 auto 20px;
+    position: relative;
+  }
+  .hero h1 span { color: var(--gold); }
+  .hero .subtitle {
+    font-size: 1.15rem;
+    font-weight: 300;
+    opacity: 0.8;
+    max-width: 600px;
+    margin: 0 auto 30px;
+    position: relative;
+  }
+  .hero .badge {
+    display: inline-block;
+    background: var(--accent);
+    color: white;
+    padding: 6px 18px;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    position: relative;
+  }
+
+  /* MAIN CONTENT */
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 30px;
+  }
+
+  /* TABLE OF CONTENTS */
+  .toc {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 32px 36px;
+    margin: 0 0 50px;
+  }
+  .toc h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    margin-bottom: 16px;
+    color: var(--accent2);
+  }
+  .toc ol {
+    columns: 2;
+    column-gap: 40px;
+    list-style: none;
+    counter-reset: toc;
+  }
+  .toc li {
+    counter-increment: toc;
+    padding: 4px 0;
+    font-size: 0.95rem;
+  }
+  .toc li::before {
+    content: counter(toc, decimal-leading-zero) ".";
+    color: var(--accent);
+    font-weight: 700;
+    margin-right: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+  }
+  .toc a { color: var(--ink); text-decoration: none; border-bottom: 1px dotted var(--border); }
+  .toc a:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* SECTION HEADINGS */
+  .section {
+    margin-bottom: 60px;
+    scroll-margin-top: 20px;
+  }
+  .section-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .section h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.9rem;
+    font-weight: 900;
+    color: var(--accent2);
+    margin-bottom: 20px;
+    line-height: 1.2;
+  }
+  .section h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 30px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--gold);
+    display: inline-block;
+  }
+
+  p { margin-bottom: 14px; }
+
+  /* CALLOUT BOXES */
+  .callout {
+    border-left: 4px solid;
+    padding: 20px 24px;
+    margin: 24px 0;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.95rem;
+  }
+  .callout.insight { background: var(--light-blue); border-color: var(--blue); }
+  .callout.warning { background: var(--light-accent); border-color: var(--accent); }
+  .callout.tip { background: var(--light-sage); border-color: var(--sage); }
+  .callout.gold { background: var(--light-gold); border-color: var(--gold); }
+  .callout-label {
+    font-weight: 700;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: block;
+  }
+  .callout.insight .callout-label { color: var(--blue); }
+  .callout.warning .callout-label { color: var(--accent); }
+  .callout.tip .callout-label { color: var(--sage); }
+  .callout.gold .callout-label { color: #a07840; }
+
+  /* CODE BLOCKS */
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    background: #f0ece6;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.88em;
+  }
+  pre {
+    background: var(--ink);
+    color: #e8e6e3;
+    padding: 20px 24px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 16px 0 24px;
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+
+  /* PATTERN CARDS */
+  .pattern-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin: 24px 0;
+  }
+  .pattern-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 24px;
+    transition: box-shadow 0.2s;
+  }
+  .pattern-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+  .pattern-card h4 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    margin-bottom: 10px;
+    color: var(--accent2);
+  }
+  .pattern-card p { font-size: 0.92rem; margin-bottom: 8px; }
+  .card-tag {
+    display: inline-block;
+    background: var(--light-blue);
+    color: var(--blue);
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  /* FLOW DIAGRAMS (CSS only) */
+  .flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 20px 0;
+    justify-content: center;
+  }
+  .flow-step {
+    background: white;
+    border: 2px solid var(--accent2);
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-align: center;
+    min-width: 120px;
+  }
+  .flow-step.active { background: var(--accent2); color: white; }
+  .flow-arrow {
+    font-size: 1.4rem;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* COMPARISON TABLE */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 0.92rem;
+  }
+  th {
+    background: var(--accent2);
+    color: white;
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+  }
+  td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tr:nth-child(even) { background: rgba(0,0,0,0.02); }
+
+  /* CHECKLIST */
+  .checklist {
+    list-style: none;
+    margin: 16px 0;
+  }
+  .checklist li {
+    padding: 8px 0 8px 32px;
+    position: relative;
+    font-size: 0.95rem;
+  }
+  .checklist li::before {
+    content: '☐';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-size: 1.1rem;
+  }
+
+  /* SCORE BAR */
+  .score-bar {
+    margin: 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .score-label {
+    font-weight: 600;
+    font-size: 0.88rem;
+    min-width: 140px;
+  }
+  .bar-bg {
+    flex: 1;
+    height: 22px;
+    background: #e8e6e3;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+  }
+
+  /* EXAMPLE BOX */
+  .example {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin: 20px 0;
+    overflow: hidden;
+  }
+  .example-header {
+    background: var(--light-gold);
+    padding: 10px 20px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.06em;
+    color: #8a6530;
+    border-bottom: 1px solid var(--border);
+  }
+  .example-body {
+    padding: 20px;
+    font-size: 0.93rem;
+    font-style: italic;
+    color: #444;
+    line-height: 1.75;
+  }
+  .example-body .good { color: var(--sage); font-weight: 600; }
+  .example-body .bad { color: var(--accent); font-weight: 600; text-decoration: line-through; }
+
+  /* DIVIDER */
+  hr {
+    border: none;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--border), transparent);
+    margin: 50px 0;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 700px) {
+    .toc ol { columns: 1; }
+    .pattern-grid { grid-template-columns: 1fr; }
+    .flow { flex-direction: column; }
+    .flow-arrow { transform: rotate(90deg); }
+    .hero { padding: 50px 20px 40px; }
+  }
+
+  /* REVIEWER CRITERIA VIZ */
+  .criteria-wheel {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .criteria-item {
+    text-align: center;
+    padding: 24px 16px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .criteria-item .number {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem;
+    font-weight: 900;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .criteria-item .label { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+  .criteria-item .desc { font-size: 0.82rem; color: var(--muted); margin-top: 6px; }
+
+  /* TIMELINE */
+  .timeline {
+    position: relative;
+    padding-left: 40px;
+    margin: 20px 0;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 14px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--gold);
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 24px;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -33px;
+    top: 6px;
+    width: 12px;
+    height: 12px;
+    background: var(--accent);
+    border-radius: 50%;
+    border: 3px solid var(--paper);
+  }
+  .timeline-item strong { display: block; margin-bottom: 4px; }
+  .timeline-item p { font-size: 0.92rem; margin: 0; }
+
+  .footer {
+    text-align: center;
+    padding: 40px 20px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    margin-top: 60px;
+  }
+
+  strong { font-weight: 700; }
+  em { font-style: italic; }
+  ul { margin: 8px 0 14px 24px; }
+  li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ====== HERO ====== -->
+<header class="hero">
+  <span class="badge">Reference Guide · 2024–2026</span>
+  <h1>Writing a Quality <span>Mechanistic Interpretability</span> Paper for EMNLP &amp; ACL</h1>
+  <p class="subtitle">Patterns, strategies, and concrete examples distilled from 20+ accepted papers at top *CL venues</p>
+</header>
+
+<div class="container">
+
+<!-- ====== TOC ====== -->
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#s1">What Reviewers Actually Evaluate</a></li>
+    <li><a href="#s2">Anatomy of an Accepted MI Paper</a></li>
+    <li><a href="#s3">Crafting a Compelling Title</a></li>
+    <li><a href="#s4">The 6-Sentence Abstract</a></li>
+    <li><a href="#s5">Introduction: The 4-Move Structure</a></li>
+    <li><a href="#s6">Related Work That Positions, Not Summarizes</a></li>
+    <li><a href="#s7">Methodology: Precision & Formalization</a></li>
+    <li><a href="#s8">Experiments That Convince</a></li>
+    <li><a href="#s9">Results: Correlational + Causal Evidence</a></li>
+    <li><a href="#s10">Figures, Tables & Visual Communication</a></li>
+    <li><a href="#s11">Limitations, Ethics & Mandatory Sections</a></li>
+    <li><a href="#s12">Pre-Submission Checklist</a></li>
+  </ol>
+</nav>
+
+<!-- ====== SECTION 1 ====== -->
+<section class="section" id="s1">
+  <span class="section-num">SECTION 01</span>
+  <h2>What Reviewers Actually Evaluate</h2>
+
+  <p>Understanding the review criteria is the foundation of writing an accepted paper. ACL Rolling Review (ARR) evaluators score on two primary axes, plus several secondary dimensions.</p>
+
+  <div class="criteria-wheel">
+    <div class="criteria-item">
+      <span class="number" style="color:var(--accent)">S</span>
+      <span class="label">Soundness</span>
+      <p class="desc">Are claims backed by evidence? Is the methodology valid?</p>
+    </div>
+    <div class="criteria-item">
+      <span class="number" style="color:var(--blue)">E</span>
+      <span class="label">Excitement</span>
+      <p class="desc">Is this novel? Would the community care? Is it interesting?</p>
+    </div>
+    <div class="criteria-item">
+      <span class="number" style="color:var(--sage)">R</span>
+      <span class="label">Reproducibility</span>
+      <p class="desc">Can someone replicate this? Is code/data shared?</p>
+    </div>
+  </div>
+
+  <h3>Review Score Breakdown (ARR Scale)</h3>
+  <table>
+    <tr><th>Score</th><th>Meaning</th><th>What It Takes</th></tr>
+    <tr><td><strong>5</strong></td><td>Consider for Award</td><td>Top 2.5% — breakthrough insight, impeccable execution</td></tr>
+    <tr><td><strong>4</strong></td><td>Main Conference</td><td>Clear contribution, sound methodology, novel findings</td></tr>
+    <tr><td><strong>3.5</strong></td><td>Findings</td><td>Sound work, incremental but valid contribution</td></tr>
+    <tr><td><strong>3</strong></td><td>Borderline</td><td>Some merit but significant concerns</td></tr>
+    <tr><td><strong>2</strong></td><td>Resubmit</td><td>Needs substantial revision</td></tr>
+    <tr><td><strong>1</strong></td><td>Reject</td><td>Fundamental issues or out of scope</td></tr>
+  </table>
+
+  <div class="callout insight">
+    <span class="callout-label">Key Insight</span>
+    <strong>Findings vs Main Conference:</strong> The primary criteria for Findings acceptance is soundness and reproducibility. Main conference papers must additionally demonstrate novelty, excitement, and/or impact. For a mechanistic interpretability paper, providing both correlational AND causal evidence is often what separates main track from findings.
+  </div>
+
+  <h3>What Reviewers Look For — Relative Importance</h3>
+  <div class="score-bar"><span class="score-label">Technical Soundness</span><div class="bar-bg"><div class="bar-fill" style="width:95%;background:var(--accent)">95%</div></div></div>
+  <div class="score-bar"><span class="score-label">Novelty of Insight</span><div class="bar-bg"><div class="bar-fill" style="width:85%;background:var(--blue)">85%</div></div></div>
+  <div class="score-bar"><span class="score-label">Clarity of Writing</span><div class="bar-bg"><div class="bar-fill" style="width:80%;background:var(--sage)">80%</div></div></div>
+  <div class="score-bar"><span class="score-label">Reproducibility</span><div class="bar-bg"><div class="bar-fill" style="width:75%;background:var(--gold)">75%</div></div></div>
+  <div class="score-bar"><span class="score-label">Breadth of Evaluation</span><div class="bar-bg"><div class="bar-fill" style="width:70%;background:var(--accent2)">70%</div></div></div>
+  <div class="score-bar"><span class="score-label">Broader Impact</span><div class="bar-bg"><div class="bar-fill" style="width:50%;background:var(--muted)">50%</div></div></div>
+</section>
+
+<hr>
+
+<!-- ====== SECTION 2 ====== -->
+<section class="section" id="s2">
+  <span class="section-num">SECTION 02</span>
+  <h2>Anatomy of an Accepted MI Paper</h2>
+
+  <p>Analysis of 20+ accepted mechanistic interpretability papers at EMNLP 2024–2025 and ACL 2024 reveals a remarkably consistent structural blueprint. Here is the page-level allocation for a standard 8-page long paper:</p>
+
+  <div class="flow">
+    <div class="flow-step active">Intro<br><small>~1.5p</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">Related Work<br><small>~1p</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step active">Methods<br><small>~2p</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">Setup<br><small>~0.5p</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step active">Results<br><small>~2p</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">Conclusion<br><small>~0.5p</small></div>
+  </div>
+  <p style="text-align:center;font-size:0.85rem;color:var(--muted)">+ Limitations (mandatory, not counted) + References (unlimited) + Appendix (optional)</p>
+
+  <h3>The MI Paper DNA: What Accepted Papers Have in Common</h3>
+  <div class="pattern-grid">
+    <div class="pattern-card">
+      <span class="card-tag">Structure</span>
+      <h4>Dual Evidence</h4>
+      <p>Nearly all accepted MI papers provide both <strong>correlational</strong> (observation, probing, visualization) and <strong>causal</strong> (ablation, patching, intervention) evidence for their claims.</p>
+    </div>
+    <div class="pattern-card">
+      <span class="card-tag">Scope</span>
+      <h4>Multi-Model Validation</h4>
+      <p>Top papers validate across 2–4 model families (e.g., Llama-2, Pythia, GPT-J). This addresses the "limited generalizability" concern preemptively.</p>
+    </div>
+    <div class="pattern-card">
+      <span class="card-tag">Methodology</span>
+      <h4>Mathematical Formalization</h4>
+      <p>Every accepted paper includes formal notation for transformer internals (residual stream, attention outputs, FFN decomposition). This signals rigor.</p>
+    </div>
+    <div class="pattern-card">
+      <span class="card-tag">Impact</span>
+      <h4>Actionable Application</h4>
+      <p>The best papers translate MI insights into a practical application: hallucination mitigation, knowledge editing, error correction, or bias reduction.</p>
+    </div>
+  </div>
+</section>
+
+<hr>
+
+<!-- ====== SECTION 3 ====== -->
+<section class="section" id="s3">
+  <span class="section-num">SECTION 03</span>
+  <h2>Crafting a Compelling Title</h2>
+
+  <p>Your title is the first filter. A strong MI paper title signals: (1) what mechanism is studied, (2) in what model, and (3) what approach is used. Accepted papers follow clear formulas:</p>
+
+  <h3>The Three Dominant Title Patterns</h3>
+  <table>
+    <tr><th>Pattern</th><th>Template</th><th>Real Example</th></tr>
+    <tr>
+      <td><strong>Gerund + Target</strong></td>
+      <td><code>[Interpreting/Understanding/Analyzing] [Phenomenon] in [Model]</code></td>
+      <td>"Interpreting Arithmetic Mechanism in LLMs through Comparative Neuron Analysis"</td>
+    </tr>
+    <tr>
+      <td><strong>Mechanistic + Noun</strong></td>
+      <td><code>Mechanistic [Understanding/Analysis/Interpretation] of [Topic]</code></td>
+      <td>"Mechanistic Understanding and Mitigation of Language Model Non-Factual Hallucinations"</td>
+    </tr>
+    <tr>
+      <td><strong>Component-Level</strong></td>
+      <td><code>[Neuron/Circuit/Attention]-Level [Method] for [Goal]</code></td>
+      <td>"Neuron-Level Knowledge Attribution in Large Language Models"</td>
+    </tr>
+  </table>
+
+  <div class="callout tip">
+    <span class="callout-label">Tip</span>
+    <strong>Power words for MI titles:</strong> Mechanistic, Neuron-Level, Circuit, Causal, Attribution, Understanding, Interpreting, Tracing, Locating, Discovering, Internal, Unveiling. Avoid vague words like "Exploring" or "Investigating" alone — pair them with specifics.
+  </div>
+</section>
+
+<hr>
+
+<!-- ====== SECTION 4 ====== -->
+<section class="section" id="s4">
+  <span class="section-num">SECTION 04</span>
+  <h2>The 6-Sentence Abstract</h2>
+
+  <p>The most effective MI paper abstracts follow a tight 6-sentence structure. Each sentence has a specific rhetorical function:</p>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <strong>S1 — Context (What exists)</strong>
+      <p>Establish the broad capability/problem. "State-of-the-art language models sometimes generate outputs that misalign with world knowledge."</p>
+    </div>
+    <div class="timeline-item">
+      <strong>S2 — Gap (What's missing)</strong>
+      <p>Identify what we don't understand. "However, the internal mechanisms driving these [capabilities/failures] remain poorly understood."</p>
+    </div>
+    <div class="timeline-item">
+      <strong>S3 — This Paper (What we do)</strong>
+      <p>State your contribution. "We present a comprehensive mechanistic analysis of [model] using [method], creating diagnostic datasets to trace [phenomenon]."</p>
+    </div>
+    <div class="timeline-item">
+      <strong>S4 — Key Finding (What we found)</strong>
+      <p>Your main result. "We discover [N] distinct mechanistic causes: (1) [cause], and (2) [cause]."</p>
+    </div>
+    <div class="timeline-item">
+      <strong>S5 — Validation + Application</strong>
+      <p>"Based on these insights, we propose [method] demonstrating superior performance over baselines."</p>
+    </div>
+    <div class="timeline-item">
+      <strong>S6 — Impact (Optional)</strong>
+      <p>"Our analysis provides new insights into [broader topic] and sets the stage for [future direction]."</p>
+    </div>
+  </div>
+
+  <div class="example">
+    <div class="example-header">REAL ABSTRACT ANALYSIS — Yu et al., Findings EMNLP 2024</div>
+    <div class="example-body">
+      <span class="good">[S1 Context]</span> "State-of-the-art language models (LMs) sometimes generate [text] that misalign with world knowledge."
+      <span class="good">[S2 Gap]</span> "To explore the mechanistic causes of these hallucinations..."
+      <span class="good">[S3 Method]</span> "...we create diagnostic datasets with subject-relation queries and adapt interpretability methods to trace hallucinations through internal model representations."
+      <span class="good">[S4 Finding]</span> "We discover two general and distinct mechanistic causes shared across LMs (Llama-2, Pythia, GPT-J): 1) insufficient subject attribute knowledge in lower layer MLPs, and 2) failure to select the correct object attribute in upper layer attention heads."
+      <span class="good">[S5 Application]</span> "Based on insights from our mechanistic analysis, we propose a novel hallucination mitigation method through targeted restoration of the LM's internal fact recall pipeline, demonstrating superior performance compared to baselines."
+    </div>
+  </div>
+</section>
+
+<hr>
+
+<!-- ====== SECTION 5 ====== -->
+<section class="section" id="s5">
+  <span class="section-num">SECTION 05</span>
+  <h2>Introduction: The 4-Move Structure</h2>
+
+  <p>Every successful MI paper introduction follows four rhetorical moves. This structure is so consistent across accepted papers that deviating from it is risky.</p>
+
+  <div class="pattern-grid">
+    <div class="pattern-card">
+      <span class="card-tag">Move 1 · ~2 paragraphs</span>
+      <h4>Establish Territory</h4>
+      <p>"Transformer-based large language models possess remarkable capabilities for [task], which is important for downstream tasks including [list]."</p>
+      <p>"While recent studies have made significant progress in understanding [area]..."</p>
+    </div>
+    <div class="pattern-card">
+      <span class="card-tag">Move 2 · ~1 paragraph</span>
+      <h4>Identify the Gap</h4>
+      <p>"However, these studies do not provide insights into the internal mechanisms..."</p>
+      <p>"It is still hard to [goal] due to several reasons. Firstly,... Secondly,... Lastly,..."</p>
+    </div>
+    <div class="pattern-card">
+      <span class="card-tag">Move 3 · ~1–2 paragraphs</span>
+      <h4>Present Your Work</h4>
+      <p>"In this paper, we focus on [level]-level [methods]. We analyze [aspect] and discover that [preview of finding]."</p>
+      <p>"Based on this finding, we employ [method] as [tool], enabling the identification of [target]."</p>
+    </div>
+    <div class="pattern-card">
+      <span class="card-tag">Move 4 · Bulleted list</span>
+      <h4>Enumerate Contributions</h4>
+      <p>"Overall, our contributions are as follows:<br>a) We design...<br>b) We propose...<br>c) We analyze..."</p>
+      <p><strong>Always 3–4 items.</strong> Each starts with a verb and includes a comparative claim.</p>
+    </div>
+  </div>
+
+  <div class="callout warning">
+    <span class="callout-label">Common Pitfall</span>
+    <strong>Don't oversell in the introduction.</strong> Reviewers explicitly flag "claims too strong" — use hedging: "Our results <em>suggest</em>..." rather than "Our results <em>prove</em>..." and "This <em>provides evidence</em> that..." rather than "This <em>demonstrates</em> that..."
+  </div>
+
+  <h3>Figure 1: The Pipeline Diagram</h3>
+  <p>Nearly every accepted MI paper places a high-level overview figure in the introduction (or at the top of Section 3). This figure typically shows:</p>
+  <ul>
+    <li>The model architecture being analyzed (simplified)</li>
+    <li>The specific components under investigation (highlighted)</li>
+    <li>The analysis pipeline (arrows showing methodology flow)</li>
+    <li>A preview of the key finding (e.g., which layers matter)</li>
+  </ul>
+  <p>This figure is <strong>the single most important visual</strong> in the paper. Reviewers often decide their initial impression based on it.</p>
+</section>
+
+<hr>
+
+<!-- ====== SECTION 6 ====== -->
+<section class="section" id="s6">
+  <span class="section-num">SECTION 06</span>
+  <h2>Related Work That Positions, Not Summarizes</h2>
+
+  <p>The related work section should accomplish two things: (1) show you know the field deeply, and (2) clearly differentiate your contribution. It is NOT a literature review.</p>
+
+  <h3>Typical Subsection Structure for MI Papers</h3>
+  <table>
+    <tr><th>Subsection</th><th>Content</th><th>Key Citations</th></tr>
+    <tr>
+      <td><strong>Attribution Methods</strong></td>
+      <td>Gradient-based, causal tracing, saliency methods — and their limitations</td>
+      <td>Sundararajan et al. 2017; Meng et al. 2022; Vig et al. 2020</td>
+    </tr>
+    <tr>
+      <td><strong>Mechanistic Interpretability</strong></td>
+      <td>Circuit discovery, superposition, dictionary learning, vocabulary projection</td>
+      <td>Olah 2022; Elhage et al. 2021; Nanda et al. 2023; Bricken et al. 2023</td>
+    </tr>
+    <tr>
+      <td><strong>[Your Specific Domain]</strong></td>
+      <td>The specific phenomenon you study (e.g., hallucinations, arithmetic, knowledge storage)</td>
+      <td>Domain-specific citations</td>
+    </tr>
+  </table>
+
+  <div class="callout gold">
+    <span class="callout-label">Positioning Phrase Templates</span>
+    <strong>Differentiation:</strong> "Unlike [citation] which focuses on [X], our work examines [Y] at [granularity] level."<br>
+    <strong>Extension:</strong> "Building on the insights of [citation], we extend this line of work by [contribution]."<br>
+    <strong>Gap identification:</strong> "While [citation] studied [aspect], the role of [your focus] remains unexplored."<br>
+    <strong>Synthesis:</strong> "Our work bridges [line A] and [line B] by [how]."
+  </div>
+</section>
+
+<hr>
+
+<!-- ====== SECTION 7 ====== -->
+<section class="section" id="s7">
+  <span class="section-num">SECTION 07</span>
+  <h2>Methodology: Precision &amp; Formalization</h2>
+
+  <p>The methodology section is where MI papers win or lose. Reviewers in the Interpretability track expect mathematical precision.</p>
+
+  <h3>The Three Pillars of a Strong Methods Section</h3>
+
+  <div class="pattern-grid">
+    <div class="pattern-card">
+      <span class="card-tag">Pillar 1</span>
+      <h4>Formal Background</h4>
+      <p>Begin with transformer architecture formalization. Define <code>h^l_i</code>, attention output <code>A^l_i</code>, FFN output <code>F^l_i</code>, and the residual stream. This is expected — not optional.</p>
+    </div>
+    <div class="pattern-card">
+      <span class="card-tag">Pillar 2</span>
+      <h4>Clear Definitions</h4>
+      <p>Explicitly define key terms. E.g., "Definition of 'neuron': We regard the k-th column of W_o as the k-th attention subvalue..." Ambiguity kills papers.</p>
+    </div>
+    <div class="pattern-card">
+      <span class="card-tag">Pillar 3</span>
+      <h4>Step-by-Step Algorithm</h4>
+      <p>Present your method as numbered steps or a pseudo-algorithm. Readers (and reviewers) should be able to reimplement from the description alone.</p>
+    </div>
+  </div>
+
+  <h3>Standard Notation (used across accepted MI papers)</h3>
+  <pre><code>X = [t₁, t₂, ..., tₜ]     — Input token sequence
+h^l_i                       — Hidden state at position i, layer l
+A^l_i                       — Attention output at position i, layer l  
+F^l_i                       — FFN output at position i, layer l
+h^l_i = h^(l-1)_i + A^l_i + F^l_i   — Residual stream equation
+y = softmax(E_u · h^L_T)   — Output probability distribution
+W^q, W^k, W^v, W^o         — Query, Key, Value, Output projection matrices
+α^l_{i,j,p}                — Attention weight (position p, head j, layer l)
+m^l_{i,k}                  — FFN neuron coefficient score</code></pre>
+
+  <div class="callout tip">
+    <span class="callout-label">Pro Tip</span>
+    Use the exact same notation as Geva et al. (2021) and Meng et al. (2022) for residual stream decomposition. Reviewers in this track are familiar with it, and using standard notation reduces cognitive load.
+  </div>
+</section>
+
+<hr>
+
+<!-- ====== SECTION 8 ====== -->
+<section class="section" id="s8">
+  <span class="section-num">SECTION 08</span>
+  <h2>Experiments That Convince</h2>
+
+  <h3>The Experiment Design Funnel</h3>
+  <div class="flow">
+    <div class="flow-step">Observation<br><small>What do we see?</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step active">Correlation<br><small>What patterns exist?</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">Causation<br><small>Does X cause Y?</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step active">Application<br><small>Can we exploit this?</small></div>
+  </div>
+
+  <p>The strongest MI papers follow this funnel exactly. Each experiment builds on the previous, creating a narrative arc from observation to application.</p>
+
+  <h3>Experiment Types in Accepted MI Papers</h3>
+  <table>
+    <tr><th>Experiment Type</th><th>Purpose</th><th>Example</th></tr>
+    <tr>
+      <td><strong>Information Flow Analysis</strong></td>
+      <td>Identify where information is processed</td>
+      <td>Residual stream probing across layers; activation magnitude analysis</td>
+    </tr>
+    <tr>
+      <td><strong>Activation Patching</strong></td>
+      <td>Causal verification of component roles</td>
+      <td>Replace activations from clean run into corrupted run; measure effect</td>
+    </tr>
+    <tr>
+      <td><strong>Ablation Studies</strong></td>
+      <td>Necessity testing — "Is this component needed?"</td>
+      <td>Zero out specific neurons/heads; measure performance degradation</td>
+    </tr>
+    <tr>
+      <td><strong>Steering / Intervention</strong></td>
+      <td>Sufficiency testing — "Can we control output?"</td>
+      <td>Amplify/suppress specific neurons; demonstrate controlled behavior change</td>
+    </tr>
+    <tr>
+      <td><strong>Cross-Model Comparison</strong></td>
+      <td>Generalizability of mechanisms</td>
+      <td>Same analysis on Llama-2, Pythia, GPT-J shows consistent patterns</td>
+    </tr>
+  </table>
+
+  <div class="callout insight">
+    <span class="callout-label">Pattern from EMNLP 2025</span>
+    The paper "Interpretability Analysis of Arithmetic ICL" (Polyakov et al., EMNLP 2025) organized 7 activation patching experiments in a numbered table (Table 1), each testing a specific hypothesis. This makes the experimental logic crystal clear to reviewers and is an excellent structural pattern to follow.
+  </div>
+
+  <h3>Model Selection Best Practices</h3>
+  <ul>
+    <li><strong>Minimum 2 model families</strong> for main track acceptance</li>
+    <li>Include at least one <strong>open-source</strong> model (Llama, Pythia, GPT-2) for reproducibility</li>
+    <li>Vary model <strong>sizes</strong> when possible (e.g., Pythia-410M, -1B, -6.9B)</li>
+    <li>Justify model choice: "We focus on [X] due to [availability / architectural properties / prior work comparability]"</li>
+  </ul>
+</section>
+
+<hr>
+
+<!-- ====== SECTION 9 ====== -->
+<section class="section" id="s9">
+  <span class="section-num">SECTION 09</span>
+  <h2>Results: Correlational + Causal Evidence</h2>
+
+  <p>This is the critical differentiator. Providing only correlational evidence (probing, visualization) is the #1 reason MI papers get downgraded from Main to Findings or rejected entirely.</p>
+
+  <h3>The Evidence Stack</h3>
+
+  <div class="pattern-grid">
+    <div class="pattern-card" style="border-left: 4px solid #ddd;">
+      <span class="card-tag">Level 1 — Observation</span>
+      <h4>Descriptive Statistics</h4>
+      <p>Neuron activation distributions, attention weight heatmaps, layer-wise performance curves. <em>Necessary but not sufficient.</em></p>
+    </div>
+    <div class="pattern-card" style="border-left: 4px solid var(--blue);">
+      <span class="card-tag">Level 2 — Correlation</span>
+      <h4>Probing & Projection</h4>
+      <p>Linear probes, vocabulary space projection, PCA/UMAP visualization, statistical tests (AUC-ROC, Mann-Whitney U). <em>Shows structure exists.</em></p>
+    </div>
+    <div class="pattern-card" style="border-left: 4px solid var(--accent);">
+      <span class="card-tag">Level 3 — Causation</span>
+      <h4>Interventions</h4>
+      <p>Activation patching, ablation, neuron editing, causal mediation. <em>This is what reviewers want.</em></p>
+    </div>
+  </div>
+
+  <div class="callout warning">
+    <span class="callout-label">Critical Rule</span>
+    For every correlational finding you report, include a causal validation experiment. The standard phrase is: <strong>"To verify the causal role of [component], we perform [intervention] experiments (Section X)."</strong>
+  </div>
+
+  <h3>Results Paragraph Template</h3>
+  <div class="example">
+    <div class="example-header">TEMPLATE — RESULTS PARAGRAPH</div>
+    <div class="example-body">
+      "We observe that [finding] (Figure/Table N). [Brief interpretation — one sentence]. This finding is consistent with [citation] / Notably, this differs from [expectation]. To verify this observation, we perform [causal experiment] (Section N.M), which confirms that [intervention on component] leads to [quantified effect], providing causal evidence for [claim]."
+    </div>
+  </div>
+
+  <h3>Essential Phrases for Results Sections</h3>
+  <ul>
+    <li>"We validate our findings using correlational and causal evidence."</li>
+    <li>"Intervening on [N] neurons significantly [affects/changes] the final prediction."</li>
+    <li>"While numerous [units] contribute to [outcome], intervening on a few (N) is sufficient."</li>
+    <li>"Our results suggest that the model implements a [mechanism] that [description]."</li>
+    <li>"Taken together, these results indicate that [synthesis]."</li>
+  </ul>
+</section>
+
+<hr>
+
+<!-- ====== SECTION 10 ====== -->
+<section class="section" id="s10">
+  <span class="section-num">SECTION 10</span>
+  <h2>Figures, Tables &amp; Visual Communication</h2>
+
+  <p>Figures in MI papers do heavy lifting. The right visualizations can make complex mechanisms intuitive. Here are the figure types that appear most frequently in accepted papers:</p>
+
+  <h3>Figure Types Ranked by Frequency</h3>
+  <div class="score-bar"><span class="score-label">Pipeline Overview</span><div class="bar-bg"><div class="bar-fill" style="width:95%;background:var(--accent)">Fig 1</div></div></div>
+  <div class="score-bar"><span class="score-label">Heatmaps (layer×head)</span><div class="bar-bg"><div class="bar-fill" style="width:85%;background:var(--blue)">Very common</div></div></div>
+  <div class="score-bar"><span class="score-label">Line/Bar Charts</span><div class="bar-bg"><div class="bar-fill" style="width:80%;background:var(--sage)">Common</div></div></div>
+  <div class="score-bar"><span class="score-label">UMAP/PCA Plots</span><div class="bar-bg"><div class="bar-fill" style="width:65%;background:var(--gold)">Frequent</div></div></div>
+  <div class="score-bar"><span class="score-label">Attention Viz</span><div class="bar-bg"><div class="bar-fill" style="width:55%;background:var(--accent2)">Moderate</div></div></div>
+  <div class="score-bar"><span class="score-label">Circuit Diagrams</span><div class="bar-bg"><div class="bar-fill" style="width:40%;background:var(--muted)">Specialized</div></div></div>
+
+  <h3>Table Formatting Conventions</h3>
+  <div class="callout gold">
+    <span class="callout-label">Standard Formatting</span>
+    <strong>Bold</strong> = best result in each column.<br>
+    <u>Underline</u> = second best.<br>
+    Use <code>\midrule</code> to separate baselines from your method.<br>
+    Report <strong>mean ± std</strong> when running multiple seeds.<br>
+    Always include a <strong>"Δ"</strong> or <strong>"Improvement"</strong> row/column showing gain over best baseline.
+  </div>
+
+  <h3>Accessibility Requirements</h3>
+  <p>ACL mandates accessibility-conscious design:</p>
+  <ul>
+    <li>Ensure <strong>grayscale readability</strong> — don't rely solely on color to convey information</li>
+    <li>Provide captions for every figure and table</li>
+    <li>Use patterns (dashes, dots) in addition to colors in line plots</li>
+    <li>Number figures and tables sequentially: "Figure 1:", "Table 1:"</li>
+  </ul>
+</section>
+
+<hr>
+
+<!-- ====== SECTION 11 ====== -->
+<section class="section" id="s11">
+  <span class="section-num">SECTION 11</span>
+  <h2>Limitations, Ethics &amp; Mandatory Sections</h2>
+
+  <p>ARR requires a <strong>Limitations</strong> section. Papers without one are desk-rejected. This section should be honest, specific, and frame limitations as future directions.</p>
+
+  <h3>Limitations Template for MI Papers</h3>
+  <div class="example">
+    <div class="example-header">TEMPLATE — LIMITATIONS SECTION</div>
+    <div class="example-body">
+      <strong>Model Scope:</strong> "Our analysis focused on [model family/size]; extending to [other architectures, e.g., Mamba, SSMs] and larger-scale models is an important direction for future work."<br><br>
+      <strong>Task Generalizability:</strong> "We validated our findings on [N tasks/datasets]; the extent to which the identified mechanisms generalize to [broader settings] requires further investigation."<br><br>
+      <strong>Methodological Caveats:</strong> "While we provide causal evidence through [patching/ablation], the complexity of modern LLMs means our analysis may not capture all relevant mechanisms. Polysemanticity and superposition may obscure [specific issue]."<br><br>
+      <strong>Computational Constraints:</strong> "Due to the computational cost of [method], we limited our analysis to [scope]. Scaling to [larger scope] would require [specific resources]."
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-label">Pro Tip</span>
+    Frame each limitation as a clear future work direction. Reviewers appreciate honesty — listing real limitations actually <em>increases</em> perceived soundness.
+  </div>
+
+  <h3>Required Sections (Page Limit Exempt)</h3>
+  <table>
+    <tr><th>Section</th><th>Status</th><th>Placement</th></tr>
+    <tr><td>Limitations</td><td><strong>Mandatory</strong> (desk reject without it)</td><td>After Conclusion, before References</td></tr>
+    <tr><td>Ethics Statement</td><td>Optional but recommended</td><td>After Limitations</td></tr>
+    <tr><td>Acknowledgments</td><td>Optional (final version only)</td><td>Before References</td></tr>
+    <tr><td>Appendix</td><td>Optional</td><td>After References</td></tr>
+  </table>
+</section>
+
+<hr>
+
+<!-- ====== SECTION 12 ====== -->
+<section class="section" id="s12">
+  <span class="section-num">SECTION 12</span>
+  <h2>Pre-Submission Checklist</h2>
+
+  <p>Use this checklist before every ARR submission. Each item maps to a specific reviewer concern.</p>
+
+  <h3>Technical Soundness</h3>
+  <ul class="checklist">
+    <li>Every claim has supporting evidence (figure, table, or formal argument)</li>
+    <li>Causal evidence provided for every correlational finding</li>
+    <li>Results validated across 2+ model families</li>
+    <li>Baselines include both classic and recent methods (5+ comparisons)</li>
+    <li>Statistical significance reported where applicable (p-values, confidence intervals)</li>
+    <li>Ablation study included showing each component's contribution</li>
+  </ul>
+
+  <h3>Novelty & Contribution</h3>
+  <ul class="checklist">
+    <li>Clear differentiation from prior work stated explicitly</li>
+    <li>"To the best of our knowledge, this is the first..." claim is accurate</li>
+    <li>Contributions list has 3–4 specific items</li>
+    <li>At least one contribution is an actionable application (not just analysis)</li>
+  </ul>
+
+  <h3>Writing & Presentation</h3>
+  <ul class="checklist">
+    <li>Abstract follows 6-sentence structure</li>
+    <li>Introduction uses 4-move structure</li>
+    <li>Figure 1 is a pipeline overview</li>
+    <li>All figures/tables have descriptive captions</li>
+    <li>Hedging language used for claims ("suggest", "indicate", "provide evidence")</li>
+    <li>No overclaiming or unsupported strong statements</li>
+  </ul>
+
+  <h3>Format & Compliance</h3>
+  <ul class="checklist">
+    <li>Page limit respected (8 for long, 4 for short, excl. limitations &amp; references)</li>
+    <li>ACL style files used without modification</li>
+    <li>Limitations section present</li>
+    <li>Responsible NLP checklist completed honestly</li>
+    <li>Anonymous submission (no self-identifying references, no named repos)</li>
+    <li>All references include DOIs or URLs where possible</li>
+    <li>Grayscale readability of all figures</li>
+  </ul>
+
+  <h3>Reproducibility</h3>
+  <ul class="checklist">
+    <li>Code will be released (mention anonymized repo in paper)</li>
+    <li>Hyperparameters and training details fully specified</li>
+    <li>Dataset construction process documented</li>
+    <li>Compute budget mentioned (GPU type, hours)</li>
+    <li>Random seeds and number of runs reported</li>
+  </ul>
+
+  <div class="callout insight">
+    <span class="callout-label">Final Thought</span>
+    The difference between a borderline paper and an accepted one is rarely a single breakthrough experiment. It is the <strong>accumulation of small signals of rigor</strong>: proper hedging, dual evidence, honest limitations, clean figures, and a narrative that flows from observation to mechanism to application. Every item on this checklist is one such signal.
+  </div>
+</section>
+
+<footer class="footer">
+  <p>Compiled from analysis of 20+ accepted papers at EMNLP 2024–2025 and ACL 2024, ARR reviewer guidelines, and ACL formatting specifications.</p>
+  <p>Papers analyzed include works by Yu &amp; Ananiadou, Yu et al., Brinkmann et al., Polyakov et al., Hong &amp; Lipani, Nie et al., and others from the Interpretability and Analysis track.</p>
+  <p style="margin-top:12px;font-style:italic;">Prepared as a writing guide for mechanistic interpretability research targeting EMNLP 2026 ARR.</p>
+</footer>
+
+</div>
+</body>
+</html>

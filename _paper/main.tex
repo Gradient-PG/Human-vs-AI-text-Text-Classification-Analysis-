@@ -187,15 +187,24 @@ The closest methodological precedent for our flip-rate framing is \citet{ravindr
 \label{sec:setup-data}
 % RAID benchmark (Dugan et al. 2024): 11 generators × 6 domains. Headline run uses 5 generators chosen for architectural diversity:
 % gpt4, gpt2, mistral-chat, llama-chat, cohere-chat (1 base/non-RLHF + 4 chat-RLHF, spanning 4 model families).
-\todo{If second base generator added (Tier-1 experiment), update count to 6 here and note the addition.}
 % 6 domains: abstracts, books, news, reddit, reviews, wiki.
 % Balanced subsampling: 7,500 samples per generator (3,750 per class), justified in §\ref{sec:setup-stability}.
+
+\todo{If a second base/non-RLHF generator is added before submission, update count to 6 here, add it to the generator list, and update the layer-asymmetry claim in §\ref{sec:crossgen-layers} from a single-data-point to a pattern.}
+
+RAID~\citep{dugan2024raid} provides human-written and machine-generated texts across 11 generators and 8 domains. We use six of the eight domains: abstracts, books, news, Reddit posts, reviews, and Wikipedia. We select five generators for architectural diversity: GPT-4 (\texttt{gpt4}), GPT-2 (\texttt{gpt2}), Mistral-7B-Instruct (\texttt{mistral-chat}), Llama-2-Chat (\texttt{llama-chat}), and Cohere Command (\texttt{cohere-chat}), spanning one pure-base generator (gpt2), one SFT-only generator (mistral-chat), and three SFT+RLHF/preference-trained generators (gpt4, llama-chat, cohere-chat), across four model families. We subsample 7{,}500 examples per generator (3{,}750 human, 3{,}750 AI) balanced across the six RAID domains, yielding 37{,}500 samples in total.
 
 \subsection{Model and Activations}
 \label{sec:setup-model}
 % Frozen \bertbase (12 layers, hidden dim 768). No fine-tuning anywhere.
 % CLS-token activation extracted at every layer; concatenation gives a 12 × 768 = 9,216-dim feature vector per sample.
 % Note: we deliberately use the frozen pretrained model, NOT a detection-fine-tuned one — this isolates representation present in pretraining rather than learned during detection training. (Contrast with Borile \& Abrate.)
+
+We use \bertbase~\citep{devlin2019bert} with all weights frozen throughout. For each input text we extract the CLS-token hidden state at every transformer layer $l \in \{1, \ldots, 12\}$, giving a per-layer vector $\mathbf{h}^{(l)} \in \mathbb{R}^{768}$. The full feature representation is the concatenation
+\[
+  \mathbf{z} = \bigl[\mathbf{h}^{(1)};\, \ldots;\, \mathbf{h}^{(12)}\bigr] \in \mathbb{R}^{9{,}216}.
+\]
+We refer to individual dimensions of $\mathbf{z}$ as \textit{neurons}; neuron index $i$ resides in layer $\lfloor i / 768 \rfloor + 1$ and position $i \bmod 768$ within that layer. Using the frozen pretrained model (rather than a fine-tuned detector) ensures that any informative features we identify are present in general-purpose BERT representations, not artefacts of task-specific fine-tuning.
 
 \subsection{Protocol: L1 Selection, L2 Evaluation}
 \label{sec:setup-protocol}
@@ -204,11 +213,16 @@ The closest methodological precedent for our flip-rate framing is \citet{ravindr
 % (2) Independent L2 logistic regression on ALL 9,216 features (lbfgs) → eval probe. The eval probe is FIXED across evaluators.
 % (3) Each evaluator (ablation/patching/AUC-comparison/restricted) sees test-fold activations + frozen selection + frozen eval probe.
 % Cross-validation: StratifiedKFold on (label × domain), 5 folds × 3 seeds [42, 123, 456] = 15 cells per (generator, experiment).
-% Refer reader to Appendix \ref{app:pipeline} for the full pipeline diagram.
+
+Following \citet{gurnee2023haystack}, for each (seed, fold) cell we fit two independent probes on the training split. (1)~\textit{L1 selection probe}: L1-regularised logistic regression ($C = 0.005$, liblinear solver) on all 9{,}216 features. Neurons with non-zero coefficients form the \textit{candidate set} $\mathcal{S}$; neurons appearing in $\mathcal{S}$ in at least 50\% of the 15 cells are \textit{stable neurons}. (2)~\textit{L2 evaluation probe}: L2-regularised logistic regression (lbfgs) on the full $\mathbf{z}$. This probe is held frozen for all downstream experiments to ensure that intervention effects are measured against a fixed decision function.
+
+We use 5-fold stratified cross-validation stratified by (label $\times$ domain) with seeds $\{42, 123, 456\}$, yielding 15 cells per (generator, experiment). All reported metrics are 15-cell means $\pm$ standard deviation unless otherwise noted.
 
 \subsection{Stability-Driven Hyperparameter Selection}
 \label{sec:setup-stability}
 % Brief: K=15 stratified subsamples × 4 C values × 7 N values × 3 generators (gpt4, llama-chat, mistral). Pairwise Jaccard at C=0.005, N=7,500 is 0.72–0.75 with min-over-3-gen 0.724 — most-stable C value at every N for every generator. Full sweep deferred to Appendix \ref{app:stability}.
+
+The regularisation strength $C = 0.005$ and sample size $N = 7{,}500$ were selected via a multi-generator stability sweep conducted prior to any results analysis, following the criterion of \citet{gurnee2023haystack}. We drew $K = 15$ stratified subsamples from each of three generators (\texttt{gpt4}, \texttt{llama-chat}, \texttt{mistral-chat}), computed mean pairwise Jaccard similarity between selection sets across subsamples, and chose the $(C, N)$ pair that maximised the minimum Jaccard across generators. At $C = 0.005$, $N = 7{,}500$, the minimum-over-generators Jaccard is 0.724 --- the highest achieved by any $C$ at every $N$ tested. The full sweep is reported in Appendix~\ref{app:stability}.
 
 % =====================================================================
 \section{Sparse Detection Circuits in Frozen BERT}
