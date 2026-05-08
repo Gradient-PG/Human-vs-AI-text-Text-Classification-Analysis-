@@ -1,4 +1,4 @@
-\begin{thebibliography}{5}
+\begin{thebibliography}{13}
 \providecommand{\natexlab}[1]{#1}
 
 \bibitem[{Borile and Abrate(2025)}]{borile2025confounding}
@@ -25,6 +25,21 @@ Wes Gurnee, Neel Nanda, Matthew Pauly, Katherine Harvey, Dmitrii Troitskii, and
   haystack: Case studies with sparse probing}.
 \newblock \emph{Transactions on Machine Learning Research}.
 
+\bibitem[{Hans et~al.(2024)Hans, Schwarzschild, Cherepanova, Kazemi, Saha,
+  Goldblum, Geiping, and Goldstein}]{hans2024binoculars}
+Abhimanyu Hans, Avi Schwarzschild, Valeriia Cherepanova, Hamid Kazemi,
+  Aniruddha Saha, Micah Goldblum, Jonas Geiping, and Tom Goldstein. 2024.
+\newblock Spotting {LLM}s with binoculars: Zero-shot detection of
+  machine-generated text.
+\newblock In \emph{Proceedings of the 41st International Conference on Machine
+  Learning}.
+
+\bibitem[{Heimersheim and Nanda(2024)}]{heimersheim2024patching}
+Stefan Heimersheim and Neel Nanda. 2024.
+\newblock \href {https://arxiv.org/abs/2404.15255} {How to use and interpret
+  activation patching}.
+\newblock \emph{Preprint}, arXiv:2404.15255.
+
 \bibitem[{Kuznetsov et~al.(2025)Kuznetsov, Kushnareva, Druzhinina, Razzhigaev,
   Voznyuk, Piontkovskaya, Burnaev, and Barannikov}]{kuznetsov2025sae}
 Kirill Kuznetsov, Laida Kushnareva, Polina Druzhinina, Anton Razzhigaev,
@@ -34,6 +49,29 @@ Kirill Kuznetsov, Laida Kushnareva, Polina Druzhinina, Anton Razzhigaev,
   artificial text detection with sparse autoencoders}.
 \newblock \emph{Preprint}, arXiv:2503.03601.
 
+\bibitem[{Kuznetsov et~al.(2024)Kuznetsov, Tulchinskii, Kushnareva, Magai,
+  Barannikov, Nikolenko, and Piontkovskaya}]{kuznetsov2024restricted}
+Kirill Kuznetsov, Eduard Tulchinskii, Laida Kushnareva, German Magai, Serguei
+  Barannikov, Sergey Nikolenko, and Irina Piontkovskaya. 2024.
+\newblock \href {https://arxiv.org/abs/2410.08113} {Robust {AI}-generated text
+  detection by restricted embeddings}.
+\newblock In \emph{Findings of the Association for Computational Linguistics:
+  EMNLP 2024}.
+
+\bibitem[{Meng et~al.(2022)Meng, Bau, Andonian, and Belinkov}]{meng2022rome}
+Kevin Meng, David Bau, Alex Andonian, and Yonatan Belinkov. 2022.
+\newblock Locating and editing factual associations in {GPT}.
+\newblock In \emph{Advances in Neural Information Processing Systems}.
+
+\bibitem[{Mitchell et~al.(2023)Mitchell, Lee, Khazatsky, Manning, and
+  Finn}]{mitchell2023detectgpt}
+Eric Mitchell, Yoonho Lee, Alexander Khazatsky, Christopher~D. Manning, and
+  Chelsea Finn. 2023.
+\newblock {DetectGPT}: Zero-shot machine-generated text detection using
+  probability curvature.
+\newblock In \emph{Proceedings of the 40th International Conference on Machine
+  Learning}.
+
 \bibitem[{Pudasaini et~al.(2026)Pudasaini, Lillis, Miralles-Pechu{\'a}n, and
   Llorens~Salvador}]{pudasaini2026why}
 Sudeep Pudasaini, David Lillis, Luis Miralles-Pechu{\'a}n, and Mar{\'\i}a
@@ -41,5 +79,28 @@ Sudeep Pudasaini, David Lillis, Luis Miralles-Pechu{\'a}n, and Mar{\'\i}a
 \newblock \href {https://arxiv.org/abs/2603.23146} {Why {AI}-generated text
   detection fails: Evidence from explainable {AI} beyond benchmark accuracy}.
 \newblock \emph{Preprint}, arXiv:2603.23146.
+
+\bibitem[{Ravindran(2025)}]{ravindran2025adversarial}
+Santhosh~Kumar Ravindran. 2025.
+\newblock \href {https://arxiv.org/abs/2507.09406} {Adversarial activation
+  patching: A framework for detecting and mitigating emergent deception in
+  safety-aligned transformers}.
+\newblock \emph{Preprint}, arXiv:2507.09406.
+
+\bibitem[{Solaiman et~al.(2019)Solaiman, Brundage, Clark, Askell, Herbert-Voss,
+  Wu, Radford, and Wang}]{solaiman2019release}
+Irene Solaiman, Miles Brundage, Jack Clark, Amanda Askell, Ariel Herbert-Voss,
+  Jeff Wu, Alec Radford, and Jasmine Wang. 2019.
+\newblock \href {https://arxiv.org/abs/1908.09203} {Release strategies and the
+  social impacts of language models}.
+\newblock \emph{Preprint}, arXiv:1908.09203.
+
+\bibitem[{Vig et~al.(2020)Vig, Gehrmann, Belinkov, Qian, Nevo, Singer, and
+  Shieber}]{vig2020causal}
+Jesse Vig, Sebastian Gehrmann, Yonatan Belinkov, Sharon Qian, Daniel Nevo,
+  Yaron Singer, and Stuart Shieber. 2020.
+\newblock Investigating gender bias in language models using causal mediation
+  analysis.
+\newblock In \emph{Advances in Neural Information Processing Systems}.
 
 \end{thebibliography}

@@ -4,10 +4,6 @@ The top-level auxiliary file: main.aux
 Reallocating 'name_of_file' (item size: 1) to 11 items.
 The style file: acl_natbib.bst
 Reallocating 'name_of_file' (item size: 1) to 5 items.
-Illegal, another \bibstyle command---line 17 of file main.aux
- : \bibstyle
- :          {acl_natbib}
-I'm skipping whatever remains of this command
 Reallocating 'glb_str_end' (item size: 4) to 20 items.
 Reallocating 'glb_str_ptr' (item size: 4) to 20 items.
 Reallocating 'global_strs' (item size: 1) to 4000000 items.
@@ -15,45 +11,44 @@ Reallocating 'singl_function' (item size: 4) to 100 items.
 Reallocating 'singl_function' (item size: 4) to 100 items.
 Reallocating 'wiz_functions' (item size: 4) to 6000 items.
 Database file #1: refs.bib
-You've used 5 entries,
+You've used 13 entries,
             3764 wiz_defined-function locations,
-            762 strings with 7151 characters,
-and the built_in function-call counts, 4072 in all, are:
-= -- 317
-> -- 273
-< -- 1
-+ -- 112
-- -- 85
-* -- 302
-:= -- 647
-add.period$ -- 20
-call.type$ -- 5
-change.case$ -- 57
-chr.to.int$ -- 6
-cite$ -- 5
-duplicate$ -- 218
-empty$ -- 256
-format.name$ -- 101
-if$ -- 857
+            797 strings with 9018 characters,
+and the built_in function-call counts, 10274 in all, are:
+= -- 810
+> -- 681
+< -- 3
++ -- 280
+- -- 211
+* -- 742
+:= -- 1590
+add.period$ -- 52
+call.type$ -- 13
+change.case$ -- 149
+chr.to.int$ -- 14
+cite$ -- 13
+duplicate$ -- 571
+empty$ -- 656
+format.name$ -- 251
+if$ -- 2172
 int.to.chr$ -- 1
 int.to.str$ -- 1
-missing$ -- 53
-newline$ -- 29
-num.names$ -- 20
-pop$ -- 156
+missing$ -- 139
+newline$ -- 69
+num.names$ -- 52
+pop$ -- 414
 preamble$ -- 1
-purify$ -- 48
+purify$ -- 122
 quote$ -- 0
-skip$ -- 202
+skip$ -- 505
 stack$ -- 0
-substring$ -- 55
-swap$ -- 119
+substring$ -- 143
+swap$ -- 299
 text.length$ -- 0
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 45
+type$ -- 117
 warning$ -- 0
-while$ -- 15
+while$ -- 39
 width$ -- 0
-write$ -- 65
-(There was 1 error message)
+write$ -- 164

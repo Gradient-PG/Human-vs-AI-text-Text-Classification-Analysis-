@@ -30,8 +30,8 @@
 \newcommand{\flip}{\text{flip}\xspace}
 \newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
 
-\title{Causally Sufficient AI-Detection Features in Frozen BERT:\\
-A Sparse Probing and Activation-Patching Study on RAID}
+\title{A Mechanistic Study of AI-Detection Features in Frozen BERT:\\
+Sparse Probing and Activation Patching on RAID}
 % Working title — alternatives in the planning notes; pick at submission time.
 
 \author{Anonymous ARR submission}
@@ -44,6 +44,51 @@ A Sparse Probing and Activation-Patching Study on RAID}
 %   Affiliation \\
 %   \texttt{email@domain} \\
 % }
+
+% =====================================================================
+% HARD SUBMISSION CRITERIA — all must be resolved before May 25
+% =====================================================================
+% [ ] ABSTRACT — write the 6-sentence abstract (S1 context, S2 gap, S3 this paper,
+%     S4 key finding, S5 validation, S6 impact). Currently a \todo{} placeholder.
+%
+% [ ] LIMITATIONS SECTION — mandatory for ARR; does NOT count toward the 8-page limit.
+%     Must cover: (1) single backbone (frozen BERT only), (2) generalizability across
+%     domains/languages, (3) causal scope (patching is not a full circuit proof),
+%     (4) computational scope (5 generators, not all 11 in RAID).
+%
+% [ ] ALL \todo{} PLACEHOLDERS RESOLVED — search for \todo{ before submission.
+%     Currently open: abstract, setup subsections, results subsections, discussion.
+%
+% [ ] SETUP SECTION FILLED — §3 needs: RAID data description with statistics,
+%     model + feature extraction details (BERT-base-uncased, CLS, 12×768),
+%     probing protocol (L1→L2, C=0.005, N=7500, 5-fold × 3 seeds),
+%     patching protocol (same-domain donor, mean ablation), LOGO protocol.
+%
+% [ ] RESULTS SECTION FILLED — §4/§5 needs all four experiment types reported:
+%     sparse probe (accuracy + Jaccard), patching (flip rates + ratio vs random),
+%     ablation (accuracy drop), cross-generator (pairwise Jaccard, layer share),
+%     LOGO (sel-L2 accuracy across held-out families).
+%
+% [ ] MATHEMATICAL FORMALIZATION — at minimum: notation for BERT CLS activations
+%     h^{(l)} \in \mathbb{R}^{768}, concatenated representation z \in \mathbb{R}^{9216},
+%     L1 probe definition, mean-ablation definition, patching operation definition.
+%     Expected in every accepted MI paper; signals rigor to reviewers.
+%
+% [ ] FIGURE 1 (PIPELINE DIAGRAM) — almost universally present in accepted MI papers.
+%     Should show: BERT encoder → CLS extraction → L1 probe → stable neuron set →
+%     [mean ablation branch] and [donor patching branch] → flip rate metric.
+%
+% [ ] HEDGE RESULTS CLAIMS — use "suggest", "provide evidence that", "indicate"
+%     rather than "demonstrate" or "prove" in results prose. Check intro ¶4 too.
+%
+% [ ] REFERENCE COUNT — currently 14 refs; accepted MI papers average 40–70.
+%     Add foundational MI refs as sections are written (Elhage 2021 circuits framework,
+%     Geva 2021 FFN-as-key-value if we discuss FFN neurons, others as needed).
+%
+% [ ] ETHICS STATEMENT — optional but expected; one short paragraph is sufficient.
+%     Note: detection tools can be misused; frozen BERT study is observational, not a
+%     deployed system.
+% =====================================================================
 
 \begin{document}
 \maketitle
@@ -68,7 +113,7 @@ A Sparse Probing and Activation-Patching Study on RAID}
 % Suggested flow (5–6 paragraphs, ~1 page):
 % ¶1 — Hook. Why AI-text detection matters, and why mechanistic understanding (not just detection accuracy) is now the bottleneck. Cite RAID (Dugan et al. 2024), recent detector-failure analyses (Pudasaini et al. 2026).
 
-The rapid development of Large Language Models (LLM) has made AI-generated text increasingly difficult to distinguish from human writing~\cite{dugan2024raid}. This poses a significant challenge across domains ranging from academic integrity to social media moderation and journalist authenticity. Even though the detection accuracy has improved substantially, with encoder-based classifiers reaching high performance on established benchmarks~\cite{dugan2024raid}, a fundamental question remains unanswered: \textit{What internal representations actually drive these predictions?} Mechanistic interpretability has seen little application to AI-text detection, leaving the field without a causal account of how detection actually works.
+The rapid development of Large Language Models (LLMs) has made AI-generated text increasingly difficult to distinguish from human writing~\cite{dugan2024raid}. This poses a significant challenge across domains ranging from academic integrity to social media moderation and journalist authenticity. Even though the detection accuracy has improved substantially, with encoder-based classifiers reaching high performance on established benchmarks~\cite{dugan2024raid}, a fundamental question remains unanswered: \textit{What internal representations actually drive these predictions?} Mechanistic interpretability has seen little application to AI-text detection, leaving the field without a causal account of how detection actually works.
 
 % ¶2 — Gap. Existing interpretability for MGT detection is either (a) black-box feature attribution (SHAP/LIME), (b) confounder-removal via neuron suppression in fine-tuned encoders (Borile \& Abrate 2025), or (c) SAE feature analysis on decoders (Kuznetsov et al. 2025). What's missing: a causal-sufficiency test on a frozen encoder.
 
@@ -76,11 +121,11 @@ Existing interpretability work on AI-text detection takes one of three forms: a)
 
 % ¶3 — Approach. Frozen \bertbase + Gurnee-style L1-then-L2 sparse probing on RAID across 5 generators (1 base + 4 chat-RLHF). Two interventions on the SAME selected set: mean-ablation (necessity) and same-domain donor→target activation patching (sufficiency).
 
-We address this gap with a causal intervention study on a \textit{frozen} \bertbase. Rather than fine-tuning the model for detection, we train sparse linear probes on pretrained CLS-token activations concatenated across all 12 layers (9{,}216 features total), following the sparse-probing protocol of \citet{gurnee2023haystack} \todo{verify if citation correct}. An L1-regularized logistic regression selects a small stable set of candidate neurons; an independent L2 probe serves as the frozen evaluator for all subsequent experiments. We then apply two causal interventions to the same selected feature set: \textit{mean ablation} which removes these features to test whether they are necessary, and \textit{same-domain donor $\to$ target activation patching} replacing their activations from AI into human samples to test whether they are \textit{sufficient} to flip detector predictions. The patching direction is the key distinction from prior work: rather than removing suspected confounders, we inject candidate detection signal and measure the result.
+We address this gap with a causal intervention study on a \textit{frozen} \bertbase. Rather than fine-tuning the model for detection, we train sparse linear probes on pretrained CLS-token activations concatenated across all 12 layers (9{,}216 features total), following the sparse-probing protocol of \citet{gurnee2023haystack}. An L1-regularized logistic regression selects a small stable set of candidate neurons; an independent L2 probe serves as the frozen evaluator for all subsequent experiments. We then apply two causal interventions to the same selected feature set: \textit{mean ablation} which removes these features to test whether they are necessary, and \textit{same-domain donor $\to$ target activation patching} replacing their activations from AI into human samples to test whether they are \textit{sufficient} to flip detector predictions. The patching direction is the key distinction from prior work: rather than removing suspected confounders, we inject candidate detection signal and measure the result.
 
 % ¶4 — Findings preview (mirror abstract): three numbered findings — sparse stable set; causal sufficiency via patching; generator-specific circuits with chat-RLHF vs base layer asymmetry.
 
-We find that it is sufficient. Across five generators spanning one base and four chat-RLHF model families, patching $\sim$50 selected neurons flips human $\to$ AI predictions at 1.07-8.15\% which is 10-24 $\times$ above a random-feature baseline. This finding provides the first causal-sufficiency evidence for AI-detection circuits in a frozen pretrained encoder. Mean-ablation of the same features causes only 0.03--1.06\,pp accuracy loss, revealing that the detection signal is \textit{redundantly distributed}: easy to inject, hard to erase. Cross-generator analysis further shows that stable feature sets are largely generator-specific (pairwise Jaccard 0.00--0.24) yet cluster $\sim$32$\times$ above chance, with chat-RLHF generators concentrating in layer~12 while the sole base/non-RLHF generator (GPT-2) peaks at layer~11.
+We find that it is sufficient. Across five generators spanning one base and four chat-RLHF model families, patching $\sim$50 selected neurons flips human $\to$ AI predictions at 1.07--8.15\%, 10--16$\times$ above a random-feature baseline. This finding provides the first causal-sufficiency evidence for AI-detection circuits in a frozen pretrained encoder. Mean-ablation of the same features causes only 0.03--1.06\,pp accuracy loss, revealing that the detection signal is \textit{redundantly distributed}: easy to inject, hard to erase. Cross-generator analysis further shows that stable feature sets are largely generator-specific (pairwise Jaccard 0.00--0.24) yet cluster $\sim$32$\times$ above chance, with chat-RLHF generators concentrating in layer~12 while the sole base/non-RLHF generator (GPT-2) peaks at layer~11.
 
 % ¶5 — Position vs prior work in one paragraph. Borile \& Abrate differ on 4 axes (frozen vs fine-tuned; CLS vs FFN intermediate; positive-patching vs hard-suppression; RAID vs DAIGT/M4/HC3). Enkhbayar (2025) reports a "causality gap" in observational discriminativity — we close that gap with patching. Kuznetsov et al. 2024 use coordinate-subspace removal, not neuron-level probing.
 
@@ -90,13 +135,13 @@ Our work is most directly related to \citet{borile2025confounding}, who suppress
 
 \paragraph{Contributions.}
 \begin{enumerate}
-    \item A sparse-probing characterization of AI-detection signal in frozen \bertbase across five generators on RAID, identifying stable sets of 45-62 neurons ($<$1\% of 9,216 features) sufficient for 90.5-98.8\% detection accuracy with high cross-fold stability (Jaccard 0.67-0.76).
+    \item A sparse-probing characterization of AI-detection signal in frozen \bertbase across five generators on RAID, identifying stable sets of 45-62 neurons ($<$1\% of 9,216 features) sufficient for 90.5-98.8\% detection accuracy with high cross-fold stability (Jaccard 0.67-0.76), with hyperparameters validated via a multi-generator stability sweep.
 
-    \item The first causal-sufficiency test for AI-detection features via same-domain donor $\to$ target activation patching, yielding flip rates 10-24$\times$ above a random-feature baseline across all five generators.
+    \item The first causal-sufficiency test for AI-detection features via same-domain donor $\to$ target activation patching, yielding flip rates 10-16$\times$ above a random-feature baseline across all five generators.
 
     \item A cross-generator circuit analysis revealing generator-specific stable sets that nonetheless overlap $\sim$32$\times$ above chance, with a chat-RLHF (layer~12) vs.\ base/non-RLHF (layer~11) layer asymmetry.
 
-    \item A multi-generator stability sweep for principled selection of probe regularization ($C$) and sample size ($N$).
+    \item Leave-one-family-out (LOGO) generalization showing that $\leq$1\% of neurons carries 87-94\% of full-feature detection signal across five unseen model families.
 \end{enumerate}
 
 % =====================================================================
@@ -108,11 +153,29 @@ Our work is most directly related to \citet{borile2025confounding}, who suppress
 \subsection{AI-Generated Text Detection}
 % Briefly: supervised classifiers (RoBERTa-based, GPT-2-output detector), zero-shot methods (DetectGPT, Binoculars), benchmark landscape (RAID, M4, HC3). Cite Dugan et al. 2024 for RAID. Keep short — this is not a detection paper.
 
+Supervised detectors fine-tune pretrained language models as binary classifiers on pairs of human and machine-generated text. The GPT-2 output detector~\citep{solaiman2019release} established this paradigm by fine-tuning RoBERTa on GPT-2 samples; subsequent work extended the approach to instruction-tuned and RLHF-aligned generators with larger and more diverse training sets. These classifiers achieve high in-distribution accuracy but degrade substantially on generators or domains unseen during training~\citep{dugan2024raid}.
+
+Zero-shot methods exploit statistical properties of language model distributions without requiring labelled data. DetectGPT~\citep{mitchell2023detectgpt} tests whether candidate text lies at a local maximum of log-probability relative to nearby perturbations, reflecting the tendency of model-generated text to occupy high-probability regions. Binoculars~\citep{hans2024binoculars} uses the cross-perplexity ratio between two models as a calibrated detection score, achieving strong performance across generators. Both approaches require whitebox or API access to a reference model.
+
+Systematic benchmarking has revealed that no single method generalises reliably. RAID dataset~\citep{dugan2024raid} spans 11 generators and 6 domains with adversarial rephrasing attacks; classifiers that perform well in-distribution consistently fail on held-out generator families or domains. This pattern motivates our focus: rather than improving detection accuracy, we ask what internal representations actually drive it.
+
 \subsection{Interpretability of Text Detectors}
 % Black-box attribution (Pudasaini et al. 2026 — SHAP-based, finds cross-domain divergence). Confounder-suppression on fine-tuned BERT: Borile \& Abrate (Findings EMNLP 2025) — explicitly differentiate on the 4 axes here. SAE-based feature interp (Kuznetsov et al. 2025, arXiv:2503.03601) — different model class (Gemma-2 decoder). Embedding-subspace removal (Kuznetsov et al. 2024, Findings EMNLP 2024) — geometric, not neuron-level.
 
+The shallowest form of interpretability for AI-text detectors uses input-level attribution. \citet{pudasaini2026why} apply SHAP to explain classifier decisions, finding that the most predictive tokens diverge substantially across domains. This approach characterises the model's decision surface but cannot speak to what internal features underlie it.
+
+More recent work examines representations inside the encoder. \citet{borile2025confounding} identify neurons in a fine-tuned BERT encoder whose activations correlate with domain or style artefacts rather than AI-authorship signal, and suppress them to improve out-of-distribution accuracy. \citet{kuznetsov2024restricted} take a geometric approach, removing a learned embedding subspace to produce a detector more robust to lexical variation. Both works operate on fine-tuned models and test necessity-for-confounding: the question is which features hurt generalisation, not which features are sufficient to drive predictions. Our work differs from \citet{borile2025confounding} on four axes: we use a \textit{frozen} rather than fine-tuned encoder; we probe full-layer concatenated CLS representations rather than intermediate FFN activations; we apply activation patching to test \textit{sufficiency} rather than ablation to identify confounders; and we evaluate on RAID rather than DAIGT/M4/HC3.
+
+\citet{kuznetsov2025sae} apply sparse autoencoders to Gemma-2 decoder activations, extracting semantically interpretable features correlated with AI authorship. This work is complementary but distinct: the model class (autoregressive decoder), representation type (token-position activations rather than CLS pooling), and analysis method (SAE reconstruction) all differ from ours, and the approach remains observational -- features are identified by correlation, not by causal intervention. None of the above provides direct evidence that a small identified set of neurons is \textit{sufficient} to produce AI-text predictions when injected into human-text activations; that is the question we address.
+
 \subsection{Sparse Probing and Activation Patching}
 % Sparse probing: Gurnee et al. (TMLR 2023, "Finding Neurons in a Haystack") as canonical reference for L1-then-L2 protocol. Activation patching: Vig et al. 2020 (causal mediation), Meng et al. 2022 (ROME), Heimersheim \& Nanda 2024 (best-practices reference; cite when justifying mean-ablation choice and on-manifold donor patching). Mention Ravindran 2025 (arXiv:2507.09406) as prior use of donor patching with flip rate in safety contexts — but for autoregressive deception, not encoder-based detection.
+
+Sparse probing uses L1-regularised linear classifiers to identify a small set of neurons in a pretrained model that carry task-relevant information. \citet{gurnee2023haystack} introduced and systematically evaluated the L1-then-L2 protocol: an L1 probe selects candidate neurons, and a re-fitted L2 probe on those neurons provides unbiased accuracy estimates. Their study demonstrates that individual neurons in GPT-2 and LLaMA encode grammatical, factual, and linguistic properties, and that the selected sets are stable across seeds and data subsets. We adopt this protocol directly, applying it to \bertbase CLS-token activations concatenated across all 12 layers.
+
+Activation patching replaces internal representations in a target forward pass with those from a donor pass, then measures the effect on model outputs. \citet{vig2020causal} introduced causal mediation analysis for language models, using interventions on attention heads to trace gender bias; \citet{meng2022rome} applied patching at MLP layers in GPT to localise factual associations. \citet{heimersheim2024patching} provide a systematic treatment of patching variants and recommend donor patching -- replacing with activations from a real input rather than a zero or mean vector -- to avoid out-of-distribution artefacts, and mean ablation as a conservative necessity baseline. We follow both recommendations: selected neurons are mean-ablated for the necessity test and replaced with activations from same-domain AI donors for the sufficiency test.
+
+The closest methodological precedent for our flip-rate framing is \citet{ravindran2025adversarial}, who apply donor-style activation patching to test whether deceptive activations from an aligned model can cause unsafe outputs in a target pass. The setting differs substantially -- autoregressive decoder, safety alignment rather than AI-text detection -- but the core intervention and the use of prediction-flip rate as the primary metric are shared. To our knowledge, no prior work applies this methodology to encoder-based AI-text detection.
 
 % =====================================================================
 \section{Setup}
@@ -147,7 +210,7 @@ Our work is most directly related to \citet{borile2025confounding}, who suppress
 \label{sec:setup-stability}
 % Brief: K=15 stratified subsamples × 4 C values × 7 N values × 3 generators (gpt4, llama-chat, mistral). Pairwise Jaccard at C=0.005, N=7,500 is 0.72–0.75 with min-over-3-gen 0.724 — most-stable C value at every N for every generator. Full sweep deferred to Appendix \ref{app:stability}.
 
-=====================================================================
+% =====================================================================
 \section{Sparse Detection Circuits in Frozen BERT}
 \label{sec:results-sparse}
 
@@ -305,7 +368,6 @@ Use this section to explicitly distinguish necessity (ablation, §\ref{sec:resul
 
 % =====================================================================
 \bibliography{refs}
-\bibliographystyle{acl_natbib}
 
 % =====================================================================
 \appendix
