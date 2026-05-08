@@ -1,0 +1,336 @@
+% This must be in the first 5 lines to tell arXiv to use pdfLaTeX, which is strongly recommended.
+\pdfoutput=1
+% In particular, the hyperref package requires pdfLaTeX in order to break URLs across lines.
+
+\documentclass[11pt]{article}
+
+% Remove the "review" option to generate the final version.
+\usepackage[review]{acl}
+
+% Standard package includes
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+
+% Useful packages for this paper
+\usepackage{booktabs}     % nicer tables
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{xspace}
+
+% Convenience macros — adjust/remove as needed
+\newcommand{\bertbase}{BERT-base-uncased\xspace}
+\newcommand{\nselected}{n_{\text{sel}}\xspace}
+\newcommand{\flip}{\text{flip}\xspace}
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+
+\title{Causally Sufficient AI-Detection Features in Frozen BERT:\\
+A Sparse Probing and Activation-Patching Study on RAID}
+% Working title — alternatives in the planning notes; pick at submission time.
+
+\author{Anonymous ARR submission}
+% \author{
+%   Pawe{\l} \\
+%   Affiliation \\
+%   \texttt{email@domain} \\
+%   \And
+%   Mi{\l}osz Grunwald \\
+%   Affiliation \\
+%   \texttt{email@domain} \\
+% }
+
+\begin{document}
+\maketitle
+
+% =====================================================================
+\begin{abstract}
+% ~150–200 words, single paragraph.
+% Recommended structure (one sentence each):
+% (1) Problem: AI-text detection is empirically solvable but mechanistically opaque on encoder classifiers.
+% (2) Setup: frozen \bertbase on RAID, 5 generators (1 base + 4 chat-RLHF), Gurnee-style L1→L2 sparse probing over all 12×768=9{,}216 CLS features.
+% (3) Result A (sparse stable set): 0.5–0.9\% of features (45–62 stable neurons) suffice for 90.5–98.8\% accuracy with cross-fold Jaccard 0.67–0.76.
+% (4) Result B — HEADLINE: same-domain donor→target activation patching flips human predictions to AI at 1.07–8.15\%, 10–24× above random-feature baselines, providing the first causal-sufficiency evidence for AI-detection circuits in a frozen encoder.
+% (5) Result C: detection circuits are generator-specific (pairwise Jaccard 0.00–0.24) but ~32× above chance; chat-RLHF generators concentrate in layer 12, the only base generator (gpt2) peaks at layer 11.
+% (6) Position: complementary to confounder-suppression frameworks (Borile \& Abrate, 2025) — we patch to demonstrate sufficiency rather than ablate to remove bias.
+\todo{Write abstract last, after Section 1 is stable.}
+\end{abstract}
+
+% =====================================================================
+\section{Introduction}
+\label{sec:introduction}
+
+% Suggested flow (5–6 paragraphs, ~1 page):
+% ¶1 — Hook. Why AI-text detection matters, and why mechanistic understanding (not just detection accuracy) is now the bottleneck. Cite RAID (Dugan et al. 2024), recent detector-failure analyses (Pudasaini et al. 2026).
+
+The rapid development of Large Language Models (LLM) has made AI-generated text increasingly difficult to distinguish from human writing~\cite{dugan2024raid}. This poses a significant challenge across domains ranging from academic integrity to social media moderation and journalist authenticity. Even though the detection accuracy has improved substantially, with encoder-based classifiers reaching high performance on established benchmarks~\cite{dugan2024raid}, a fundamental question remains unanswered: \textit{What internal representations actually drive these predictions?} Mechanistic interpretability has seen little application to AI-text detection, leaving the field without a causal account of how detection actually works.
+
+% ¶2 — Gap. Existing interpretability for MGT detection is either (a) black-box feature attribution (SHAP/LIME), (b) confounder-removal via neuron suppression in fine-tuned encoders (Borile \& Abrate 2025), or (c) SAE feature analysis on decoders (Kuznetsov et al. 2025). What's missing: a causal-sufficiency test on a frozen encoder.
+
+Existing interpretability work on AI-text detection takes one of three forms: a)~\textit{black-box feature attribution}, which identifies input-level correlates via SHAP or LIME without inspecting model internals~\cite{pudasaini2026why}; b)~\textit{confounder removal}, which suppresses neurons correlated with domain or style artifacts in fine-tuned encoders to improve out-of-distribution accuracy~\cite{borile2025confounding}; or (c)~\textit{sparse autoencoder feature analysis} applied to decoder-based models~\cite{kuznetsov2025sae}. These approaches share a fundamental limitation: they are \textit{observational}. They identify neurons that correlate with detector behavior or remove features that hurt generalization, but none directly tests whether a small set of internal representations is \textit{causally sufficient} to produce AI-text predictions.
+
+% ¶3 — Approach. Frozen \bertbase + Gurnee-style L1-then-L2 sparse probing on RAID across 5 generators (1 base + 4 chat-RLHF). Two interventions on the SAME selected set: mean-ablation (necessity) and same-domain donor→target activation patching (sufficiency).
+
+We address this gap with a causal intervention study on a \textit{frozen} \bertbase. Rather than fine-tuning the model for detection, we train sparse linear probes on pretrained CLS-token activations concatenated across all 12 layers (9{,}216 features total), following the sparse-probing protocol of \citet{gurnee2023haystack} \todo{verify if citation correct}. An L1-regularized logistic regression selects a small stable set of candidate neurons; an independent L2 probe serves as the frozen evaluator for all subsequent experiments. We then apply two causal interventions to the same selected feature set: \textit{mean ablation} which removes these features to test whether they are necessary, and \textit{same-domain donor $\to$ target activation patching} replacing their activations from AI into human samples to test whether they are \textit{sufficient} to flip detector predictions. The patching direction is the key distinction from prior work: rather than removing suspected confounders, we inject candidate detection signal and measure the result.
+
+% ¶4 — Findings preview (mirror abstract): three numbered findings — sparse stable set; causal sufficiency via patching; generator-specific circuits with chat-RLHF vs base layer asymmetry.
+
+We find that it is sufficient. Across five generators spanning one base and four chat-RLHF model families, patching $\sim$50 selected neurons flips human $\to$ AI predictions at 1.07-8.15\% which is 10-24 $\times$ above a random-feature baseline. This finding provides the first causal-sufficiency evidence for AI-detection circuits in a frozen pretrained encoder. Mean-ablation of the same features causes only 0.03--1.06\,pp accuracy loss, revealing that the detection signal is \textit{redundantly distributed}: easy to inject, hard to erase. Cross-generator analysis further shows that stable feature sets are largely generator-specific (pairwise Jaccard 0.00--0.24) yet cluster $\sim$32$\times$ above chance, with chat-RLHF generators concentrating in layer~12 while the sole base/non-RLHF generator (GPT-2) peaks at layer~11.
+
+% ¶5 — Position vs prior work in one paragraph. Borile \& Abrate differ on 4 axes (frozen vs fine-tuned; CLS vs FFN intermediate; positive-patching vs hard-suppression; RAID vs DAIGT/M4/HC3). Enkhbayar (2025) reports a "causality gap" in observational discriminativity — we close that gap with patching. Kuznetsov et al. 2024 use coordinate-subspace removal, not neuron-level probing.
+
+Our work is most directly related to \citet{borile2025confounding}, who suppress confounding neurons in a fine-tuned encoder to improve out-of-distribution detection, an observational approach that tests necessity-for-confounding rather than causal sufficiency. We discuss the relationship to this and other prior work in Section ~\ref{sec:related}.
+
+% ¶6 — Contributions, bulleted.
+
+\paragraph{Contributions.}
+\begin{enumerate}
+    \item A sparse-probing characterization of AI-detection signal in frozen \bertbase across five generators on RAID, identifying stable sets of 45-62 neurons ($<$1\% of 9,216 features) sufficient for 90.5-98.8\% detection accuracy with high cross-fold stability (Jaccard 0.67-0.76).
+
+    \item The first causal-sufficiency test for AI-detection features via same-domain donor $\to$ target activation patching, yielding flip rates 10-24$\times$ above a random-feature baseline across all five generators.
+
+    \item A cross-generator circuit analysis revealing generator-specific stable sets that nonetheless overlap $\sim$32$\times$ above chance, with a chat-RLHF (layer~12) vs.\ base/non-RLHF (layer~11) layer asymmetry.
+
+    \item A multi-generator stability sweep for principled selection of probe regularization ($C$) and sample size ($N$).
+\end{enumerate}
+
+% =====================================================================
+\section{Related Work}
+\label{sec:related}
+
+% Three subsections, ~2/3 page total. Position carefully — this is where the Borile \& Abrate distinction lives.
+
+\subsection{AI-Generated Text Detection}
+% Briefly: supervised classifiers (RoBERTa-based, GPT-2-output detector), zero-shot methods (DetectGPT, Binoculars), benchmark landscape (RAID, M4, HC3). Cite Dugan et al. 2024 for RAID. Keep short — this is not a detection paper.
+
+\subsection{Interpretability of Text Detectors}
+% Black-box attribution (Pudasaini et al. 2026 — SHAP-based, finds cross-domain divergence). Confounder-suppression on fine-tuned BERT: Borile \& Abrate (Findings EMNLP 2025) — explicitly differentiate on the 4 axes here. SAE-based feature interp (Kuznetsov et al. 2025, arXiv:2503.03601) — different model class (Gemma-2 decoder). Embedding-subspace removal (Kuznetsov et al. 2024, Findings EMNLP 2024) — geometric, not neuron-level.
+
+\subsection{Sparse Probing and Activation Patching}
+% Sparse probing: Gurnee et al. (TMLR 2023, "Finding Neurons in a Haystack") as canonical reference for L1-then-L2 protocol. Activation patching: Vig et al. 2020 (causal mediation), Meng et al. 2022 (ROME), Heimersheim \& Nanda 2024 (best-practices reference; cite when justifying mean-ablation choice and on-manifold donor patching). Mention Ravindran 2025 (arXiv:2507.09406) as prior use of donor patching with flip rate in safety contexts — but for autoregressive deception, not encoder-based detection.
+
+% =====================================================================
+\section{Setup}
+\label{sec:setup}
+
+% ~3/4 page. Goal: a reader can reproduce. All numbers from §2 of progress report.
+
+\subsection{Data: RAID}
+\label{sec:setup-data}
+% RAID benchmark (Dugan et al. 2024): 11 generators × 6 domains. Headline run uses 5 generators chosen for architectural diversity:
+% gpt4, gpt2, mistral-chat, llama-chat, cohere-chat (1 base/non-RLHF + 4 chat-RLHF, spanning 4 model families).
+\todo{If second base generator added (Tier-1 experiment), update count to 6 here and note the addition.}
+% 6 domains: abstracts, books, news, reddit, reviews, wiki.
+% Balanced subsampling: 7,500 samples per generator (3,750 per class), justified in §\ref{sec:setup-stability}.
+
+\subsection{Model and Activations}
+\label{sec:setup-model}
+% Frozen \bertbase (12 layers, hidden dim 768). No fine-tuning anywhere.
+% CLS-token activation extracted at every layer; concatenation gives a 12 × 768 = 9,216-dim feature vector per sample.
+% Note: we deliberately use the frozen pretrained model, NOT a detection-fine-tuned one — this isolates representation present in pretraining rather than learned during detection training. (Contrast with Borile \& Abrate.)
+
+\subsection{Protocol: L1 Selection, L2 Evaluation}
+\label{sec:setup-protocol}
+% Per (seed, fold):
+% (1) L1 logistic regression at fixed C=0.005 on the train fold (liblinear solver, max_iter=1000) → SelectionResult: ~$\nselected$ neurons (45–92 depending on generator/cell), ranking by |coef|.
+% (2) Independent L2 logistic regression on ALL 9,216 features (lbfgs) → eval probe. The eval probe is FIXED across evaluators.
+% (3) Each evaluator (ablation/patching/AUC-comparison/restricted) sees test-fold activations + frozen selection + frozen eval probe.
+% Cross-validation: StratifiedKFold on (label × domain), 5 folds × 3 seeds [42, 123, 456] = 15 cells per (generator, experiment).
+% Refer reader to Appendix \ref{app:pipeline} for the full pipeline diagram.
+
+\subsection{Stability-Driven Hyperparameter Selection}
+\label{sec:setup-stability}
+% Brief: K=15 stratified subsamples × 4 C values × 7 N values × 3 generators (gpt4, llama-chat, mistral). Pairwise Jaccard at C=0.005, N=7,500 is 0.72–0.75 with min-over-3-gen 0.724 — most-stable C value at every N for every generator. Full sweep deferred to Appendix \ref{app:stability}.
+
+=====================================================================
+\section{Sparse Detection Circuits in Frozen BERT}
+\label{sec:results-sparse}
+
+% ~1/2 page. The "small stable set suffices" result.
+% Reuse Table from progress report §3.1 — 5 generators × {val acc, train acc, $\nselected$, fold Jaccard, n_stable / n_observed}.
+% Headline numbers in prose:
+% — 0.5–0.9\% of 9,216 features suffice (45–62 stable neurons across 15 folds);
+% — val accuracy 90.5–98.8\%;
+% — fold Jaccard 0.67–0.76 across 105 fold-pairs per generator;
+% — random-null Jaccard inside one generator $\approx$0.005 → ~140× chance.
+% Interpretation paragraph: cohere-chat is the difficulty floor (90.5\%), gpt2 is mid-point (95.9\%); the rest >97\%.
+% Per-cell accuracy/F1/AUC table → appendix.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+Generator & Val acc & $\nselected$ & Jaccard & $n_{\text{stable}}$ \\
+\midrule
+gpt4         & 0.988 & 74.1 & 0.763 & 60 / 106 \\
+gpt2         & 0.959 & 84.7 & 0.670 & 60 / 146 \\
+mistral-chat & 0.971 & 57.8 & 0.724 & 45 / 99  \\
+llama-chat   & 0.986 & 63.6 & 0.756 & 48 / 91  \\
+cohere-chat  & 0.905 & 72.3 & 0.749 & 62 / 113 \\
+\bottomrule
+\end{tabular}
+\caption{\todo{Sparse-probe summary across 5 generators. 15-cell means.}}
+\label{tab:sparse-summary}
+\end{table}
+
+% =====================================================================
+\section{Causal Sufficiency via Activation Patching}
+\label{sec:results-patching}
+
+~1 page. THE HEADLINE SECTION.
+Use this section to explicitly distinguish necessity (ablation, §\ref{sec:results-necessity}) from sufficiency (this section).
+
+\subsection{Patching Protocol}
+\label{sec:patching-protocol}
+% For each fold, restrict to human samples (label=0) that have at least one same-domain AI sample in the test fold ("valid_humans").
+% For each of n_shuffles=20 random within-domain donor assignments:
+%   patched_acts = base_acts; patched_acts[:, top_k_indices] = donor_acts[:, top_k_indices]
+%   flip = (eval_probe.predict(patched) == 1) AND (eval_probe.predict(base) == 0)
+% Flip rate = flips / |valid_humans|. Mean/std over 20 shuffles, then over 15 cells.
+% Random-k baseline: n_random_draws=20 random k-subsets, each run with 20 shuffles.
+% Note: same-domain donor sampling controls for domain shift (Heimersheim & Nanda 2024 on-manifold guidance).
+
+\subsection{Flip-Rate Results}
+\label{sec:patching-results}
+% Table: k-sweep (k = 1, 5, 10, 20, 50, full) × 5 generators, selected flip rate only.
+% Headline at k=full: gpt4 1.23\%, gpt2 3.13\%, mistral 1.73\%, llama 1.07\%, cohere 8.15\% — monotone in k for every generator.
+% Ratio vs random-k baseline at k=full: 10× (gpt2), 12× (llama), 11× (cohere), 23× (mistral), ~125× (gpt4 — caveat: random baseline ~10^-4 inflates the ratio with high variance; report selected-flip column as the robust signal).
+% Per-domain breakdown table → appendix or compact figure.
+% Interpretation: "selected neurons are sufficient to push human predictions toward AI on all five generators." Cohere is most easily perturbed (probe least confident, 90.5\% baseline); llama least (1.07\%).
+
+\subsection{Robustness Checks}
+\label{sec:patching-robustness}
+\todo{TIER-1 experiment from the planning conversation. Run before submission.}
+% (a) Random-donor (cross-domain) baseline: report flip-rate gap vs same-domain donor → demonstrates the effect is not driven by domain transfer.
+% (b) Zero-ablation comparison alongside mean-ablation in §\ref{sec:results-necessity} — Heimersheim \& Nanda 2024 on off-manifold concerns for mean.
+
+\begin{table}[t]
+\centering
+\small
+% Table skeleton: rows = k values, columns = 5 generators
+\caption{\todo{Selected flip rate, k-sweep, 15-cell mean ± std.}}
+\label{tab:patching-sweep}
+\end{table}
+
+% =====================================================================
+\section{Necessity via Mean Ablation}
+\label{sec:results-necessity}
+
+% ~1/2 page. Honest framing — "not individually necessary on 4/5 generators."
+% Mean-ablation of top-k selected neurons (replace with train-fold mean to avoid leakage); score the SAME L2 eval probe on test.
+% k-sweep table reused from §3.2 of progress report.
+% Headline:
+% — 4/5 generators: ablation drop at k=full sits at 0.03–0.11pp, within noise of the 0.06pp random-k baseline;
+% — cohere-chat exception: 1.06 ± 0.54pp drop, ~10× random baseline, monotone from k=5.
+% Interpretation tied to §\ref{sec:patching-results}:
+% Ablation tests necessity against a probe with all 9,216 features — removing ≤1\% of them leaves redundant correlates.
+% Patching tests sufficiency by injecting wrong-class signal — competes with the bulk of the network.
+% No contradiction: a redundantly distributed representation is exactly what gives "small drop on ablation, large flip on patching."
+% Methodology caveat paragraph (1–2 sentences): mean-ablation is off-manifold (Heimersheim \& Nanda 2024). We additionally report zero-ablation in §\ref{sec:patching-robustness} and treat the necessity result as conservative.
+
+% =====================================================================
+\section{Cross-Generator Circuit Geometry}
+\label{sec:results-crossgen}
+
+% ~3/4 page. The "circuits are generator-specific but overlap above chance" + "RLHF/base layer asymmetry" finding.
+
+\subsection{Layer Distribution of Stable Neurons}
+\label{sec:crossgen-layers}
+% Stack-bar or table: 12 layers × 5 generators, count of stable neurons.
+% Highlight: chat-RLHF generators concentrate 30–36\% of stable neurons in layer 12.
+% gpt2 (only base / non-RLHF generator): peaks at layer 11 (18.3\%); only 13.3\% in layer 12.
+\todo{TIER-1: with second base generator added, this becomes a 2-vs-4 contrast. State the claim conditionally on the second base point landing the same way.}
+
+\subsection{Stable-Set Overlap Across Generators}
+\label{sec:crossgen-jaccard}
+% Pairwise Jaccard matrix (10 pairs across 5 generators).
+% Absolute Jaccard: 0.00–0.24.
+% Random-null Jaccard (analytic, two random size-K_A, K_B sets in 9,216 features): ~0.003.
+% → Mean over 10 pairs is ~32× chance.
+% Strongest pair: cohere-mistral (J=0.244, 86× chance). Weakest: gpt2-gpt4 (J=0.000, 0× chance).
+% Interpretation: detection circuits are generator-specific in absolute terms but overlap far above chance baseline — supports a partial shared substrate.
+
+\subsection{CAV Diagnostics}
+\label{sec:crossgen-cav}
+% Single-fit per-generator on stable sets: cosine sim between mean-difference CAV and L1 weight, LR accuracy on CAV, ‖mean diff‖, ‖LR weight‖.
+% Cohere has lowest CAV cosine (0.057), smallest mean-diff norm (4.69), largest LR weight norm (107) — consistent with "weaker per-axis signal, compensated by larger weights."
+% Brief paragraph; full table can go inline.
+
+% =====================================================================
+\section{Discussion}
+\label{sec:discussion}
+
+~1/2 page. Three threads to land.
+
+% Thread 1 — Necessity vs sufficiency reconciled.
+% Redundancy is the natural reading: detection signal is encoded by a small stable set sufficient to flip predictions but distributively backed up across the rest of the residual stream. Ablation under-states the role of selected features because the L2 probe uses all 9,216 dimensions; patching reveals the role because it injects wrong-class signal that must compete with the redundancy.
+
+% Thread 2 — The cohere and gpt2 outliers as evidence, not noise.
+% Cohere: most easily flipped (8.15\%), largest LR weight norm, smallest mean-difference norm, clearest necessity contribution. Reading: dispersed signal with weaker per-axis encoding.
+% gpt2: zero overlap with gpt4 stable set, layer-11 peak, second-largest restricted-probe gap. Reading: base/non-RLHF generators encode detection signal earlier and in a more dispersed register than chat-RLHF generators.
+% Both anomalies are evidence FOR generator-specific representational geometry, not against the central claim.
+
+% Thread 3 — Position vs Borile \& Abrate (2025), one paragraph.
+% Their work removes confounder neurons in fine-tuned BERT to improve OOD accuracy; ours patches detection neurons in frozen BERT to demonstrate causal sufficiency. The two are complementary: their setting asks "what should we remove for a better detector?" Ours asks "what does the pretrained model already encode that supports detection?"
+
+% =====================================================================
+\section{Limitations}
+\label{sec:limitations}
+
+% Required by EMNLP. Honest paragraph (or short list). Do NOT bury anything that survived to the discussion.
+% Items to cover:
+% — Frozen \bertbase only; results may differ on encoder-decoder or larger encoders (RoBERTa-large, DeBERTa).
+  \todo{If RoBERTa replication added (Tier-2), tone this down accordingly.}
+% — Mean-ablation is off-manifold (Heimersheim \& Nanda 2024); we report zero-ablation as a check (§\ref{sec:patching-robustness}) but a full resample-ablation comparison is future work.
+— Cross-domain generalization: \todo{If LODO is run, summarize result here in one sentence; if not, state explicitly that within-distribution analysis cannot rule out domain-correlated artifacts and remove any cross-domain claims from the abstract.}
+% — RAID adversarial subsets are not evaluated; robustness of the discovered circuits to paraphrase/perturbation attacks is left to future work.
+— N=1 base/non-RLHF generator (gpt2) for the layer-asymmetry claim; \todo{update if Tier-1 second base generator is added.}
+% — Single encoder family (BERT); SAE-based feature analysis (cf. Kuznetsov et al. 2025 on Gemma-2) is a natural extension.
+
+% =====================================================================
+\section*{Ethics Statement}
+\label{sec:ethics}
+% Short paragraph. AI-text detection has dual-use considerations: detectors enable platform integrity but also can be used to suppress legitimate AI-assisted writing. Our work is mechanistic-interpretability oriented and does not propose deployment of a new detector. RAID is publicly released under its own license; no human-subjects data was collected.
+
+% =====================================================================
+\section*{Acknowledgments}
+\label{sec:ack}
+% Anonymized for review. Add at camera-ready.
+
+% =====================================================================
+\bibliography{refs}
+\bibliographystyle{acl_natbib}
+
+% =====================================================================
+\appendix
+
+\section{Pipeline Details}
+\label{app:pipeline}
+% Full pipeline diagram from progress report §2.1; runner contract pseudocode; SelectionResult schema; per-experiment YAML configuration summary.
+
+\section{Stability Sweep}
+\label{app:stability}
+% Full Jaccard × C × N grid from progress report §4.5. Justification of C=0.005 and N=7,500.
+
+\section{Per-Cell Metrics}
+\label{app:per-cell}
+% Per-(seed, fold) accuracy / F1 / AUC tables for sparse probe and the dependent experiments. The headline run identifier is ``20260426\_20\_full\_c0005\_n7500\_seeds3''.
+
+\section{AUC vs L1 Selection}
+\label{app:auc-l1}
+% Three regimes from progress report §3.5: parsimony (gpt4/mistral/llama), convergence (gpt2), reversal (cohere). Demoted to appendix because the unconditional "L1 is more parsimonious than univariate AUC" claim doesn't hold across all 5 generators.
+
+\section{Restricted Probe (Smaller-Model vs Ablate-Complement)}
+\label{app:restricted}
+% Two structural-gap framings from progress report §3.7. Cohere and gpt2 are the two wide-gap generators (4.43pp and 3.63pp); the other three are <1.1pp. Supporting evidence for the discussion's "gpt2 and cohere have more dispersed signal" claim.
+
+\section{Per-Domain Patching Breakdown}
+\label{app:patching-perdomain}
+% From progress report §3.3. Cohere uniformly high across domains (5–10\%); gpt2 strong on news/reddit/wiki (3–5\%) and weak on books/reviews (~2\%); chat-RLHF generators flat at 1–3.5\%.
+
+\end{document}

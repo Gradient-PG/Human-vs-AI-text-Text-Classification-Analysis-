@@ -1,0 +1,45 @@
+\begin{thebibliography}{5}
+\providecommand{\natexlab}[1]{#1}
+
+\bibitem[{Borile and Abrate(2025)}]{borile2025confounding}
+Claudio Borile and Carlo Abrate. 2025.
+\newblock \href {https://aclanthology.org/2025.findings-emnlp.1388/} {How to
+  generalize the detection of {AI}-generated text: Confounding neurons}.
+\newblock In \emph{Findings of the Association for Computational Linguistics:
+  EMNLP 2025}.
+
+\bibitem[{Dugan et~al.(2024)Dugan, Hwang, Trhl{\'\i}k, Zhu, Ludan, Xu,
+  Ippolito, and Callison-Burch}]{dugan2024raid}
+Liam Dugan, Alyssa Hwang, Filip Trhl{\'\i}k, Andrew Zhu, Josh~Magnus Ludan,
+  Hainiu Xu, Daphne Ippolito, and Chris Callison-Burch. 2024.
+\newblock \href {https://arxiv.org/abs/2405.07940} {{RAID}: A shared benchmark
+  for robust evaluation of machine-generated text detectors}.
+\newblock In \emph{Proceedings of the 62nd Annual Meeting of the Association
+  for Computational Linguistics (Volume 1: Long Papers)}.
+
+\bibitem[{Gurnee et~al.(2023)Gurnee, Nanda, Pauly, Harvey, Troitskii, and
+  Bertsimas}]{gurnee2023haystack}
+Wes Gurnee, Neel Nanda, Matthew Pauly, Katherine Harvey, Dmitrii Troitskii, and
+  Dimitris Bertsimas. 2023.
+\newblock \href {https://arxiv.org/abs/2305.01610} {Finding neurons in a
+  haystack: Case studies with sparse probing}.
+\newblock \emph{Transactions on Machine Learning Research}.
+
+\bibitem[{Kuznetsov et~al.(2025)Kuznetsov, Kushnareva, Druzhinina, Razzhigaev,
+  Voznyuk, Piontkovskaya, Burnaev, and Barannikov}]{kuznetsov2025sae}
+Kirill Kuznetsov, Laida Kushnareva, Polina Druzhinina, Anton Razzhigaev,
+  Anastasia Voznyuk, Irina Piontkovskaya, Evgeny Burnaev, and Serguei
+  Barannikov. 2025.
+\newblock \href {https://arxiv.org/abs/2503.03601} {Feature-level insights into
+  artificial text detection with sparse autoencoders}.
+\newblock \emph{Preprint}, arXiv:2503.03601.
+
+\bibitem[{Pudasaini et~al.(2026)Pudasaini, Lillis, Miralles-Pechu{\'a}n, and
+  Llorens~Salvador}]{pudasaini2026why}
+Sudeep Pudasaini, David Lillis, Luis Miralles-Pechu{\'a}n, and Mar{\'\i}a
+  Llorens~Salvador. 2026.
+\newblock \href {https://arxiv.org/abs/2603.23146} {Why {AI}-generated text
+  detection fails: Evidence from explainable {AI} beyond benchmark accuracy}.
+\newblock \emph{Preprint}, arXiv:2603.23146.
+
+\end{thebibliography}
