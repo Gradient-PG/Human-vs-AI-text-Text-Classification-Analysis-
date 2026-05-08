@@ -2,29 +2,33 @@
 """
 Leave-One-Generator-Out (LOGO) experiment.
 
-For each generator G in the generator list:
-  1. Load activations for all generators, capped at max_samples each.
-  2. Split: train = all generators except G, test = G.
-  3. For each seed:
-       a. Run L1 sparse probe selector on train pool → selected neurons.
-       b. Train Full L2 probe on train pool (all features) → baseline accuracy on G.
-       c. Train Selected L2 probe on train pool (selected features only) → main result.
-       d. Evaluate both probes on the held-out generator's test set.
-  4. Aggregate across seeds; compute stable neurons (≥ stability_threshold of seeds).
-     Optionally compute Jaccard vs a reference stable set from a prior sparse_probe run.
+Two modes (see --mode):
+
+**generator** — For each generator G: train on all other generators, test on G.
+  Risk: base/chat siblings (e.g. mistral-chat in train when holding out mistral)
+  inflate transfer scores.
+
+**family** — Partition RAID models into coarse families; for each family F:
+  train on all generators not in F, test on every generator in F (pooled).
+  Avoids training on mistral-chat while evaluating mistral, etc.
+  Families: cohere (cohere, cohere-chat), gpt (chatgpt, gpt2, gpt3, gpt4),
+  llama (llama-chat), mistral (mistral, mistral-chat), mpt (mpt, mpt-chat).
+
+Each fold:
+  1. Load activations for all generators in scope, capped at max_samples each.
+  2. Build train/test masks from the held-out unit (generator or family).
+  3. Per seed: L1 selection on train; full L2 + selected L2 baselines; score on test.
+  4. Aggregate seeds; optional Jaccard vs sparse_probe reference (--source-dir).
 
 Usage:
-    uv run scripts/experiments/run_logo.py
-    uv run scripts/experiments/run_logo.py --config config/experiments/logo.yaml
-    uv run scripts/experiments/run_logo.py --generators gpt4 llama-chat mistral
-    uv run scripts/experiments/run_logo.py \\
-        --source-dir results/experiments/20250427_120000/sparse_probe
+    uv run scripts/experiments/run_logo.py --mode family
+    uv run scripts/experiments/run_logo.py --mode generator
+    uv run scripts/experiments/run_logo.py --mode family --generators ...
 
-Output layout (one directory per held-out generator, plus a top-level summary):
+Output:
     results/experiments/<run_id>/logo/
-        summary.json                    # all generators side-by-side
-        <generator>/
-            aggregate.json              # per-seed metrics + stable neurons
+        summary.json
+        <held_out_slug>/aggregate.json   # slug = generator name or family_<name>
 """
 
 from __future__ import annotations
@@ -34,6 +38,8 @@ import json
 import sys
 import time
 import warnings
+
+import yaml
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -51,6 +57,49 @@ from raid_analysis.evaluation.probe_factory import EvalProbe, train_eval_probe
 from raid_analysis.experiments.config import ExperimentConfig, load_config
 from raid_analysis.experiments.factory import build_selector
 from raid_pipeline.raid_loader import ALL_RAID_MODELS
+
+# Coarse generator families for cross-family LOGO (no shared base weights in train
+# when evaluating a held-out base/chat pair).
+RAID_GENERATOR_FAMILIES: dict[str, tuple[str, ...]] = {
+    "cohere": ("cohere", "cohere-chat"),
+    "gpt": ("chatgpt", "gpt2", "gpt3", "gpt4"),
+    "llama": ("llama-chat",),
+    "mistral": ("mistral", "mistral-chat"),
+    "mpt": ("mpt", "mpt-chat"),
+}
+
+
+def _generator_to_family() -> dict[str, str]:
+    m: dict[str, str] = {}
+    for fam, members in RAID_GENERATOR_FAMILIES.items():
+        for g in members:
+            m[g] = fam
+    return m
+
+
+def _complete_families(generators: list[str]) -> list[str]:
+    """Families where every member appears in *generators* (order: RAID table order)."""
+    gen_set = set(generators)
+    ordered: list[str] = []
+    for fam in RAID_GENERATOR_FAMILIES:
+        members = RAID_GENERATOR_FAMILIES[fam]
+        if gen_set.issuperset(set(members)):
+            ordered.append(fam)
+    return ordered
+
+
+def _load_logo_mode(config_path: Path, cli_mode: str | None) -> str:
+    """Resolve logo mode: CLI wins; else logo_mode from YAML; else generator."""
+    if cli_mode is not None:
+        return cli_mode
+    if not config_path.exists():
+        return "generator"
+    with open(config_path, encoding="utf-8") as f:
+        raw = yaml.safe_load(f) or {}
+    mode = raw.get("logo_mode", "generator")
+    if mode not in ("generator", "family"):
+        raise ValueError(f"logo_mode must be 'generator' or 'family', got {mode!r}")
+    return mode
 
 
 # ---------------------------------------------------------------------------
@@ -122,36 +171,45 @@ def _jaccard(a: set, b: set) -> float:
 
 
 # ---------------------------------------------------------------------------
-# Per-generator LOGO fold
+# Single LOGO fold (generator- or family-held-out; masks define train/test)
 # ---------------------------------------------------------------------------
 
 def _run_logo_fold(
-    held_out: str,
+    held_out_slug: str,
+    train_mask: np.ndarray,
+    test_mask: np.ndarray,
     all_acts: np.ndarray,
     all_labels: np.ndarray,
-    generator_ids: np.ndarray,
-    gen_id_map: dict[str, int],
     config: ExperimentConfig,
     output_dir: Path,
     reference_stable: set[tuple[int, int]] | None,
+    *,
+    held_out_kind: str,
+    held_out_members: list[str],
 ) -> dict[str, Any]:
-    """Run one LOGO fold (hold out one generator, train on the rest).
+    """Run one LOGO fold; train/test partitions come from boolean masks."""
 
-    Returns the per-fold aggregate metrics dict (also saved to disk).
-    """
-    hid = gen_id_map[held_out]
-    train_mask = generator_ids != hid
-    test_mask = generator_ids == hid
+    n_train = int(train_mask.sum())
+    n_test = int(test_mask.sum())
+    if n_train == 0 or n_test == 0:
+        raise SystemExit(
+            f"Empty train or test split for {held_out_slug!r} "
+            f"(train={n_train}, test={n_test}). "
+            "Family mode needs at least two disjoint families in the generator list; "
+            "generator mode needs at least two generators."
+        )
 
     train_acts = all_acts[train_mask]
     train_labels = all_labels[train_mask]
     test_acts = all_acts[test_mask]
     test_labels = all_labels[test_mask]
 
-    n_train = int(train_mask.sum())
-    n_test = int(test_mask.sum())
+    members_str = ", ".join(held_out_members)
     print(f"\n{'='*60}")
-    print(f"Held-out: {held_out}  |  train={n_train}  test={n_test}")
+    print(
+        f"Held-out ({held_out_kind}): {held_out_slug}  [{members_str}]"
+        f"  |  train={n_train}  test={n_test}"
+    )
     print(f"{'='*60}")
 
     selector = build_selector(config)
@@ -217,7 +275,11 @@ def _run_logo_fold(
         m, s = _mean_std(vals)
         return {f"{key}_{sub}_mean": m, f"{key}_{sub}_std": s}
 
-    aggregate: dict[str, Any] = {"held_out_generator": held_out}
+    aggregate: dict[str, Any] = {
+        "held_out_slug": held_out_slug,
+        "held_out_kind": held_out_kind,
+        "held_out_members": held_out_members,
+    }
     for key in ("full_l2", "selected_l2"):
         for sub in ("accuracy", "auc_roc", "f1"):
             aggregate.update(_agg_metric(key, sub))
@@ -245,7 +307,7 @@ def _run_logo_fold(
     aggregate["seed_results"] = seed_results
 
     # Save
-    gen_dir = output_dir / held_out
+    gen_dir = output_dir / held_out_slug
     gen_dir.mkdir(parents=True, exist_ok=True)
     with open(gen_dir / "aggregate.json", "w") as f:
         json.dump(aggregate, f, indent=2)
@@ -270,6 +332,16 @@ def main() -> None:
         "--config", type=str,
         default=str(project_root / "config" / "experiments" / "logo.yaml"),
         help="Path to YAML config (default: config/experiments/logo.yaml).",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["generator", "family"],
+        default=None,
+        help=(
+            "generator: leave-one-generator-out (default unless logo_mode in YAML). "
+            "family: leave-one-family-out — hold out entire base/chat or GPT groups "
+            "(no sibling in train; recommended for paper)."
+        ),
     )
     parser.add_argument(
         "--generators", nargs="+", default=None,
@@ -301,7 +373,16 @@ def main() -> None:
         config = ExperimentConfig(experiment="logo")
     config.experiment = "logo"
 
+    logo_mode = _load_logo_mode(config_path, args.mode)
+
     generators = args.generators or config.generators or ALL_RAID_MODELS
+    g2f = _generator_to_family()
+    unknown = [g for g in generators if g not in g2f]
+    if unknown:
+        raise SystemExit(
+            f"Generators not in RAID_GENERATOR_FAMILIES: {unknown}. "
+            "Extend RAID_GENERATOR_FAMILIES in run_logo.py if RAID gained models."
+        )
     run_id = args.run_id or datetime.now().strftime("%Y%m%d_%H%M%S")
 
     output_dir = Path(args.output_dir) if args.output_dir else (
@@ -309,7 +390,8 @@ def main() -> None:
     )
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"LOGO experiment")
+    print("LOGO experiment")
+    print(f"Mode: {logo_mode}")
     print(f"Generators ({len(generators)}): {', '.join(generators)}")
     print(f"Seeds: {config.seeds}")
     print(f"Max samples per generator: {config.max_samples}")
@@ -356,25 +438,68 @@ def main() -> None:
     t_total = time.time()
     all_aggregates: list[dict[str, Any]] = []
 
-    for gen in generators:
-        reference = union_stable if union_stable else None
-        agg = _run_logo_fold(
-            held_out=gen,
-            all_acts=all_acts,
-            all_labels=all_labels,
-            generator_ids=generator_ids,
-            gen_id_map=gen_id_map,
-            config=config,
-            output_dir=output_dir,
-            reference_stable=reference,
-        )
-        all_aggregates.append(agg)
+    if logo_mode == "generator":
+        for gen in generators:
+            hid = gen_id_map[gen]
+            train_mask = generator_ids != hid
+            test_mask = generator_ids == hid
+            reference = union_stable if union_stable else None
+            agg = _run_logo_fold(
+                held_out_slug=gen,
+                train_mask=train_mask,
+                test_mask=test_mask,
+                all_acts=all_acts,
+                all_labels=all_labels,
+                config=config,
+                output_dir=output_dir,
+                reference_stable=reference,
+                held_out_kind="generator",
+                held_out_members=[gen],
+            )
+            all_aggregates.append(agg)
+    else:
+        complete_families = _complete_families(generators)
+        if not complete_families:
+            raise SystemExit(
+                "Family mode: no complete families in the generator list. "
+                "Every member of a RAID_GENERATOR_FAMILIES group must be included "
+                "(e.g. both mistral and mistral-chat)."
+            )
+        print(f"Complete families in scope ({len(complete_families)}): {complete_families}")
+        for fam in complete_families:
+            members = list(RAID_GENERATOR_FAMILIES[fam])
+            test_mask = np.zeros(len(all_labels), dtype=bool)
+            for g in members:
+                test_mask |= generator_ids == gen_id_map[g]
+            train_mask = ~test_mask
+            ref_fold: set[tuple[int, int]] | None = None
+            if reference_stable_sets:
+                ref_fold = set()
+                for g in members:
+                    ref_fold |= reference_stable_sets.get(g, set())
+                if not ref_fold:
+                    ref_fold = None
+            agg = _run_logo_fold(
+                held_out_slug=f"family_{fam}",
+                train_mask=train_mask,
+                test_mask=test_mask,
+                all_acts=all_acts,
+                all_labels=all_labels,
+                config=config,
+                output_dir=output_dir,
+                reference_stable=ref_fold,
+                held_out_kind="family",
+                held_out_members=members,
+            )
+            all_aggregates.append(agg)
 
-    # Summary across all generators
+    # Summary across folds
     summary_rows = []
     for agg in all_aggregates:
         row: dict[str, Any] = {
-            "generator": agg["held_out_generator"],
+            "held_out": agg["held_out_slug"],
+            "held_out_kind": agg["held_out_kind"],
+            "held_out_members": agg["held_out_members"],
             "n_test": agg["n_test"],
             "full_l2_accuracy_mean": agg.get("full_l2_accuracy_mean"),
             "selected_l2_accuracy_mean": agg.get("selected_l2_accuracy_mean"),
@@ -390,6 +515,7 @@ def main() -> None:
     elapsed_total = time.time() - t_total
     summary = {
         "run_id": run_id,
+        "logo_mode": logo_mode,
         "generators": generators,
         "n_generators": len(generators),
         "elapsed_seconds": elapsed_total,
@@ -400,15 +526,17 @@ def main() -> None:
 
     # Print table
     print(f"\n{'='*70}")
-    print(f"{'Generator':<20} {'Test N':>7} {'Full L2':>9} {'Sel L2':>9} {'Stable':>8}")
-    print(f"{'-'*70}")
+    col_w = 26
+    print(f"{'Held-out':<{col_w}} {'Test N':>7} {'Full L2':>9} {'Sel L2':>9} {'Stable':>8}")
+    print(f"{'-'*(col_w + 7 + 9 + 9 + 8 + 1)}")
     for row in summary_rows:
         full_acc = row.get("full_l2_accuracy_mean")
         sel_acc = row.get("selected_l2_accuracy_mean")
         stable = row.get("n_stable_neurons")
         full_str = f"{full_acc:>9.4f}" if full_acc is not None else f"{'N/A':>9}"
         sel_str = f"{sel_acc:>9.4f}" if sel_acc is not None else f"{'N/A':>9}"
-        print(f"{row['generator']:<20} {row['n_test']:>7}{full_str}{sel_str} {stable:>8}")
+        label = row["held_out"]
+        print(f"{label:<{col_w}} {row['n_test']:>7}{full_str}{sel_str} {stable:>8}")
     print(f"{'='*70}")
     print(f"\nTotal time: {elapsed_total/60:.1f} min")
     print(f"Results saved to: {output_dir}")

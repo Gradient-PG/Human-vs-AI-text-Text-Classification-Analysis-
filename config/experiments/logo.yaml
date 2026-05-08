@@ -1,7 +1,13 @@
 experiment: logo
 
-# All 11 RAID generators. Override via --generators on the CLI to run a subset
-# (e.g. the 4 within-family base/chat pairs first as a quick validation).
+# family: leave-one-*family*-out (recommended). No base/chat sibling in train when
+# you evaluate mistral / mistral-chat / etc.
+# generator: legacy per-generator LOGO (siblings can leak into train).
+# Override anytime with: uv run scripts/experiments/run_logo.py --mode generator
+logo_mode: family
+
+# All 11 RAID generators. Family mode needs every member of each family present
+# (e.g. both mistral and mistral-chat). Override via --generators for subsets.
 generators:
   - chatgpt
   - cohere
@@ -19,12 +25,13 @@ generators:
 # to be meaningful (same solver).
 selector: sparse_probe
 selector_params:
-  # C is scaled down ~9x relative to sparse_probe (C=0.005) to compensate for
-  # the ~9x larger train pool (N-1 generators x max_samples vs single-generator).
+  # C is scaled down vs sparse_probe (C=0.005) for larger train pools.
+  # Per-generator mode (~10 other gens): ~0.0005 works well.
+  # Family mode: train size varies by fold (7-10 generators); re-tune C if needed.
   # In liblinear L1, the loss term scales with N while the penalty (1/C)*||w||_1
-  # does not, so the same C selects ~9x more neurons at 9x the data.
-  # C=0.0005 restores comparable sparsity (~50-150 neurons) for Jaccard comparison.
-  C_values: [0.0005]
+  # does not, so the same C selects ~5x more neurons at 5x the data.
+  # C=0.001 restores comparable sparsity (~50-150 neurons) for Jaccard comparison.
+  C_values: [0.001]
   solver: liblinear
   max_iter: 1000
 
@@ -33,7 +40,7 @@ eval_probe_C: 1.0
 eval_probe_max_iter: 5000
 
 # Same cap as sparse_probe: max_samples per generator (balanced AI vs human).
-max_samples: 7500
+max_samples: 5000
 
 # Seeds: selection is run once per seed per held-out generator.
 # 3 seeds -> 3 measurements of selected_l2 accuracy per generator.

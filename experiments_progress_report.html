@@ -357,6 +357,7 @@
         <li><a href="#res-auc">3.5 AUC Comparison</a></li>
         <li><a href="#res-crossgen">3.6 Cross-generator characterize (5 gen)</a></li>
         <li><a href="#res-restricted">3.7 Restricted Probe (consistency check)</a></li>
+        <li><a href="#res-logo">3.8 LOGO &mdash; family leave-one-out generalization</a></li>
       </ul>
     </li>
     <li><a href="#methodology">4. Methodological Findings</a>
@@ -411,7 +412,7 @@
     <tr><td><code>characterize</code></td><td><span class="pill done">run, 5-gen</span></td><td>Multi-generator analysis of shared stable neurons. See <a href="#res-crossgen">&sect;3.6</a>.</td></tr>
     <tr><td><code>restricted_probe</code></td><td><span class="pill done">run &times; 5 gen &times; 3 seeds</span></td><td>L2 on selected neurons only + ablate-complement. <strong>Consistency check</strong> (L1 test accuracy already shows the same thing). See <a href="#res-restricted">&sect;3.7</a>.</td></tr>
     <tr><td><code>sample_size_stability</code></td><td><span class="pill done">run, 3 gen (gpt4, llama-chat, mistral)</span></td><td>K-draw stratified subsampling sweep used to justify fixed <code>C</code> and <code>N</code>. See <a href="#meth-stability">&sect;4.5</a>.</td></tr>
-    <tr><td><code>logo</code> (new)</td><td><span class="pill planned">planned</span></td><td>Leave-one-generator-out generalization. Train on N&minus;1 generators, evaluate on the held-out generator. Tests whether selected circuits transfer across generators not seen during selection. <strong>Primary remaining experiment</strong> (&sect;5.1&nbsp;A).</td></tr>
+    <tr><td><code>logo</code></td><td><span class="pill done">done &mdash; run 20260507_195821</span></td><td>Family LOGO (leave-one-<em>family</em>-out): train on 4 families, evaluate on held-out family; no base/chat sibling leaks. 5 folds &times; seeds [42, 123, 456]. All 5 families transfer above random baseline; Cohere hardest (Sel L2 76.3%); ~100 stable neurons (~1% of 9,216) carry 87&ndash;94% of achievable signal for 4/5 families. Wall-clock: <strong>14.4 min</strong>. See &sect;3.8.</td></tr>
     <tr><td>Multi-seed validation</td><td><span class="pill done">done, seeds [42, 123, 456]</span></td><td>15 cells per (generator, experiment); per-cell mean &plusmn; std reported throughout &sect;3.</td></tr>
   </tbody>
 </table>
@@ -687,6 +688,8 @@
     <tr>
       <th>Generator</th>
       <th class="num">val acc (mean &plusmn; std)</th>
+      <th class="num">AUC-ROC (mean &plusmn; std)</th>
+      <th class="num">F1 (mean &plusmn; std)</th>
       <th class="num">train acc (mean &plusmn; std)</th>
       <th class="num">n_selected (mean &plusmn; std)</th>
       <th class="num">pairwise Jaccard (15 folds)</th>
@@ -694,13 +697,14 @@
     </tr>
   </thead>
   <tbody>
-    <tr><td>gpt4</td><td class="num">0.9879 &plusmn; 0.0026</td><td class="num">0.9697 &plusmn; 0.0009</td><td class="num">74.1 &plusmn; 2.9</td><td class="num">0.7634 &plusmn; 0.0365</td><td class="num">60 / 106</td></tr>
-    <tr><td>gpt2</td><td class="num">0.9591 &plusmn; 0.0031</td><td class="num">0.9021 &plusmn; 0.0017</td><td class="num">84.7 &plusmn; 4.1</td><td class="num">0.6701 &plusmn; 0.0418</td><td class="num">60 / 146</td></tr>
-    <tr><td>mistral-chat</td><td class="num">0.9708 &plusmn; 0.0043</td><td class="num">0.9343 &plusmn; 0.0013</td><td class="num">57.8 &plusmn; 2.9</td><td class="num">0.7240 &plusmn; 0.0461</td><td class="num">45 / 99</td></tr>
-    <tr><td>llama-chat</td><td class="num">0.9862 &plusmn; 0.0030</td><td class="num">0.9568 &plusmn; 0.0014</td><td class="num">63.6 &plusmn; 1.7</td><td class="num">0.7563 &plusmn; 0.0404</td><td class="num">48 / 91</td></tr>
-    <tr><td>cohere-chat</td><td class="num"><strong>0.9052</strong> &plusmn; 0.0076</td><td class="num">0.8614 &plusmn; 0.0024</td><td class="num">72.3 &plusmn; 3.1</td><td class="num">0.7490 &plusmn; 0.0388</td><td class="num">62 / 113</td></tr>
+    <tr><td>gpt4</td><td class="num">0.9879 &plusmn; 0.0026</td><td class="num">0.9990 &plusmn; 0.0003</td><td class="num">0.9879 &plusmn; 0.0026</td><td class="num">0.9697 &plusmn; 0.0009</td><td class="num">74.1 &plusmn; 2.9</td><td class="num">0.7634 &plusmn; 0.0365</td><td class="num">60 / 106</td></tr>
+    <tr><td>gpt2</td><td class="num">0.9591 &plusmn; 0.0031</td><td class="num">0.9915 &plusmn; 0.0009</td><td class="num">0.9587 &plusmn; 0.0032</td><td class="num">0.9021 &plusmn; 0.0017</td><td class="num">84.7 &plusmn; 4.1</td><td class="num">0.6701 &plusmn; 0.0418</td><td class="num">60 / 146</td></tr>
+    <tr><td>mistral-chat</td><td class="num">0.9708 &plusmn; 0.0043</td><td class="num">0.9950 &plusmn; 0.0011</td><td class="num">0.9707 &plusmn; 0.0043</td><td class="num">0.9343 &plusmn; 0.0013</td><td class="num">57.8 &plusmn; 2.9</td><td class="num">0.7240 &plusmn; 0.0461</td><td class="num">45 / 99</td></tr>
+    <tr><td>llama-chat</td><td class="num">0.9862 &plusmn; 0.0030</td><td class="num">0.9984 &plusmn; 0.0007</td><td class="num">0.9862 &plusmn; 0.0030</td><td class="num">0.9568 &plusmn; 0.0014</td><td class="num">63.6 &plusmn; 1.7</td><td class="num">0.7563 &plusmn; 0.0404</td><td class="num">48 / 91</td></tr>
+    <tr><td>cohere-chat</td><td class="num"><strong>0.9052</strong> &plusmn; 0.0076</td><td class="num">0.9676 &plusmn; 0.0033</td><td class="num">0.9047 &plusmn; 0.0079</td><td class="num">0.8614 &plusmn; 0.0024</td><td class="num">72.3 &plusmn; 3.1</td><td class="num">0.7490 &plusmn; 0.0388</td><td class="num">62 / 113</td></tr>
   </tbody>
 </table>
+<p class="footnote">AUC-ROC and F1 are from the L2 evaluation probe (all 9,216 features, lbfgs), scored on the test fold. val acc is the same probe&rsquo;s accuracy. train acc (L1 test acc) is the L1 sparse probe&rsquo;s own test-fold accuracy &mdash; a diagnostic for how much the selector overfits.</p>
 
 <p><strong>Takeaway.</strong> Across 5 generators, <strong>0.5&ndash;0.9% of features</strong> (45&ndash;62 fully-stable neurons out of 9,216) suffice to detect AI text at 90.5&ndash;98.8% val accuracy &mdash; with cohere-chat as the structural difficulty floor (90.5%) and gpt2 as the difficulty mid-point (95.9%, the only non-RLHF generator in the panel). Selection sizes are tight (CV 2&ndash;5%) and pairwise fold-Jaccard sits at 0.67&ndash;0.76 &mdash; within a hair of the multi-generator C&times;N sweep numbers (0.72&ndash;0.75 at this point; &sect;4.5), confirming the selection is reproducible across seeds. gpt2 has the loosest fold Jaccard (0.67) and the largest pool of ever-observed neurons (146), consistent with a slightly noisier selector at this difficulty. Layer-wise distribution analysed in &sect;3.6 (characterize).</p>
 
@@ -1011,6 +1015,37 @@
   Reading: on the easier RLHF generators (gpt4, llama, mistral) the selected feature set <em>carries more standalone signal than its baseline-context contribution warrants</em> &mdash; ablating the complement distributionally shifts the probe but doesn&rsquo;t reveal much extra information. On <strong>cohere and gpt2</strong>, by contrast, the rest of the model carries genuine information that the smaller-model framing misses, so removing it via ablation costs an extra ~4&thinsp;pp. This is consistent with cohere&rsquo;s structurally weaker per-axis signal (&sect;3.6) and with gpt2 being a non-RLHF base model whose detection-relevant signal is more dispersed across the network.
 </div>
 
+<h3 id="res-logo">3.8 LOGO &mdash; family leave-one-out generalization <span class="pill done">done, run 20260507_195821</span></h3>
+
+<p><strong>Mode:</strong> family LOGO (leave-one-<em>family</em>-out) &mdash; each fold holds out one complete model family (including both base and chat siblings where available), preventing any leakage between architecturally related generators. Selector: L1 liblinear, <code>C = 0.0005</code>, capped at 28k train rows for liblinear stability. L2 probes (full and selected) trained on full train pool (45k&ndash;67.5k samples depending on fold). Seeds: [42, 123, 456]; seed variance near zero (cohere selected_l2 std &asymp; 0.00024). Run: <code>20260507_195821</code>, wall-clock <strong>14.4 min</strong>.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Family (held-out)</th>
+      <th>Members</th>
+      <th class="num">Test N</th>
+      <th class="num">Full L2 acc</th>
+      <th class="num">Sel L2 acc</th>
+      <th class="num">Full L2 AUC</th>
+      <th class="num">Sel L2 AUC</th>
+      <th class="num">Stable neurons</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>cohere</td><td>cohere, cohere-chat</td><td class="num">10,000</td><td class="num">88.6%</td><td class="num">76.3%</td><td class="num">0.9457</td><td class="num">0.8628</td><td class="num">119</td></tr>
+    <tr><td>gpt</td><td>chatgpt, gpt2, gpt3, gpt4</td><td class="num">20,000</td><td class="num">98.2%</td><td class="num">88.8%</td><td class="num">0.9929</td><td class="num">0.9530</td><td class="num">91</td></tr>
+    <tr><td>llama</td><td>llama-chat</td><td class="num">5,000</td><td class="num">99.7%</td><td class="num">93.7%</td><td class="num">0.9993</td><td class="num">0.9860</td><td class="num">125</td></tr>
+    <tr><td>mistral</td><td>mistral, mistral-chat</td><td class="num">10,000</td><td class="num">96.6%</td><td class="num">85.6%</td><td class="num">0.9824</td><td class="num">0.9254</td><td class="num">106</td></tr>
+    <tr><td>mpt</td><td>mpt, mpt-chat</td><td class="num">10,000</td><td class="num">99.1%</td><td class="num">85.7%</td><td class="num">0.9951</td><td class="num">0.9259</td><td class="num">110</td></tr>
+  </tbody>
+</table>
+
+<div class="callout good">
+  <span class="label">All five families transfer above baseline</span>
+  The selected feature set (~91&ndash;125 stable neurons, 1.0&ndash;1.4% of 9,216 total features) generalises across every held-out family. <strong>Cohere is the hardest family</strong> (Sel L2 76.3%, Full L2 88.6%): its architecture is the most distinct in RAID. The sparsity cost (Full&nbsp;L2 &minus; Sel&nbsp;L2) is 6&ndash;13 percentage points &mdash; for 4/5 families, roughly 87&ndash;94% of the full-feature signal is retained by &le;&nbsp;1% of neurons. The GPT family is second-hardest (Sel L2 88.8%), likely because it aggregates four heterogeneous generators (gpt2 base + gpt3/gpt4/chatgpt RLHF) with divergent layer profiles, making any single probe less specialised.
+</div>
+
 <!-- ================================================================= -->
 <h2 id="methodology">4. Methodological Findings</h2>
 
@@ -1150,27 +1185,27 @@
 
 <h4>Gaps that block publication</h4>
 <ol>
-  <li><strong>Leave-one-generator-out (LOGO) generalisation (&sect;5.1 A) &mdash; the primary remaining experiment.</strong> Without LOGO, a reviewer can ask: &ldquo;you trained and tested on the same generator set &mdash; does any of this transfer?&rdquo; LOGO directly validates the cross-generator characterisation (&sect;3.6) by testing whether circuits selected on N&minus;1 generators still identify text from the held-out Nth generator. With 11 generators available in RAID and the full pipeline running in ~5 h, LOGO is one overnight run. Domain confounds are addressed methodologically: StratifiedKFold on (label &times; domain) prevents domain imbalance, and same-domain donor sampling in the patching experiment already controls for domain transfer. A separate LODO experiment is not required; the methodological defence is documented in &sect;4.2. <em>Status:</em> planned; estimated ~11 h for all 11 generators.</li>
+  <li><span style="text-decoration: line-through; color: var(--muted);"><strong>Leave-one-generator-out (LOGO) generalisation (&sect;5.1 A) &mdash; the primary remaining experiment.</strong></span> <span class="pill done">closed</span> Run as family LOGO (run <code>20260507_195821</code>, 14.4 min). All 5 families transfer above baseline: Full L2 88.6&ndash;99.7%, Sel L2 76.3&ndash;93.7%. Cohere is the hardest family (Sel L2 76.3%); ~100 stable neurons (~1% of 9,216) carry 87&ndash;94% of achievable signal on 4/5 families. Full results in &sect;3.8. The reviewer objection &ldquo;does any of this transfer?&rdquo; is now directly answered.</li>
   <li><span style="text-decoration: line-through; color: var(--muted);"><strong>Multi-seed validation (&sect;5.1 D).</strong></span> <span class="pill done">closed</span> Run with seeds <code>[42, 123, 456]</code>; 15 cells per (generator, experiment); seed-level &plusmn; reported throughout &sect;3.</li>
   <li><span style="text-decoration: line-through; color: var(--muted);"><strong>Stability sweep generalisation (&sect;4.5).</strong></span> <span class="pill done">closed</span> Sweep run on 3 generators (gpt4, llama-chat, mistral). C = 0.005 is the most-stable C at every N for every generator; min-over-3-gen Jaccard at chosen point (C = 0.005, N = 7,500) = 0.724. Optional follow-up: include gpt2 and cohere-chat in a second pass (&sect;6).</li>
 </ol>
 
 <h4>Tentative paper framing</h4>
-<p><em>&ldquo;Sparse probing across 5 LLM-generated text corpora (1 base + 4 chat-RLHF, spanning 4 model families) reveals that the AI-detection signal in BERT is (a)&nbsp;encoded by a small, highly-stable set of late-layer features (~0.5&ndash;0.9% of activations, fold-Jaccard 0.67&ndash;0.76 across 15 cells per generator); (b)&nbsp;causally sufficient and predominantly redundantly distributed (patching flip-rate monotone in k on every generator; ablation drop within random-baseline noise on 4/5 generators, with one partial exception); and (c)&nbsp;largely generator-specific yet overlapping ~32&times; above chance, with consistent layer-12 dominance for chat-RLHF generators and a layer-11 deviation for the non-RLHF baseline. Generalization across generators is validated via leave-one-generator-out evaluation.&rdquo;</em> We have (a)&ndash;(c); LOGO is the open work item.</p>
+<p><em>&ldquo;Sparse probing across 5 LLM-generated text corpora (1 base + 4 chat-RLHF, spanning 4 model families) reveals that the AI-detection signal in BERT is (a)&nbsp;encoded by a small, highly-stable set of late-layer features (~0.5&ndash;0.9% of activations, fold-Jaccard 0.67&ndash;0.76 across 15 cells per generator); (b)&nbsp;causally sufficient and predominantly redundantly distributed (patching flip-rate monotone in k on every generator; ablation drop within random-baseline noise on 4/5 generators, with one partial exception); and (c)&nbsp;largely generator-specific yet overlapping ~32&times; above chance, with consistent layer-12 dominance for chat-RLHF generators and a layer-11 deviation for the non-RLHF baseline. Generalization across generators is validated via leave-one-generator-out evaluation.&rdquo;</em> All gaps (a)&ndash;(c) are now closed; LOGO completed in run <code>20260507_195821</code> (&sect;3.8).</p>
 
 <!-- ================================================================= -->
 <h2 id="plan">5. Plan Going Forward</h2>
 
 <h3 id="plan-tier1">5.1 New experiments</h3>
 
-<h4>(A) Leave-one-generator-out (LOGO) <span class="pill planned">primary</span></h4>
+<h4>(A) Leave-one-generator-out (LOGO) <span class="pill done">done &mdash; run 20260507_195821</span></h4>
+<p><span class="pill done">done</span> Completed as family LOGO (leave-one-<em>family</em>-out), wall-clock <strong>14.4 min</strong> (5 folds, 28k-capped L1 selection; not the previously estimated ~11 h which assumed 11 per-generator folds at full scale). Full results in &sect;3.8. Summary:</p>
 <ul>
-  <li>Train L1 selector and L2 eval probe on N&minus;1 generators, evaluate on the held-out Nth generator. Repeat for all 11 RAID generators.</li>
-  <li>Report: (1) held-out generator accuracy vs within-generator baseline; (2) Jaccard overlap between LOGO-selected stable sets and the full-data stable sets &mdash; high overlap means selection is not driven by any single generator&rsquo;s idiosyncrasies.</li>
-  <li>Optional extension: run patching on the held-out generator using neurons selected from the N&minus;1 training generators. If flip rates remain above random baseline, the causal-sufficiency result generalises across generators &mdash; the strongest possible LOGO result.</li>
-  <li>With base/chat pairs available in RAID (cohere/cohere-chat, mistral/mistral-chat, llama/llama-chat, mpt/mpt-chat), LOGO also enables within-family base-vs-chat transfer tests: does a probe trained on chat generators transfer to the base variant of the same family? This directly tests whether the L11/L12 layer asymmetry reflects genuinely different signal or a shift in where the same signal lives.</li>
-  <li>Domain confounds are addressed methodologically (StratifiedKFold on label &times; domain; same-domain patching) &mdash; LODO is not required. See &sect;4.2.</li>
-  <li>Compute: ~11 h for all 11 generators at ~1 h/generator on liblinear; one overnight run. Verify base/chat distinction in RAID datasheet before running (confirm mistral.csv, llama.csv, cohere.csv, mpt.csv are genuinely non-RLHF checkpoints).</li>
+  <li>All 5 families transfer above random baseline using only ~100 stable neurons (~1% of 9,216 total features).</li>
+  <li>Cohere is the hardest family (Sel L2 76.3%, Full L2 88.6%) &mdash; most architecturally distinct in RAID. GPT is second (Sel L2 88.8%, aggregates 4 heterogeneous generators). LLaMA, Mistral, MPT all &ge; 85.6% Sel L2.</li>
+  <li>Sparsity cost (Full L2 &minus; Sel L2): 6&ndash;13 pp; 87&ndash;94% of full-feature signal retained by &le; 1% of neurons on 4/5 families.</li>
+  <li>Stable neuron counts per family: 91&ndash;125 (GPT fewest at 91, LLaMA most at 125).</li>
+  <li>Seed variance near zero (cohere std &asymp; 0.00024 on selected_l2), confirming robustness.</li>
 </ul>
 
 <h4>(B) Smaller-model / ablate-complement test <span class="pill done">done</span></h4>
@@ -1202,12 +1237,12 @@
 <p>Original tiered plan (2&ndash;3 headline generators, 8&ndash;9 reduced) is obsolete: the multi-seed pipeline runs the full suite on 5 generators in ~4.2 h. We can afford to elevate all 5 to &ldquo;headline&rdquo; and run reduced sparse-probe-only on the remaining RAID generators if we want a wider catalog claim in the appendix.</p>
 
 <h3 id="plan-budget">5.3 Compute budget <span class="pill done">measured</span></h3>
-<p>Headline run wall-clock: <strong>~4.2 hours</strong> for 5 generators &times; 6 per-generator experiments + 1 cross-generator characterize at <code>N = 7,500</code>, 3 seeds &times; 5 folds = 15 cells per (generator, experiment). Patching dominates per-generator runtime (~35&ndash;42 min/gen); other experiments are 1&ndash;3 min each. <strong>Pipeline runtime updated:</strong> switched L1 solver from saga to liblinear; full 5-generator pipeline now runs in ~5 h (previously estimated 4&ndash;8 h per run under saga). Adding LOGO (11 generators &times; full pipeline): ~11 h total, one overnight run. Adding optional gpt2 stability sweep: ~12 min. <strong>Total budget for the &ldquo;all gaps closed&rdquo; pipeline: ~16 hours</strong> &mdash; two overnight runs or one weekend day.</p>
+<p>Headline run wall-clock: <strong>~4.2 hours</strong> for 5 generators &times; 6 per-generator experiments + 1 cross-generator characterize at <code>N = 7,500</code>, 3 seeds &times; 5 folds = 15 cells per (generator, experiment). Patching dominates per-generator runtime (~35&ndash;42 min/gen); other experiments are 1&ndash;3 min each. <strong>Pipeline runtime updated:</strong> switched L1 solver from saga to liblinear; full 5-generator pipeline now runs in ~5 h (previously estimated 4&ndash;8 h per run under saga). <strong>LOGO actual runtime: 14.4 min</strong> (family mode, 5 folds, 28k-capped L1 selection) &mdash; the previously estimated ~11 h assumed 11 per-generator folds at full scale; family mode with 5 families and a 28k row cap is dramatically faster. Adding optional gpt2 stability sweep: ~12 min. <strong>Total budget for the &ldquo;all gaps closed&rdquo; pipeline: effectively complete</strong> &mdash; LOGO is done in 14 min, not an overnight run.</p>
 
 <!-- ================================================================= -->
 <h2 id="open">6. Open Decisions</h2>
 <ul>
-  <li>Whether to run the full 11-generator LOGO in one pass or prioritise the 4 within-family base/chat pairs (cohere/cohere-chat, mistral/mistral-chat, llama/llama-chat, mpt/mpt-chat) first as a faster validation of the L11/L12 base-vs-RLHF claim. Recommendation: run all 11 in one overnight pass; the within-family pairs are a subset of that run and cost nothing extra. <em>gpt2 saturation watch passed</em> &mdash; gpt2 val_acc 0.959 with n_selected ~85 (saturation rule was val_acc &ge; 0.998 with n_selected &le; 10), so no replacement needed.</li>
+  <li><span style="text-decoration: line-through; color: var(--muted);">Whether to run the full 11-generator LOGO in one pass or prioritise the 4 within-family base/chat pairs first.</span> <span class="pill done">resolved</span> Family LOGO completed (run <code>20260507_195821</code>, 14.4 min). All 5 families evaluated; results in &sect;3.8. <em>gpt2 saturation watch passed</em> &mdash; gpt2 val_acc 0.959 with n_selected ~85, no replacement needed.</li>
   <li>Whether to keep <code>auc_comparison</code> in main text given the three-regime pattern (parsimony / convergence / reversal). Likely demoted to appendix &mdash; cleanest framing for main text is the per-generator parsimony argument with a footnote.</li>
   <li>Whether to also stability-sweep gpt2 (~12 min). Now that gpt2 is the structural outlier in &sect;3.6, this would let us claim &ldquo;C = 0.005 stable across easy / medium / hard&rdquo; rather than &ldquo;stable across medium / hard&rdquo;. Cheap; not blocking.</li>
   <li>Whether to also sweep cohere-chat for completeness, even though the previous run gave consistent C/N behaviour at single-seed. Lower priority than the gpt2 sweep.</li>
@@ -1262,7 +1297,7 @@
 </ul>
 
 <hr>
-<p class="footnote">Updated 2026-04-27. Next: leave-one-generator-out (LOGO) experiment (~11 h, all 11 generators); optional gpt2 stability sweep; runner aggregation enhancement (&sect;5.1&nbsp;G) to surface per-k sweep means in <code>aggregate.json</code>.</p>
+<p class="footnote">Updated 2026-05-07. LOGO experiment complete (family LOGO, run <code>20260507_195821</code>, 14.4 min &mdash; see &sect;3.8). Open items: optional gpt2 stability sweep; runner aggregation enhancement (&sect;5.1&nbsp;G) to surface per-k sweep means in <code>aggregate.json</code>.</p>
 
 </main>
 </div>
