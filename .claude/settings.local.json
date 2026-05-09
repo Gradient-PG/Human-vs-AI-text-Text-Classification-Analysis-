@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"D:\\\\_gradient\\\\Human-vs-AI-text-Text-Classification-Analysis-\\\\results\\\\experiments\\\\\" -Recurse | Select-Object FullName, Length, LastWriteTime | Format-Table -AutoSize)"
+    ]
+  }
+}
