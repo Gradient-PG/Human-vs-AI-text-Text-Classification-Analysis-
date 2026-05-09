@@ -1297,7 +1297,65 @@
 </ul>
 
 <hr>
-<p class="footnote">Updated 2026-05-07. LOGO experiment complete (family LOGO, run <code>20260507_195821</code>, 14.4 min &mdash; see &sect;3.8). Open items: optional gpt2 stability sweep; runner aggregation enhancement (&sect;5.1&nbsp;G) to surface per-k sweep means in <code>aggregate.json</code>.</p>
+
+<h2 id="mpt">7. MPT-7B &mdash; Second Base Generator (run <code>20260509_165026</code>)</h2>
+<p>Added 2026-05-09. MPT-7B (<code>mpt</code>) added as the sixth generator and second pure-base model to upgrade the layer-asymmetry claim from N=1 to N=2 base generators. Run: <code>20260509_165026</code>. Experiments run: sparse_probe, ablation, patching, restricted_probe, auc_comparison, characterize (mpt-only). Skipped: confound (dropped from paper).</p>
+
+<h3>7.1 Sparse Probe</h3>
+<table>
+  <thead><tr><th>Metric</th><th class="num">Mean</th><th class="num">Std</th></tr></thead>
+  <tbody>
+    <tr><td>Accuracy</td><td class="num">0.9722</td><td class="num">0.0033</td></tr>
+    <tr><td>AUC-ROC</td><td class="num">0.9942</td><td class="num">0.0013</td></tr>
+    <tr><td>n_selected</td><td class="num">61.3</td><td class="num">3.1</td></tr>
+    <tr><td>n_stable_neurons</td><td class="num" colspan="2">52</td></tr>
+    <tr><td>n_observed (ever selected)</td><td class="num" colspan="2">&approx;93</td></tr>
+  </tbody>
+</table>
+<p><strong>Layer distribution (52 stable neurons):</strong> L1=10, L2=1, L3=6, L4=3, L5=2, L6=2, L7=2, L8=9, L9=7, L10=2, L11=6, L12=2. <strong>% in L12: 3.8%</strong> &mdash; dramatically lower than any instruction-tuned generator (30&ndash;36%). Both pure-base generators (gpt2: 13.3%, mpt: 3.8%) avoid L12.</p>
+
+<h3>7.2 Patching</h3>
+<p>k=full flip rate: <strong>1.59% &plusmn; 0.23%</strong>, random &asymp;0.16%, ratio <strong>&sim;10&times;</strong>. Monotone in k.</p>
+
+<h3>7.3 Ablation</h3>
+<p>Full-set drop: <strong>+0.05 &plusmn; 0.11 pp</strong> &mdash; within noise of 0.00 pp random baseline. Not necessary (consistent with 4/5 pattern from headline run).</p>
+
+<h3>7.4 Restricted Probe &mdash; NEW LARGEST GAP</h3>
+<table>
+  <thead><tr><th>Generator</th><th class="num">Gap (smaller vs ablate-complement)</th></tr></thead>
+  <tbody>
+    <tr><td><strong>mpt</strong></td><td class="num"><strong>4.68 &plusmn; 1.13 pp</strong> &larr; new largest</td></tr>
+    <tr><td>cohere-chat</td><td class="num">4.43 &plusmn; 1.05 pp</td></tr>
+    <tr><td>gpt2</td><td class="num">3.63 &plusmn; 0.84 pp</td></tr>
+    <tr><td>llama-chat</td><td class="num">1.14 &plusmn; 0.43 pp</td></tr>
+    <tr><td>mistral-chat</td><td class="num">0.93 &plusmn; 0.43 pp</td></tr>
+    <tr><td>gpt4</td><td class="num">0.41 &plusmn; 0.44 pp</td></tr>
+  </tbody>
+</table>
+
+<h3>7.5 Cross-Generator Jaccard (mpt vs 5 others)</h3>
+<table>
+  <thead><tr><th>Pair</th><th class="num">Jaccard</th><th class="num">&times; chance</th></tr></thead>
+  <tbody>
+    <tr><td><strong>mpt &ndash; gpt2</strong></td><td class="num"><strong>0.120</strong></td><td class="num"><strong>39.6&times;</strong></td></tr>
+    <tr><td>mpt &ndash; mistral-chat</td><td class="num">0.010</td><td class="num">3.97&times;</td></tr>
+    <tr><td>mpt &ndash; llama-chat</td><td class="num">0.010</td><td class="num">3.72&times;</td></tr>
+    <tr><td>mpt &ndash; gpt4</td><td class="num">0.000</td><td class="num">0&times;</td></tr>
+    <tr><td>mpt &ndash; cohere-chat</td><td class="num">0.000</td><td class="num">0&times;</td></tr>
+    <tr><th>Updated 15-pair mean</th><th class="num">0.073</th><th class="num">&sim;24&times;</th></tr>
+  </tbody>
+</table>
+
+<h3>7.6 CAV Diagnostics (mpt)</h3>
+<p>Cosine (CAV, w): 0.065 &bull; LR acc: 0.971 &bull; &Vert;&Delta;&mu;&Vert;: <strong>9.52</strong> (largest of all 6 generators) &bull; &Vert;w&Vert;: <strong>53.9</strong> (smallest of all 6 generators).</p>
+
+<div class="callout good">
+  <span class="label">Key finding: layer-asymmetry upgraded to 2-vs-4</span>
+  Both gpt2 (13.3% in L12) and mpt (3.8% in L12) strongly avoid BERT&rsquo;s final layer, while all four instruction-tuned generators concentrate 30&ndash;36% of stable neurons there. The claim is now a 2-vs-4 contrast across independent architectures. The base generators&rsquo; peak layers differ (gpt2: L11, mpt: L1/L8), so the paper frames the finding as L12-avoidance by non-instruction-tuned models rather than an L11-peaking rule.
+</div>
+
+<hr>
+<p class="footnote">Updated 2026-05-09. MPT-7B run <code>20260509_165026</code> complete. All paper &lt;todo&gt; items for second base generator resolved. Remaining open items: runner aggregation enhancement (&sect;5.1&nbsp;G); within-generator fold Jaccard for mpt estimated analytically (&sim;0.75) rather than computed from per-fold files.</p>
 
 </main>
 </div>

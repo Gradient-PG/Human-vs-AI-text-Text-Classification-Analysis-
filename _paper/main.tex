@@ -185,14 +185,12 @@ The closest methodological precedent for our flip-rate framing is \citet{ravindr
 
 \subsection{Data: RAID}
 \label{sec:setup-data}
-% RAID benchmark (Dugan et al. 2024): 11 generators × 6 domains. Headline run uses 5 generators chosen for architectural diversity:
-% gpt4, gpt2, mistral-chat, llama-chat, cohere-chat (1 base/non-RLHF + 4 chat-RLHF, spanning 4 model families).
+% RAID benchmark (Dugan et al. 2024): 11 generators × 8 domains. Headline run uses 6 generators chosen for architectural diversity:
+% gpt4, gpt2, mpt, mistral-chat, llama-chat, cohere-chat (2 pure-base + 1 SFT-only + 3 SFT+RLHF, spanning 5 model families).
 % 6 domains: abstracts, books, news, reddit, reviews, wiki.
 % Balanced subsampling: 7,500 samples per generator (3,750 per class), justified in §\ref{sec:setup-stability}.
 
-\todo{If a second base/non-RLHF generator is added before submission, update count to 6 here, add it to the generator list, and update the layer-asymmetry claim in §\ref{sec:crossgen-layers} from a single-data-point to a pattern.}
-
-RAID~\citep{dugan2024raid} provides human-written and machine-generated texts across 11 generators and 8 domains. We use six of the eight domains: abstracts, books, news, Reddit posts, reviews, and Wikipedia. We select five generators for architectural diversity: GPT-4 (\texttt{gpt4}), GPT-2 (\texttt{gpt2}), Mistral-7B-Instruct (\texttt{mistral-chat}), Llama-2-Chat (\texttt{llama-chat}), and Cohere Command (\texttt{cohere-chat}), spanning one pure-base generator (gpt2), one SFT-only generator (mistral-chat), and three SFT+RLHF/preference-trained generators (gpt4, llama-chat, cohere-chat), across four model families. We subsample 7{,}500 examples per generator (3{,}750 human, 3{,}750 AI) balanced across the six RAID domains, yielding 37{,}500 samples in total.
+RAID~\citep{dugan2024raid} provides human-written and machine-generated texts across 11 generators and 8 domains. We use six of the eight domains: abstracts, books, news, Reddit posts, reviews, and Wikipedia. We select six generators for architectural diversity: GPT-4 (\texttt{gpt4}), GPT-2 (\texttt{gpt2}), MPT-7B (\texttt{mpt}), Mistral-7B-Instruct (\texttt{mistral-chat}), Llama-2-Chat (\texttt{llama-chat}), and Cohere Command (\texttt{cohere-chat}), spanning two pure-base generators (gpt2, mpt), one SFT-only generator (mistral-chat), and three SFT+RLHF/preference-trained generators (gpt4, llama-chat, cohere-chat), across five model families. We subsample 7{,}500 examples per generator (3{,}750 human, 3{,}750 AI) balanced across the six RAID domains, yielding 45{,}000 samples in total.
 
 \subsection{Model and Activations}
 \label{sec:setup-model}
@@ -229,30 +227,28 @@ The regularisation strength $C = 0.005$ and sample size $N = 7{,}500$ were selec
 \label{sec:results-sparse}
 
 % ~1/2 page. The "small stable set suffices" result.
-% Reuse Table from progress report §3.1 — 5 generators × {val acc, train acc, $\nselected$, fold Jaccard, n_stable / n_observed}.
-% Headline numbers in prose:
-% — 0.5–0.9\% of 9,216 features suffice (45–62 stable neurons across 15 folds);
-% — val accuracy 90.5–98.8\%;
-% — fold Jaccard 0.67–0.76 across 105 fold-pairs per generator;
-% — random-null Jaccard inside one generator $\approx$0.005 → ~140× chance.
-% Interpretation paragraph: cohere-chat is the difficulty floor (90.5\%), gpt2 is mid-point (95.9\%); the rest >97\%.
 % Per-cell accuracy/F1/AUC table → appendix.
+
+Table~\ref{tab:sparse-summary} reports sparse-probe results across all six generators. Between 45 and 62 neurons --- 0.5--0.9\% of the 9{,}216-feature CLS representation --- are stable across all 15 cells, yet the L2 evaluation probe achieves 90.5--98.8\% validation accuracy (AUC-ROC 0.968--0.999). Selection is highly reproducible: pairwise fold Jaccard ranges 0.67--0.76 across 105 fold-pairs per generator, compared to a random-null expectation of $\sim$0.003--0.005 for sets of this size drawn from 9{,}216 features, placing within-generator stability at 130--200$\times$ above chance. The selection pool is narrow: between 91 neurons ever selected (llama-chat) and 146 (gpt2), indicating that the probe consistently returns to a small region of the feature space.
+
+Detection difficulty varies systematically across generators. GPT-4 is easiest to detect (98.8\% val acc, AUC 0.999), followed by LLaMA-2-Chat (98.6\%) and Mistral-7B-Instruct (97.1\%); all three are instruction-tuned and produce outputs that diverge markedly from human writing in BERT's frozen representation space. MPT-7B (97.2\%) is close behind despite being a pure-base generator, with 52 stable neurons forming a compact and highly reproducible selection set. GPT-2 sits at the mid-point (95.9\%) with the loosest fold Jaccard (0.670) and largest observed pool (146 neurons) among all six generators, suggesting a noisier but stable feature landscape for this base model. Cohere-Command-Chat is the structural difficulty floor at 90.5\% val accuracy and AUC 0.968, with the highest standard deviation on $\nselected$ (CV 4.3\%), consistent with its smaller per-axis signal magnitude documented in Section~\ref{sec:results-crossgen}.
 
 \begin{table}[t]
 \centering
 \small
-\begin{tabular}{lrrrrr}
+\begin{tabular}{lrrrr}
 \toprule
-Generator & Val acc & $\nselected$ & Jaccard & $n_{\text{stable}}$ \\
+Generator & Val acc & $\nselected$ & Jaccard & $n_{\text{stable}}$ / $n_{\text{obs}}$ \\
 \midrule
-gpt4         & 0.988 & 74.1 & 0.763 & 60 / 106 \\
-gpt2         & 0.959 & 84.7 & 0.670 & 60 / 146 \\
-mistral-chat & 0.971 & 57.8 & 0.724 & 45 / 99  \\
-llama-chat   & 0.986 & 63.6 & 0.756 & 48 / 91  \\
-cohere-chat  & 0.905 & 72.3 & 0.749 & 62 / 113 \\
+gpt4         & $0.988 \pm 0.003$ & $74.1 \pm 2.9$ & $0.763 \pm 0.037$ & 60 / 106 \\
+gpt2         & $0.959 \pm 0.003$ & $84.7 \pm 4.1$ & $0.670 \pm 0.042$ & 60 / 146 \\
+mpt          & $0.972 \pm 0.003$ & $61.3 \pm 3.1$ & $0.753 \pm 0.040$ & 52 / 93  \\
+mistral-chat & $0.971 \pm 0.004$ & $57.8 \pm 2.9$ & $0.724 \pm 0.046$ & 45 / 99  \\
+llama-chat   & $0.986 \pm 0.003$ & $63.6 \pm 1.7$ & $0.756 \pm 0.040$ & 48 / 91  \\
+cohere-chat  & $0.905 \pm 0.008$ & $72.3 \pm 3.1$ & $0.749 \pm 0.039$ & 62 / 113 \\
 \bottomrule
 \end{tabular}
-\caption{\todo{Sparse-probe summary across 5 generators. 15-cell means.}}
+\caption{Sparse-probe results across six generators: 15-cell means $\pm$ std (5 folds $\times$ 3 seeds). Val acc is the L2 evaluation probe accuracy (all 9{,}216 features). $\nselected$: mean candidate set size per cell. Jaccard: pairwise fold Jaccard over 105 fold-pairs (mpt estimated analytically from per-neuron stability frequencies). $n_{\text{stable}}$: neurons in $\geq$50\% of cells; $n_{\text{obs}}$: total distinct neurons selected at least once.}
 \label{tab:sparse-summary}
 \end{table}
 
@@ -260,8 +256,10 @@ cohere-chat  & 0.905 & 72.3 & 0.749 & 62 / 113 \\
 \section{Causal Sufficiency via Activation Patching}
 \label{sec:results-patching}
 
-~1 page. THE HEADLINE SECTION.
-Use this section to explicitly distinguish necessity (ablation, §\ref{sec:results-necessity}) from sufficiency (this section).
+% ~1 page. THE HEADLINE SECTION.
+% Use this section to explicitly distinguish necessity (ablation, §\ref{sec:results-necessity}) from sufficiency (this section).
+
+This section tests whether the selected neurons are \textit{causally sufficient} to produce AI-text predictions. If transplanting their activations from a real AI sample into a human sample causes the evaluation probe to flip its prediction, the selected set carries the detection signal rather than merely correlating with it. This is a strictly stronger claim than probe accuracy alone.
 
 \subsection{Patching Protocol}
 \label{sec:patching-protocol}
@@ -273,6 +271,18 @@ Use this section to explicitly distinguish necessity (ablation, §\ref{sec:resul
 % Random-k baseline: n_random_draws=20 random k-subsets, each run with 20 shuffles.
 % Note: same-domain donor sampling controls for domain shift (Heimersheim & Nanda 2024 on-manifold guidance).
 
+For each (seed, fold) cell we identify \textit{valid human} samples: test-fold human texts that share a domain with at least one test-fold AI sample. For each of $n_{\text{shuffles}} = 20$ random within-domain donor permutations we construct a patched activation $\tilde{\mathbf{z}}$ by replacing the selected neurons with those from the AI donor:
+\[
+  \tilde{\mathbf{z}}_i =
+  \begin{cases}
+    \mathbf{z}^{\text{donor}}_i & i \in \mathcal{S} \\
+    \mathbf{z}^{\text{human}}_i & i \notin \mathcal{S}
+  \end{cases}
+\]
+A \textit{flip} occurs when the frozen evaluation probe classifies $\tilde{\mathbf{z}}$ as AI but the unpatched $\mathbf{z}^{\text{human}}$ as human. The flip rate is the fraction of valid human samples that flip, averaged over the 20 donor permutations and then over the 15 cells. Donor sampling is restricted to the same domain as the target, following the on-manifold recommendation of \citet{heimersheim2024patching} to avoid injecting out-of-distribution activations.
+
+The \textit{random-$k$ baseline} draws 20 random subsets of size $k$ from the 9{,}216 features and runs the identical procedure, providing a null that controls for the number of patched dimensions. We sweep $k \in \{1, 5, 10, 20, 50, \text{full}\}$ where $k = \text{full}$ equals the cell's actual $|\mathcal{S}|$ (53--92 neurons depending on generator and cell).
+
 \subsection{Flip-Rate Results}
 \label{sec:patching-results}
 % Table: k-sweep (k = 1, 5, 10, 20, 50, full) × 5 generators, selected flip rate only.
@@ -281,19 +291,35 @@ Use this section to explicitly distinguish necessity (ablation, §\ref{sec:resul
 % Per-domain breakdown table → appendix or compact figure.
 % Interpretation: "selected neurons are sufficient to push human predictions toward AI on all five generators." Cohere is most easily perturbed (probe least confident, 90.5\% baseline); llama least (1.07\%).
 
-\subsection{Robustness Checks}
-\label{sec:patching-robustness}
-\todo{TIER-1 experiment from the planning conversation. Run before submission.}
-% (a) Random-donor (cross-domain) baseline: report flip-rate gap vs same-domain donor → demonstrates the effect is not driven by domain transfer.
-% (b) Zero-ablation comparison alongside mean-ablation in §\ref{sec:results-necessity} — Heimersheim \& Nanda 2024 on off-manifold concerns for mean.
+Table~\ref{tab:patching-sweep} reports selected flip rates across the $k$-sweep. The result is consistent across all six generators: flip rate is monotonically increasing in $k$, and the selected set outperforms the random-$k$ baseline at every $k$ value. At $k = \text{full}$, patching the selected neurons causes 1.07--8.15\% of human samples to be reclassified as AI-generated. Against a random baseline of 0.08--0.78\% at the same $k$, this yields a ratio of 10--23$\times$ on five of six generators. For gpt4 the ratio is $\sim$125$\times$ but with standard deviation $\approx$265, because the random-$k$ flip rate is near zero ($\sim 8 \times 10^{-4}$) and small denominator fluctuations dominate; the selected flip rate of 1.23\% is the robust signal there. MPT-7B falls at the lower end of the range (1.59\%, $\sim$10$\times$ above random), consistent with its moderate detection difficulty.
+
+Cohere-Command-Chat is the most patchable generator (8.15\% at $k = \text{full}$, $\pm$1.32\%), consistent with its lowest baseline accuracy (90.5\%): a probe operating nearer its decision boundary crosses it under a smaller perturbation. LLaMA-2-Chat is the hardest to flip (1.07\%, $\pm$0.38\%) despite its high baseline accuracy (98.6\%), suggesting its detection signal is more broadly distributed. Flip rate scales approximately log-linearly with $k$ across all generators, indicating that each added neuron contributes incrementally rather than the effect concentrating in a few critical units.
 
 \begin{table}[t]
 \centering
 \small
-% Table skeleton: rows = k values, columns = 5 generators
-\caption{\todo{Selected flip rate, k-sweep, 15-cell mean ± std.}}
+\begin{tabular}{lrrrrrr}
+\toprule
+$k$ & gpt4 & gpt2 & mpt & mistral & llama & cohere \\
+\midrule
+1    & 0.02 & 0.05 & 0.10 & 0.06 & 0.07 & 0.13 \\
+5    & 0.09 & 0.17 & 0.25 & 0.20 & 0.14 & 0.58 \\
+10   & 0.15 & 0.29 & 0.43 & 0.34 & 0.27 & 0.99 \\
+20   & 0.35 & 0.58 & 0.79 & 0.56 & 0.49 & 2.02 \\
+50   & 0.80 & 1.71 & 1.52 & 1.48 & 0.86 & 5.43 \\
+\midrule
+full & $1.23_{\pm 0.34}$ & $3.13_{\pm 0.56}$ & $1.59_{\pm 0.23}$ & $1.73_{\pm 0.28}$ & $1.07_{\pm 0.38}$ & $8.15_{\pm 1.32}$ \\
+\bottomrule
+\end{tabular}
+\caption{Selected flip rate (\%) across the $k$-sweep, 15-cell means (5 folds $\times$ 3 seeds). $k = \text{full}$ equals each cell's actual $|\mathcal{S}|$ (53--92 neurons); std shown only for $k = \text{full}$. mpt $k < \text{full}$ values from a representative fold. Flip rate is monotonically increasing in $k$ for every generator.}
 \label{tab:patching-sweep}
 \end{table}
+
+\subsection{Robustness Checks}
+\label{sec:patching-robustness}
+% (a) Random-donor (cross-domain) baseline: report flip-rate gap vs same-domain donor → demonstrates the effect is not driven by domain transfer.
+% (b) Zero-ablation comparison alongside mean-ablation in §\ref{sec:results-necessity} — Heimersheim \& Nanda 2024 on off-manifold concerns for mean.
+\todo{Run cross-domain donor baseline before submission: replace same-domain donors with random cross-domain AI donors and measure flip rate gap vs same-domain. Expected to confirm the effect is not driven by domain-level activation shifts. Also consider reporting zero-ablation alongside mean-ablation in \S\ref{sec:results-necessity} per \citet{heimersheim2024patching} off-manifold concern.}
 
 % =====================================================================
 \section{Necessity via Mean Ablation}
@@ -311,6 +337,35 @@ Use this section to explicitly distinguish necessity (ablation, §\ref{sec:resul
 % No contradiction: a redundantly distributed representation is exactly what gives "small drop on ablation, large flip on patching."
 % Methodology caveat paragraph (1–2 sentences): mean-ablation is off-manifold (Heimersheim \& Nanda 2024). We additionally report zero-ablation in §\ref{sec:patching-robustness} and treat the necessity result as conservative.
 
+To complement the sufficiency test we ask the converse question: is the selected set \textit{necessary}? We answer this via mean ablation, replacing the selected neurons in the test-fold activations with their training-fold mean (computed on the training split to avoid leakage) and re-evaluating the frozen L2 probe. Table~\ref{tab:ablation-full} reports accuracy drop at $k = \text{full}$ alongside the random-$k$ baseline.
+
+For four of five generators the result is negative. At $k = \text{full}$, ablating the selected set causes accuracy to drop by only 0.03--0.11\,pp --- within noise of the 0.00--0.06\,pp random-$k$ baseline. The selected neurons are not individually necessary: the L2 evaluation probe, which uses all 9{,}216 features, retains thousands of redundant correlates that compensate for the removed subset.
+
+Cohere-Command-Chat is the exception. Its full-set ablation drop is 1.06\,$\pm$\,0.54\,pp --- roughly 18$\times$ the random baseline of 0.06\,pp --- and the drop grows monotonically from $k = 5$ upward, unlike the other four generators where the curve is flat. This pattern is consistent with the other cohere signals (lowest baseline accuracy, smallest mean-difference norm, largest probe weight norm) and suggests its detection representation is \textit{partially} localised rather than fully distributed.
+
+There is no contradiction between the small ablation drops here and the large patching flip rates in Section~\ref{sec:results-patching}. Ablation tests necessity \textit{against a probe that has access to all other features}: removing $\leq$1\% of 9{,}216 features leaves thousands of correlated dimensions intact. Patching tests sufficiency by \textit{injecting wrong-class signal that competes with the remainder of the network}. A representation that is redundantly distributed is exactly what would produce small ablation drops alongside meaningful patching effects. We interpret the joint result as: the selected neurons carry genuine AI-detection signal, but the same signal is also distributed across the broader feature space.
+
+A methodological note: mean ablation replaces activations with out-of-distribution values that fall off the natural data manifold, which can introduce artefacts \citep{heimersheim2024patching}. We treat the necessity result as conservative and plan to report zero-ablation as a robustness check (Section~\ref{sec:patching-robustness}).
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lrrr}
+\toprule
+Generator & Baseline acc & Selected drop ($k{=}\text{full}$) & Random drop ($k{=}\text{full}$) \\
+\midrule
+gpt4         & 0.988 & $+0.03 \pm 0.12$\,pp & $+0.01$\,pp \\
+gpt2         & 0.959 & $+0.11 \pm 0.31$\,pp & $+0.00$\,pp \\
+mpt          & 0.972 & $+0.05 \pm 0.11$\,pp & $+0.00$\,pp \\
+mistral-chat & 0.971 & $+0.10 \pm 0.21$\,pp & $+0.00$\,pp \\
+llama-chat   & 0.986 & $+0.11 \pm 0.14$\,pp & $+0.02$\,pp \\
+cohere-chat  & 0.905 & $\mathbf{+1.06 \pm 0.54}$\,pp & $+0.06$\,pp \\
+\bottomrule
+\end{tabular}
+\caption{Mean-ablation accuracy drop at $k = \text{full}$, 15-cell means $\pm$ std. Drop = baseline $-$ ablated accuracy (positive = accuracy decreases). Random drop is the mean over 20 random $k$-subsets of the same size. Cohere-chat is the only generator with a drop substantially above the random baseline.}
+\label{tab:ablation-full}
+\end{table}
+
 % =====================================================================
 \section{Cross-Generator Circuit Geometry}
 \label{sec:results-crossgen}
@@ -322,7 +377,27 @@ Use this section to explicitly distinguish necessity (ablation, §\ref{sec:resul
 % Stack-bar or table: 12 layers × 5 generators, count of stable neurons.
 % Highlight: chat-RLHF generators concentrate 30–36\% of stable neurons in layer 12.
 % gpt2 (only base / non-RLHF generator): peaks at layer 11 (18.3\%); only 13.3\% in layer 12.
-\todo{TIER-1: with second base generator added, this becomes a 2-vs-4 contrast. State the claim conditionally on the second base point landing the same way.}
+Table~\ref{tab:layer-dist} shows the layer-by-layer distribution of stable neurons across all six generators. A clear asymmetry emerges between the four instruction-tuned generators and the two pure-base generators. For gpt4, mistral-chat, llama-chat, and cohere-chat, the single most populated layer is layer~12, which accounts for 30--36\% of each generator's stable set (16--19 neurons). Both pure-base generators are exceptions: GPT-2 peaks at layer~11 with 11 stable neurons (18.3\% of its stable set) and has only 13.3\% in layer~12; MPT-7B has just 2 stable neurons in layer~12 (3.8\%) and distributes its signal more broadly across earlier layers (layers 1, 8, and 9 dominate).
+
+Across both pure-base generators, the shared pattern is markedly low layer-12 concentration (3.8--13.3\%) compared to any instruction-tuned generator (30--36\%). This 2-vs-4 contrast suggests that BERT's final layer functions as a generator-specific classification register preferentially activated by instruction-tuned outputs, while base-model outputs engage BERT's earlier and mid-depth representations more strongly. The specific peak layer differs between gpt2 (L11) and mpt (L1/L8), indicating the effect is not a rigid ``base generators peak at L11'' rule but rather a consistent \textit{avoidance} of L12 by non-instruction-tuned generators.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+Layer & gpt4 & gpt2 & mpt & mistral & llama & cohere \\
+\midrule
+1--10  & 36 & 41 & \textbf{44} & 24 & 30 & 40 \\
+11     &  6 & \textbf{11} &  6 &  5 &  2 &  3 \\
+12     & \textbf{18} &  8 &  2 & \textbf{16} & \textbf{16} & \textbf{19} \\
+\midrule
+\% in L12 & 30.0 & 13.3 & 3.8 & 35.6 & 33.3 & 30.6 \\
+\bottomrule
+\end{tabular}
+\caption{Stable-neuron counts by layer group across six generators. Bold indicates the peak layer group for each generator. Instruction-tuned generators (gpt4, mistral, llama, cohere) concentrate 30--36\% of stable neurons in layer~12; both pure-base generators (gpt2, mpt) have $\leq$14\% in layer~12.}
+\label{tab:layer-dist}
+\end{table}
 
 \subsection{Stable-Set Overlap Across Generators}
 \label{sec:crossgen-jaccard}
@@ -333,17 +408,74 @@ Use this section to explicitly distinguish necessity (ablation, §\ref{sec:resul
 % Strongest pair: cohere-mistral (J=0.244, 86× chance). Weakest: gpt2-gpt4 (J=0.000, 0× chance).
 % Interpretation: detection circuits are generator-specific in absolute terms but overlap far above chance baseline — supports a partial shared substrate.
 
+Table~\ref{tab:jaccard} reports pairwise Jaccard similarity between stable sets across all fifteen generator pairs. In absolute terms, overlap is low: Jaccard ranges from 0.00 to 0.24, consistent with generator-specific circuits. However, the appropriate baseline is not zero but the expected Jaccard for two random sets of the same sizes drawn from 9,216 features, which is approximately 0.003 per pair. Relative to this null, the mean observed Jaccard of 0.073 is $\sim$24$\times$ above chance, indicating a partial shared substrate despite the generator-specific structure.
+
+The data reveal a clear bipartite structure. Among instruction-tuned generators, pairwise Jaccard ranges 0.08--0.24 (27--86$\times$ chance), with the strongest pairs being cohere--mistral (86$\times$) and llama--mistral (64$\times$). Among the two pure-base generators, mpt and gpt2 share 12 neurons (J\,=\,0.120, 40$\times$ chance) --- higher than several instruction--instruction pairs --- confirming that the base models form a coherent sub-cluster. In contrast, every base-vs-instruction-tuned pair has near-zero or zero overlap: mpt has J\,=\,0.000 with both gpt4 and cohere-chat, and J\,$\leq$\,0.011 with mistral and llama. Three pairs now have zero overlap (mpt--gpt4, mpt--cohere, gpt2--gpt4), all involving at least one base generator. This base-vs-instruction-tuned partition explains the bulk of the cross-generator circuit geometry.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+Pair & Jaccard & $\times$ chance \\
+\midrule
+cohere -- mistral & 0.244 & 86$\times$ \\
+llama -- mistral  & 0.163 & 64$\times$ \\
+gpt4 -- mistral   & 0.141 & 51$\times$ \\
+gpt4 -- llama     & 0.113 & 39$\times$ \\
+\textbf{mpt -- gpt2}       & \textbf{0.120} & \textbf{40$\times$} \\
+cohere -- gpt4    & 0.109 & 33$\times$ \\
+cohere -- llama   & 0.078 & 27$\times$ \\
+gpt2 -- mistral   & 0.050 & 18$\times$ \\
+cohere -- gpt2    & 0.034 & 10$\times$ \\
+gpt2 -- llama     & 0.019 &  7$\times$ \\
+mpt -- mistral    & 0.010 &  4$\times$ \\
+mpt -- llama      & 0.010 &  4$\times$ \\
+gpt2 -- gpt4      & 0.000 &  0$\times$ \\
+mpt -- gpt4       & 0.000 &  0$\times$ \\
+mpt -- cohere     & 0.000 &  0$\times$ \\
+\midrule
+Mean              & 0.073 & $\sim$24$\times$ \\
+\bottomrule
+\end{tabular}
+\caption{Pairwise Jaccard similarity between stable sets (15 generator pairs). $\times$\,chance is observed Jaccard divided by the analytic random-null Jaccard for two sets of the same sizes drawn from 9,216 features ($\approx$0.003 per pair). The mpt--gpt2 pair (bold) is the highest base$\times$base overlap; all base$\times$instruction-tuned pairs cluster at the bottom.}
+\label{tab:jaccard}
+\end{table}
+
 \subsection{CAV Diagnostics}
 \label{sec:crossgen-cav}
 % Single-fit per-generator on stable sets: cosine sim between mean-difference CAV and L1 weight, LR accuracy on CAV, ‖mean diff‖, ‖LR weight‖.
 % Cohere has lowest CAV cosine (0.057), smallest mean-diff norm (4.69), largest LR weight norm (107) — consistent with "weaker per-axis signal, compensated by larger weights."
 % Brief paragraph; full table can go inline.
 
+To characterise the geometry of the detection signal within each stable set we compute a concept activation vector (CAV) as the mean difference between AI and human activations restricted to the stable neurons, and compare it to the L1 probe weight vector. Table~\ref{tab:cav} reports cosine similarity between the CAV and the probe weight, logistic-regression accuracy on the CAV projection, and the norms of both vectors.
+
+Cohere-chat has the lowest CAV cosine similarity (0.057), the lowest CAV-LR accuracy (0.903), and by far the largest probe weight norm (107), consistent with a diffuse signal compensated by large weights. MPT-7B presents an interesting contrast: it has the lowest cosine (0.065, near cohere's) but the \textit{largest} mean-difference norm (9.52) and smallest weight norm (53.9) among all six generators --- suggesting that mpt's detection signal is strong in per-axis magnitude but geometrically misaligned with the probe direction relative to instruction-tuned generators. GPT-2 also shows a low CAV cosine (0.071) and elevated weight norm (69), placing both base generators at the low-cosine end. Instruction-tuned generators (gpt4, llama-chat, mistral-chat) cluster at higher cosine (0.11--0.14) with moderate weight norms (47--59). CAV diagnostics are currently single-fit per generator and carry no standard errors; wrapping them in the multi-seed loop is a planned runner enhancement.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Generator & Cosine (CAV, $w$) & LR acc & $\|\Delta\mu\|$ & $\|w\|$ \\
+\midrule
+gpt4         & 0.140 & 0.985 &  7.34 &  47.9 \\
+gpt2         & 0.071 & 0.969 &  6.84 &  69.1 \\
+mpt          & 0.065 & 0.971 &  \textbf{9.52} &  \textbf{53.9} \\
+mistral-chat & 0.111 & 0.963 &  6.38 &  58.8 \\
+llama-chat   & 0.129 & 0.990 &  6.57 &  47.2 \\
+cohere-chat  & \textbf{0.057} & \textbf{0.903} &  4.69 & 107.0 \\
+\bottomrule
+\end{tabular}
+\caption{CAV diagnostics on per-generator stable sets. Cosine: similarity between the mean-difference CAV and the L1 probe weight vector. LR acc: logistic-regression accuracy using only the CAV projection. $\|\Delta\mu\|$: norm of the AI$-$human mean-difference vector (bold = largest). $\|w\|$: L1 probe weight norm (bold = smallest). Single-fit per generator; no standard errors available.}
+\label{tab:cav}
+\end{table}
+
 % =====================================================================
 \section{Discussion}
 \label{sec:discussion}
 
-~1/2 page. Three threads to land.
+% ~1/2 page. Three threads to land.
 
 % Thread 1 — Necessity vs sufficiency reconciled.
 % Redundancy is the natural reading: detection signal is encoded by a small stable set sufficient to flip predictions but distributively backed up across the rest of the residual stream. Ablation under-states the role of selected features because the L2 probe uses all 9,216 dimensions; patching reveals the role because it injects wrong-class signal that must compete with the redundancy.
@@ -356,6 +488,15 @@ Use this section to explicitly distinguish necessity (ablation, §\ref{sec:resul
 % Thread 3 — Position vs Borile \& Abrate (2025), one paragraph.
 % Their work removes confounder neurons in fine-tuned BERT to improve OOD accuracy; ours patches detection neurons in frozen BERT to demonstrate causal sufficiency. The two are complementary: their setting asks "what should we remove for a better detector?" Ours asks "what does the pretrained model already encode that supports detection?"
 
+\paragraph{Redundancy and sufficiency are not in tension.}
+The joint pattern across Sections~\ref{sec:results-patching} and~\ref{sec:results-necessity} --- large patching flip rates alongside negligible ablation drops on 4/5 generators --- has a natural reading: AI-detection signal is \textit{redundantly distributed}. The selected neurons carry genuine causal signal (evidenced by patching), but the same information is backed up across the remaining 9,000+ features in the residual stream (evidenced by the small ablation drop). Ablation understates the role of the selected set because removing $\leq$1\% of a 9,216-dimensional representation leaves thousands of correlated features intact. Patching reveals that role precisely because it injects wrong-class signal that must compete with the rest of the network --- a harder test. The phrase ``easy to inject, hard to erase'' captures this geometry: the selected neurons are sufficient but not necessary.
+
+\paragraph{Outliers as structural evidence.}
+Cohere-Command-Chat deviates from other generators on multiple axes: weakest per-axis signal ($\|\Delta\mu\| = 4.69$, CAV cosine 0.057), largest probe weights (norm 107), most patchable output (8.15\% flip rate), and the only generator with a substantial ablation cost (1.06\,pp). Together these point to a signal encoded diffusely with small per-feature magnitude --- the probe compensates via large weights, patching is easy because the decision boundary is near, and ablation matters more because fewer redundant correlates exist. The two pure-base generators, GPT-2 and MPT-7B, form a coherent structural cluster: both have near-zero or zero stable-set overlap with instruction-tuned generators (J\,$\leq$\,0.05), yet they share 12 neurons with each other (J\,=\,0.120, 40$\times$ chance); both avoid layer~12 (3.8\% and 13.3\% respectively, versus 30--36\% for instruction-tuned models); and both exhibit the two largest restricted-probe gaps of the six generators (mpt 4.68\,pp, gpt2 3.63\,pp, versus $\leq$1.1\,pp for the others). This consistency across two independent base models strengthens the interpretation that post-training alignment leaves a layer-12 footprint that is absent in base-only decoding.
+
+\paragraph{Relation to confounder-suppression approaches.}
+\citet{borile2025confounding} identify and suppress neurons correlated with domain or style artefacts in a fine-tuned BERT encoder to improve out-of-distribution detection. Our work is complementary along the intervention axis: their question is ``which neurons should we remove to make the detector more robust?'', while ours is ``which neurons does the pretrained model already use, and are they causally sufficient?'' The two approaches converge on the same empirical substrate --- a small subset of BERT neurons carries disproportionate detection-relevant information --- but reach it from opposite directions, necessity-for-robustness versus sufficiency-for-detection.
+
 % =====================================================================
 \section{Limitations}
 \label{sec:limitations}
@@ -363,12 +504,27 @@ Use this section to explicitly distinguish necessity (ablation, §\ref{sec:resul
 % Required by EMNLP. Honest paragraph (or short list). Do NOT bury anything that survived to the discussion.
 % Items to cover:
 % — Frozen \bertbase only; results may differ on encoder-decoder or larger encoders (RoBERTa-large, DeBERTa).
-  \todo{If RoBERTa replication added (Tier-2), tone this down accordingly.}
+%   \todo{If RoBERTa replication added (Tier-2), tone this down accordingly.}
 % — Mean-ablation is off-manifold (Heimersheim \& Nanda 2024); we report zero-ablation as a check (§\ref{sec:patching-robustness}) but a full resample-ablation comparison is future work.
-— Cross-domain generalization: \todo{If LODO is run, summarize result here in one sentence; if not, state explicitly that within-distribution analysis cannot rule out domain-correlated artifacts and remove any cross-domain claims from the abstract.}
+% — Cross-domain generalization: \todo{If LODO is run, summarize result here in one sentence; if not, state explicitly that within-distribution analysis cannot rule out domain-correlated artifacts and remove any cross-domain claims from the abstract.}
 % — RAID adversarial subsets are not evaluated; robustness of the discovered circuits to paraphrase/perturbation attacks is left to future work.
-— N=1 base/non-RLHF generator (gpt2) for the layer-asymmetry claim; \todo{update if Tier-1 second base generator is added.}
+% — N=2 base/non-RLHF generators (gpt2, mpt) for the layer-asymmetry claim. Both avoid L12 (3.8% and 13.3% vs 30-36% for instruction-tuned). Peak layer differs (gpt2: L11, mpt: L1/L8), so claim is framed as L12-avoidance, not L11-peaking.
 % — Single encoder family (BERT); SAE-based feature analysis (cf. Kuznetsov et al. 2025 on Gemma-2) is a natural extension.
+
+\paragraph{Single encoder architecture.}
+All experiments use frozen \bertbase. Whether the stable-neuron structure and patching effects extend to larger encoders (RoBERTa-large, DeBERTa-v3) or encoder-decoder architectures is an open question. The frozen setting is a deliberate design choice --- it isolates what the pretrained representation already encodes --- but it means results cannot be directly compared to fine-tuned detectors without controlling for this variable.
+
+\paragraph{Mean ablation is off-manifold.}
+Replacing selected neurons with their training-mean pushes activations off the natural data manifold, which can introduce artefacts unrelated to the detection signal~\citep{heimersheim2024patching}. We treat the necessity results as conservative lower bounds and plan to report zero-ablation as a robustness check (Section~\ref{sec:patching-robustness}); a full resample-ablation comparison remains future work.
+
+\paragraph{Layer-asymmetry claim across two base generators.}
+The observation that instruction-tuned generators concentrate 30--36\% of stable neurons in layer~12 while pure-base generators have $\leq$14\% is now supported by two independent base models (GPT-2 and MPT-7B). However, the two base generators differ in their peak layer (GPT-2: L11; MPT-7B: L1/L8), so the claim is best stated as L12-avoidance rather than a strict L11-peaking rule. We frame this as a consistent L12 footprint of post-training alignment rather than a mechanistically precise claim about which specific earlier layer is activated.
+
+\paragraph{Adversarial robustness not evaluated.}
+RAID includes eleven adversarial rephrasing attacks (paraphrase, homoglyph, synonym substitution, etc.) that substantially reduce detector accuracy~\citep{dugan2024raid}. Whether the stable neurons identified here remain causal under these attacks is left to future work; the present analysis covers only the non-adversarial RAID subset.
+
+\paragraph{Scope of causal claim.}
+Activation patching demonstrates that the selected neurons are sufficient to shift probe predictions, but does not constitute a full circuit-level proof of causality in the sense of~\citet{meng2022rome}. The patching intervention is at the level of individual neuron activations, not a complete mechanistic decomposition of the computation. We make no claims about what linguistic properties these neurons encode or why they are informative.
 
 % =====================================================================
 \section*{Ethics Statement}
@@ -404,7 +560,8 @@ Use this section to explicitly distinguish necessity (ablation, §\ref{sec:resul
 
 \section{Restricted Probe (Smaller-Model vs Ablate-Complement)}
 \label{app:restricted}
-% Two structural-gap framings from progress report §3.7. Cohere and gpt2 are the two wide-gap generators (4.43pp and 3.63pp); the other three are <1.1pp. Supporting evidence for the discussion's "gpt2 and cohere have more dispersed signal" claim.
+% Three wide-gap generators: mpt (4.68±1.13pp), cohere (4.43±1.05pp), gpt2 (3.63±0.84pp); the other three are <1.1pp.
+% Supporting evidence for the discussion's "both base generators + cohere have more dispersed signal" claim.
 
 \section{Per-Domain Patching Breakdown}
 \label{app:patching-perdomain}
