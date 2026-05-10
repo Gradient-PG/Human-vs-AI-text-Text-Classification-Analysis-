@@ -3,15 +3,16 @@
 \providecommand\hyper@newdestlabel[2]{}
 \providecommand\HyField@AuxAddToFields[1]{}
 \providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{gurnee2023haystack}
 \citation{dugan2024raid}
 \citation{dugan2024raid}
 \citation{pudasaini2026why}
 \citation{borile2025confounding}
 \citation{kuznetsov2025sae}
 \citation{gurnee2023haystack}
-\citation{borile2025confounding}
 \@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
 \newlabel{sec:introduction}{{1}{1}{Introduction}{section.1}{}}
+\citation{borile2025confounding}
 \citation{solaiman2019release}
 \citation{dugan2024raid}
 \citation{mitchell2023detectgpt}
@@ -21,76 +22,113 @@
 \citation{borile2025confounding}
 \citation{kuznetsov2024restricted}
 \citation{borile2025confounding}
-\citation{kuznetsov2025sae}
-\citation{gurnee2023haystack}
 \@writefile{toc}{\contentsline {paragraph}{Contributions.}{2}{section*.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {2}Related Work}{2}{section.2}\protected@file@percent }
 \newlabel{sec:related}{{2}{2}{Related Work}{section.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.1}AI-Generated Text Detection}{2}{subsection.2.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Interpretability of Text Detectors}{2}{subsection.2.2}\protected@file@percent }
+\citation{kuznetsov2025sae}
+\citation{gurnee2023haystack}
 \citation{vig2020causal}
 \citation{meng2022rome}
 \citation{heimersheim2024patching}
 \citation{ravindran2025adversarial}
 \citation{dugan2024raid}
+\citation{jiang2023mistral}
+\citation{jiang2023mistral}
 \citation{devlin2019bert}
-\citation{gurnee2023haystack}
-\citation{gurnee2023haystack}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Sparse Probing and Activation Patching}{3}{subsection.2.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {3}Setup}{3}{section.3}\protected@file@percent }
 \newlabel{sec:setup}{{3}{3}{Setup}{section.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Data: RAID}{3}{subsection.3.1}\protected@file@percent }
 \newlabel{sec:setup-data}{{3.1}{3}{Data: RAID}{subsection.3.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Model and Activations}{3}{subsection.3.2}\protected@file@percent }
-\newlabel{sec:setup-model}{{3.2}{3}{Model and Activations}{subsection.3.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Protocol: L1 Selection, L2 Evaluation}{3}{subsection.3.3}\protected@file@percent }
-\newlabel{sec:setup-protocol}{{3.3}{3}{Protocol: L1 Selection, L2 Evaluation}{subsection.3.3}{}}
-\citation{heimersheim2024patching}
+\citation{gurnee2023haystack}
+\citation{gurnee2023haystack}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Overview of the experimental pipeline. Frozen BERT-base-uncased\xspace  CLS activations are concatenated across all 12 layers, yielding $\mathbf  {z}\in \mathbb  {R}^{9{,}216}$. An L1-regularised probe ($C\!=\!0.005$) selects a sparse candidate set per (fold, seed) cell; neurons stable in ${\geq }50\%$ of all 15 cells become the \textit  {stable set}~$\mathcal  {S}$ (45--62 neurons per generator). An independent L2 probe trained on all 9{,}216 features is frozen and reused as the decision function in both experiments. \textbf  {Left branch} (\S  \ref {sec:results-necessity}): $\mathcal  {S}$ activations are replaced with their training mean (\textit  {mean ablation}), testing \textit  {necessity} --- accuracy drops by $\leq \!1.2$\,pp on 5 of 6 generators, indicating the signal is redundantly distributed. \textbf  {Right branch} (\S  \ref {sec:results-patching}): $\mathcal  {S}$ activations are transplanted from a same-domain AI donor into a human sample (\textit  {activation patching}), testing \textit  {causal sufficiency} --- 1--8\% of human samples flip to AI predictions, $10\text  {--}16\times $ above a random-neuron baseline.}}{4}{figure.caption.2}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:pipeline}{{1}{4}{Overview of the experimental pipeline. Frozen \bertbase CLS activations are concatenated across all 12 layers, yielding $\mathbf {z}\in \mathbb {R}^{9{,}216}$. An L1-regularised probe ($C\!=\!0.005$) selects a sparse candidate set per (fold, seed) cell; neurons stable in ${\geq }50\%$ of all 15 cells become the \textit {stable set}~$\mathcal {S}$ (45--62 neurons per generator). An independent L2 probe trained on all 9{,}216 features is frozen and reused as the decision function in both experiments. \textbf {Left branch} (\S \ref {sec:results-necessity}): $\mathcal {S}$ activations are replaced with their training mean (\textit {mean ablation}), testing \textit {necessity} --- accuracy drops by $\leq \!1.2$\,pp on 5 of 6 generators, indicating the signal is redundantly distributed. \textbf {Right branch} (\S \ref {sec:results-patching}): $\mathcal {S}$ activations are transplanted from a same-domain AI donor into a human sample (\textit {activation patching}), testing \textit {causal sufficiency} --- 1--8\% of human samples flip to AI predictions, $10\text {--}16\times $ above a random-neuron baseline}{figure.caption.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Model and Activations}{4}{subsection.3.2}\protected@file@percent }
+\newlabel{sec:setup-model}{{3.2}{4}{Model and Activations}{subsection.3.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Protocol: L1 Selection, L2 Evaluation}{4}{subsection.3.3}\protected@file@percent }
+\newlabel{sec:setup-protocol}{{3.3}{4}{Protocol: L1 Selection, L2 Evaluation}{subsection.3.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Stability-Driven Hyperparameter Selection}{4}{subsection.3.4}\protected@file@percent }
 \newlabel{sec:setup-stability}{{3.4}{4}{Stability-Driven Hyperparameter Selection}{subsection.3.4}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4}Sparse Detection Circuits in Frozen BERT}{4}{section.4}\protected@file@percent }
-\newlabel{sec:results-sparse}{{4}{4}{Sparse Detection Circuits in Frozen BERT}{section.4}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Sparse-probe results across six generators: 15-cell means $\pm $ std (5 folds $\times $ 3 seeds). Val acc is the L2 evaluation probe accuracy (all 9{,}216 features). $n_{\text  {sel}}\xspace  $: mean candidate set size per cell. Jaccard: pairwise fold Jaccard over 105 fold-pairs (mpt estimated analytically from per-neuron stability frequencies). $n_{\text  {stable}}$: neurons in $\geq $50\% of cells; $n_{\text  {obs}}$: total distinct neurons selected at least once.}}{4}{table.caption.2}\protected@file@percent }
-\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
-\newlabel{tab:sparse-summary}{{1}{4}{Sparse-probe results across six generators: 15-cell means $\pm $ std (5 folds $\times $ 3 seeds). Val acc is the L2 evaluation probe accuracy (all 9{,}216 features). $\nselected $: mean candidate set size per cell. Jaccard: pairwise fold Jaccard over 105 fold-pairs (mpt estimated analytically from per-neuron stability frequencies). $n_{\text {stable}}$: neurons in $\geq $50\% of cells; $n_{\text {obs}}$: total distinct neurons selected at least once}{table.caption.2}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {5}Causal Sufficiency via Activation Patching}{4}{section.5}\protected@file@percent }
-\newlabel{sec:results-patching}{{5}{4}{Causal Sufficiency via Activation Patching}{section.5}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Patching Protocol}{4}{subsection.5.1}\protected@file@percent }
-\newlabel{sec:patching-protocol}{{5.1}{4}{Patching Protocol}{subsection.5.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Sparse Detection Circuits in Frozen BERT}{5}{section.4}\protected@file@percent }
+\newlabel{sec:results-sparse}{{4}{5}{Sparse Detection Circuits in Frozen BERT}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Stable Neuron Sets}{5}{subsection.4.1}\protected@file@percent }
+\newlabel{sec:results-sparse-sets}{{4.1}{5}{Stable Neuron Sets}{subsection.4.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Detection Signal Geometry}{5}{subsection.4.2}\protected@file@percent }
+\newlabel{sec:crossgen-cav}{{4.2}{5}{Detection Signal Geometry}{subsection.4.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Sparse-probe results across six generators: 15-cell means $\pm $ std (5 folds $\times $ 3 seeds). Val acc: L2 evaluation probe accuracy (all 9{,}216 features). AUC: area under the ROC curve. $n_{\text  {sel}}\xspace  $: mean candidate set size per cell. Jaccard: mean pairwise fold Jaccard over all 105 fold-pairs (C(15,2)), computed from per-fold selection sets. $n_{\text  {stable}}$: neurons in $\geq $50\% of cells; $n_{\text  {obs}}$: total distinct neurons selected at least once. }}{5}{table.caption.3}\protected@file@percent }
+\newlabel{tab:sparse-summary}{{1}{5}{Sparse-probe results across six generators: 15-cell means $\pm $ std (5 folds $\times $ 3 seeds). Val acc: L2 evaluation probe accuracy (all 9{,}216 features). AUC: area under the ROC curve. $\nselected $: mean candidate set size per cell. Jaccard: mean pairwise fold Jaccard over all 105 fold-pairs (C(15,2)), computed from per-fold selection sets. $n_{\text {stable}}$: neurons in $\geq $50\% of cells; $n_{\text {obs}}$: total distinct neurons selected at least once}{table.caption.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces CAV diagnostics on per-generator stable sets. All values mean\,$\pm $\,std across 3 random seeds. Cosine: similarity between mean-difference CAV and L1 probe weight. LR acc: logistic-regression accuracy on the CAV projection. $\|\Delta \mu \|$: AI\,$-$\,human mean-difference norm (deterministic; bold\,=\,largest). $\|w\|$: L1 weight norm (bold\,=\,smallest). }}{5}{table.caption.4}\protected@file@percent }
+\newlabel{tab:cav}{{2}{5}{CAV diagnostics on per-generator stable sets. All values mean\,$\pm $\,std across 3 random seeds. Cosine: similarity between mean-difference CAV and L1 probe weight. LR acc: logistic-regression accuracy on the CAV projection. $\|\Delta \mu \|$: AI\,$-$\,human mean-difference norm (deterministic; bold\,=\,largest). $\|w\|$: L1 weight norm (bold\,=\,smallest)}{table.caption.4}{}}
 \citation{heimersheim2024patching}
 \citation{heimersheim2024patching}
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Selected flip rate (\%) across the $k$-sweep, 15-cell means (5 folds $\times $ 3 seeds). $k = \text  {full}$ equals each cell's actual $|\mathcal  {S}|$ (53--92 neurons); std shown only for $k = \text  {full}$. mpt $k < \text  {full}$ values from a representative fold. Flip rate is monotonically increasing in $k$ for every generator.}}{5}{table.caption.3}\protected@file@percent }
-\newlabel{tab:patching-sweep}{{2}{5}{Selected flip rate (\%) across the $k$-sweep, 15-cell means (5 folds $\times $ 3 seeds). $k = \text {full}$ equals each cell's actual $|\mathcal {S}|$ (53--92 neurons); std shown only for $k = \text {full}$. mpt $k < \text {full}$ values from a representative fold. Flip rate is monotonically increasing in $k$ for every generator}{table.caption.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Flip-Rate Results}{5}{subsection.5.2}\protected@file@percent }
-\newlabel{sec:patching-results}{{5.2}{5}{Flip-Rate Results}{subsection.5.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Robustness Checks}{5}{subsection.5.3}\protected@file@percent }
-\newlabel{sec:patching-robustness}{{5.3}{5}{Robustness Checks}{subsection.5.3}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {6}Necessity via Mean Ablation}{5}{section.6}\protected@file@percent }
-\newlabel{sec:results-necessity}{{6}{5}{Necessity via Mean Ablation}{section.6}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Mean-ablation accuracy drop at $k = \text  {full}$, 15-cell means $\pm $ std. Drop = baseline $-$ ablated accuracy (positive = accuracy decreases). Random drop is the mean over 20 random $k$-subsets of the same size. Cohere-chat is the only generator with a drop substantially above the random baseline.}}{6}{table.caption.4}\protected@file@percent }
-\newlabel{tab:ablation-full}{{3}{6}{Mean-ablation accuracy drop at $k = \text {full}$, 15-cell means $\pm $ std. Drop = baseline $-$ ablated accuracy (positive = accuracy decreases). Random drop is the mean over 20 random $k$-subsets of the same size. Cohere-chat is the only generator with a drop substantially above the random baseline}{table.caption.4}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {7}Cross-Generator Circuit Geometry}{6}{section.7}\protected@file@percent }
-\newlabel{sec:results-crossgen}{{7}{6}{Cross-Generator Circuit Geometry}{section.7}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Layer Distribution of Stable Neurons}{6}{subsection.7.1}\protected@file@percent }
-\newlabel{sec:crossgen-layers}{{7.1}{6}{Layer Distribution of Stable Neurons}{subsection.7.1}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Stable-neuron counts by layer group across six generators. Bold indicates the peak layer group for each generator. Instruction-tuned generators (gpt4, mistral, llama, cohere) concentrate 30--36\% of stable neurons in layer~12; both pure-base generators (gpt2, mpt) have $\leq $14\% in layer~12.}}{6}{table.caption.5}\protected@file@percent }
-\newlabel{tab:layer-dist}{{4}{6}{Stable-neuron counts by layer group across six generators. Bold indicates the peak layer group for each generator. Instruction-tuned generators (gpt4, mistral, llama, cohere) concentrate 30--36\% of stable neurons in layer~12; both pure-base generators (gpt2, mpt) have $\leq $14\% in layer~12}{table.caption.5}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Stable-Set Overlap Across Generators}{6}{subsection.7.2}\protected@file@percent }
-\newlabel{sec:crossgen-jaccard}{{7.2}{6}{Stable-Set Overlap Across Generators}{subsection.7.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}CAV Diagnostics}{6}{subsection.7.3}\protected@file@percent }
-\newlabel{sec:crossgen-cav}{{7.3}{6}{CAV Diagnostics}{subsection.7.3}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Pairwise Jaccard similarity between stable sets (15 generator pairs). $\times $\,chance is observed Jaccard divided by the analytic random-null Jaccard for two sets of the same sizes drawn from 9,216 features ($\approx $0.003 per pair). The mpt--gpt2 pair (bold) is the highest base$\times $base overlap; all base$\times $instruction-tuned pairs cluster at the bottom.}}{7}{table.caption.6}\protected@file@percent }
-\newlabel{tab:jaccard}{{5}{7}{Pairwise Jaccard similarity between stable sets (15 generator pairs). $\times $\,chance is observed Jaccard divided by the analytic random-null Jaccard for two sets of the same sizes drawn from 9,216 features ($\approx $0.003 per pair). The mpt--gpt2 pair (bold) is the highest base$\times $base overlap; all base$\times $instruction-tuned pairs cluster at the bottom}{table.caption.6}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {8}Discussion}{7}{section.8}\protected@file@percent }
-\newlabel{sec:discussion}{{8}{7}{Discussion}{section.8}{}}
-\@writefile{toc}{\contentsline {paragraph}{Redundancy and sufficiency are not in tension.}{7}{section*.8}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces CAV diagnostics on per-generator stable sets. Cosine: similarity between the mean-difference CAV and the L1 probe weight vector. LR acc: logistic-regression accuracy using only the CAV projection. $\|\Delta \mu \|$: norm of the AI$-$human mean-difference vector (bold = largest). $\|w\|$: L1 probe weight norm (bold = smallest). Single-fit per generator; no standard errors available.}}{7}{table.caption.7}\protected@file@percent }
-\newlabel{tab:cav}{{6}{7}{CAV diagnostics on per-generator stable sets. Cosine: similarity between the mean-difference CAV and the L1 probe weight vector. LR acc: logistic-regression accuracy using only the CAV projection. $\|\Delta \mu \|$: norm of the AI$-$human mean-difference vector (bold = largest). $\|w\|$: L1 probe weight norm (bold = smallest). Single-fit per generator; no standard errors available}{table.caption.7}{}}
-\@writefile{toc}{\contentsline {paragraph}{Outliers as structural evidence.}{7}{section*.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Causal Role of the Selected Neurons}{6}{section.5}\protected@file@percent }
+\newlabel{sec:results-causal}{{5}{6}{Causal Role of the Selected Neurons}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Causal Sufficiency via Activation Patching}{6}{subsection.5.1}\protected@file@percent }
+\newlabel{sec:results-patching}{{5.1}{6}{Causal Sufficiency via Activation Patching}{subsection.5.1}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.1}Patching Protocol}{6}{subsubsection.5.1.1}\protected@file@percent }
+\newlabel{sec:patching-protocol}{{5.1.1}{6}{Patching Protocol}{subsubsection.5.1.1}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.2}Flip-Rate Results}{6}{subsubsection.5.1.2}\protected@file@percent }
+\newlabel{sec:patching-results}{{5.1.2}{6}{Flip-Rate Results}{subsubsection.5.1.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Flip rate (\%) vs.\ number of patched neurons $k$ on a log-scale x-axis, averaged over 15 cells (5 folds $\times $ 3 seeds). Grey band: min--max envelope of random-$k$ baseline flip rates. Instruction-tuned generators (blue) and base generators (red) both sit well above the random baseline at every $k$.}}{6}{figure.caption.6}\protected@file@percent }
+\newlabel{fig:flip-rate}{{2}{6}{Flip rate (\%) vs.\ number of patched neurons $k$ on a log-scale x-axis, averaged over 15 cells (5 folds $\times $ 3 seeds). Grey band: min--max envelope of random-$k$ baseline flip rates. Instruction-tuned generators (blue) and base generators (red) both sit well above the random baseline at every $k$}{figure.caption.6}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.3}Robustness Checks}{6}{subsubsection.5.1.3}\protected@file@percent }
+\newlabel{sec:patching-robustness}{{5.1.3}{6}{Robustness Checks}{subsubsection.5.1.3}{}}
+\citation{heimersheim2024patching}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Selected flip rate (\%) across the $k$-sweep, 15-cell means (5 folds $\times $ 3 seeds). $k = \text  {full}$ equals each cell's actual $|\mathcal  {S}|$ (53--92 neurons); std shown only for $k = \text  {full}$. Flip rate is monotonically increasing in $k$ for every generator. }}{7}{table.caption.5}\protected@file@percent }
+\newlabel{tab:patching-sweep}{{3}{7}{Selected flip rate (\%) across the $k$-sweep, 15-cell means (5 folds $\times $ 3 seeds). $k = \text {full}$ equals each cell's actual $|\mathcal {S}|$ (53--92 neurons); std shown only for $k = \text {full}$. Flip rate is monotonically increasing in $k$ for every generator}{table.caption.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Necessity via Mean Ablation}{7}{subsection.5.2}\protected@file@percent }
+\newlabel{sec:results-necessity}{{5.2}{7}{Necessity via Mean Ablation}{subsection.5.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Mean-ablation accuracy drop at $k = \text  {full}$, 15-cell means $\pm $ std (positive = drop). Sel.\ drop: ablating the stable set; Rand.\ drop: mean over 20 random $k$-subsets. Cohere is the only generator substantially above the random baseline. }}{7}{table.caption.7}\protected@file@percent }
+\newlabel{tab:ablation-full}{{4}{7}{Mean-ablation accuracy drop at $k = \text {full}$, 15-cell means $\pm $ std (positive = drop). Sel.\ drop: ablating the stable set; Rand.\ drop: mean over 20 random $k$-subsets. Cohere is the only generator substantially above the random baseline}{table.caption.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Signal Localisation: Restricted Probe}{7}{subsection.5.3}\protected@file@percent }
+\newlabel{sec:results-localisation}{{5.3}{7}{Signal Localisation: Restricted Probe}{subsection.5.3}{}}
+\citation{tenney2019bert,rogers2020primer}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Restricted probe results. \textit  {Smaller model}: L2 probe retrained on only the $|\mathcal  {S}|$ stable neurons. \textit  {Gap}: smaller-model accuracy minus ablate-complement accuracy (positive = stable neurons self-sufficient; larger = more dependence on non-stable features in the full-feature probe). 15-cell means $\pm $ std. }}{8}{table.caption.8}\protected@file@percent }
+\newlabel{tab:restricted-probe}{{5}{8}{Restricted probe results. \textit {Smaller model}: L2 probe retrained on only the $|\mathcal {S}|$ stable neurons. \textit {Gap}: smaller-model accuracy minus ablate-complement accuracy (positive = stable neurons self-sufficient; larger = more dependence on non-stable features in the full-feature probe). 15-cell means $\pm $ std}{table.caption.8}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Cross-Generator Circuit Geometry}{8}{section.6}\protected@file@percent }
+\newlabel{sec:results-crossgen}{{6}{8}{Cross-Generator Circuit Geometry}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Layer Distribution of Stable Neurons}{8}{subsection.6.1}\protected@file@percent }
+\newlabel{sec:crossgen-layers}{{6.1}{8}{Layer Distribution of Stable Neurons}{subsection.6.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Proportion of stable neurons in each layer group per generator. Layer~12 percentage annotated in white. Instruction-tuned generators (IT) concentrate 30--36\% of stable neurons in layer~12; base generators retain $\leq $14\%. Dashed line separates the two groups.}}{8}{figure.caption.10}\protected@file@percent }
+\newlabel{fig:layer-dist}{{3}{8}{Proportion of stable neurons in each layer group per generator. Layer~12 percentage annotated in white. Instruction-tuned generators (IT) concentrate 30--36\% of stable neurons in layer~12; base generators retain $\leq $14\%. Dashed line separates the two groups}{figure.caption.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Stable-Set Overlap Across Generators}{8}{subsection.6.2}\protected@file@percent }
+\newlabel{sec:crossgen-jaccard}{{6.2}{8}{Stable-Set Overlap Across Generators}{subsection.6.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Stable-neuron counts by layer group across six generators. Bold indicates the peak layer group for each generator. Instruction-tuned generators (GPT-4, Mistral, LLaMA, Cohere) concentrate 30--36\% of stable neurons in layer~12; both pure-base generators (GPT-2, MPT) have $\leq $14\% in layer~12. }}{9}{table.caption.9}\protected@file@percent }
+\newlabel{tab:layer-dist}{{6}{9}{Stable-neuron counts by layer group across six generators. Bold indicates the peak layer group for each generator. Instruction-tuned generators (GPT-4, Mistral, LLaMA, Cohere) concentrate 30--36\% of stable neurons in layer~12; both pure-base generators (GPT-2, MPT) have $\leq $14\% in layer~12}{table.caption.9}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Pairwise Jaccard similarity between stable sets (15 generator pairs). $\times $\,chance is observed Jaccard divided by the analytic random-null Jaccard for two sets of the same sizes drawn from 9,216 features ($\approx $0.003 per pair). The mpt--gpt2 pair (bold) is the highest base$\times $base overlap; all base$\times $instruction-tuned pairs cluster at the bottom. }}{9}{table.caption.11}\protected@file@percent }
+\newlabel{tab:jaccard}{{7}{9}{Pairwise Jaccard similarity between stable sets (15 generator pairs). $\times $\,chance is observed Jaccard divided by the analytic random-null Jaccard for two sets of the same sizes drawn from 9,216 features ($\approx $0.003 per pair). The mpt--gpt2 pair (bold) is the highest base$\times $base overlap; all base$\times $instruction-tuned pairs cluster at the bottom}{table.caption.11}{}}
+\@writefile{toc}{\contentsline {paragraph}{Core neurons.}{9}{section*.13}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Pairwise Jaccard similarity heatmap (6$\times $6). Generators reordered: instruction-tuned (IT) first, base last. Dashed blue box: IT$\times $IT block. Dashed red box: base$\times $base block. The bipartite structure --- higher within-group similarity, near-zero cross-group overlap --- is immediately visible.}}{9}{figure.caption.12}\protected@file@percent }
+\newlabel{fig:jaccard}{{4}{9}{Pairwise Jaccard similarity heatmap (6$\times $6). Generators reordered: instruction-tuned (IT) first, base last. Dashed blue box: IT$\times $IT block. Dashed red box: base$\times $base block. The bipartite structure --- higher within-group similarity, near-zero cross-group overlap --- is immediately visible}{figure.caption.12}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Leave-One-Family-Out Generalisation}{9}{section.7}\protected@file@percent }
+\newlabel{sec:logo}{{7}{9}{Leave-One-Family-Out Generalisation}{section.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{Protocol.}{10}{section*.14}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Results.}{10}{section*.15}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8}Discussion}{10}{section.8}\protected@file@percent }
+\newlabel{sec:discussion}{{8}{10}{Discussion}{section.8}{}}
+\@writefile{toc}{\contentsline {paragraph}{Redundancy and sufficiency are not in tension.}{10}{section*.18}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Leave-one-family-out (LOGO) generalisation. $n_{\text  {stable}}$: stable neurons identified from the four training families. Full\,L2: L2-probe accuracy using all 9{,}216 BERT features. Sel\,L2: L2-probe accuracy restricted to $n_{\text  {stable}}$ neurons. Sel/Full: ratio expressing how much of the full-feature ceiling the selected neurons retain. Sel\,L2 AUC ranges from 0.863 (cohere) to 0.986 (llama). All metrics are means over 3 seeds $\times $ 5 folds = 15 cells. Test set sizes: 5{,}000 (llama, 1 generator) to 20{,}000 (gpt, 4 generators). }}{10}{table.caption.16}\protected@file@percent }
+\newlabel{tab:logo}{{8}{10}{Leave-one-family-out (LOGO) generalisation. $n_{\text {stable}}$: stable neurons identified from the four training families. Full\,L2: L2-probe accuracy using all 9{,}216 BERT features. Sel\,L2: L2-probe accuracy restricted to $n_{\text {stable}}$ neurons. Sel/Full: ratio expressing how much of the full-feature ceiling the selected neurons retain. Sel\,L2 AUC ranges from 0.863 (cohere) to 0.986 (llama). All metrics are means over 3 seeds $\times $ 5 folds = 15 cells. Test set sizes: 5{,}000 (llama, 1 generator) to 20{,}000 (gpt, 4 generators)}{table.caption.16}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces LOGO generalisation: Full L2 vs.\ Sparse L2 accuracy per held-out family. Percentages above Sparse L2 bars indicate retention relative to the full-feature ceiling. Sparse probes on $<$130 neurons retain 86--94\% of the full-model accuracy across all five unseen generator families.}}{10}{figure.caption.17}\protected@file@percent }
+\newlabel{fig:logo}{{5}{10}{LOGO generalisation: Full L2 vs.\ Sparse L2 accuracy per held-out family. Percentages above Sparse L2 bars indicate retention relative to the full-feature ceiling. Sparse probes on $<$130 neurons retain 86--94\% of the full-model accuracy across all five unseen generator families}{figure.caption.17}{}}
+\@writefile{toc}{\contentsline {paragraph}{Outliers as structural evidence.}{10}{section*.19}\protected@file@percent }
 \citation{borile2025confounding}
 \citation{heimersheim2024patching}
+\@writefile{toc}{\contentsline {paragraph}{Relation to confounder-suppression approaches.}{11}{section*.20}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}Conclusion}{11}{section.9}\protected@file@percent }
+\newlabel{sec:conclusion}{{9}{11}{Conclusion}{section.9}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {10}Limitations}{11}{section.10}\protected@file@percent }
+\newlabel{sec:limitations}{{10}{11}{Limitations}{section.10}{}}
+\@writefile{toc}{\contentsline {paragraph}{Single encoder architecture.}{11}{section*.21}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Mean ablation is off-manifold.}{11}{section*.22}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Layer-asymmetry claim across two base generators.}{11}{section*.23}\protected@file@percent }
 \citation{dugan2024raid}
 \citation{meng2022rome}
+\citation{dugan2024raid}
 \bibdata{refs}
 \bibcite{borile2025confounding}{{1}{2025}{{Borile and Abrate}}{{}}}
 \bibcite{devlin2019bert}{{2}{2019}{{Devlin et~al.}}{{Devlin, Chang, Lee, and Toutanova}}}
@@ -98,34 +136,47 @@
 \bibcite{gurnee2023haystack}{{4}{2023}{{Gurnee et~al.}}{{Gurnee, Nanda, Pauly, Harvey, Troitskii, and Bertsimas}}}
 \bibcite{hans2024binoculars}{{5}{2024}{{Hans et~al.}}{{Hans, Schwarzschild, Cherepanova, Kazemi, Saha, Goldblum, Geiping, and Goldstein}}}
 \bibcite{heimersheim2024patching}{{6}{2024}{{Heimersheim and Nanda}}{{}}}
-\@writefile{toc}{\contentsline {paragraph}{Relation to confounder-suppression approaches.}{8}{section*.10}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {9}Limitations}{8}{section.9}\protected@file@percent }
-\newlabel{sec:limitations}{{9}{8}{Limitations}{section.9}{}}
-\@writefile{toc}{\contentsline {paragraph}{Single encoder architecture.}{8}{section*.11}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Mean ablation is off-manifold.}{8}{section*.12}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Layer-asymmetry claim across two base generators.}{8}{section*.13}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Adversarial robustness not evaluated.}{8}{section*.14}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Scope of causal claim.}{8}{section*.15}\protected@file@percent }
-\newlabel{sec:ethics}{{9}{8}{Ethics Statement}{section*.16}{}}
-\newlabel{sec:ack}{{9}{8}{Acknowledgments}{section*.17}{}}
-\bibcite{kuznetsov2025sae}{{7}{2025}{{Kuznetsov et~al.}}{{Kuznetsov, Kushnareva, Druzhinina, Razzhigaev, Voznyuk, Piontkovskaya, Burnaev, and Barannikov}}}
-\bibcite{kuznetsov2024restricted}{{8}{2024}{{Kuznetsov et~al.}}{{Kuznetsov, Tulchinskii, Kushnareva, Magai, Barannikov, Nikolenko, and Piontkovskaya}}}
-\bibcite{meng2022rome}{{9}{2022}{{Meng et~al.}}{{Meng, Bau, Andonian, and Belinkov}}}
-\bibcite{mitchell2023detectgpt}{{10}{2023}{{Mitchell et~al.}}{{Mitchell, Lee, Khazatsky, Manning, and Finn}}}
-\bibcite{pudasaini2026why}{{11}{2026}{{Pudasaini et~al.}}{{Pudasaini, Lillis, Miralles-Pechu{\'a}n, and Llorens~Salvador}}}
-\bibcite{ravindran2025adversarial}{{12}{2025}{{Ravindran}}{{}}}
-\bibcite{solaiman2019release}{{13}{2019}{{Solaiman et~al.}}{{Solaiman, Brundage, Clark, Askell, Herbert-Voss, Wu, Radford, and Wang}}}
-\bibcite{vig2020causal}{{14}{2020}{{Vig et~al.}}{{Vig, Gehrmann, Belinkov, Qian, Nevo, Singer, and Shieber}}}
-\@writefile{toc}{\contentsline {section}{\numberline {A}Pipeline Details}{9}{appendix.A}\protected@file@percent }
-\newlabel{app:pipeline}{{A}{9}{Pipeline Details}{appendix.A}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {B}Stability Sweep}{9}{appendix.B}\protected@file@percent }
-\newlabel{app:stability}{{B}{9}{Stability Sweep}{appendix.B}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {C}Per-Cell Metrics}{9}{appendix.C}\protected@file@percent }
-\newlabel{app:per-cell}{{C}{9}{Per-Cell Metrics}{appendix.C}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {D}AUC vs L1 Selection}{9}{appendix.D}\protected@file@percent }
-\newlabel{app:auc-l1}{{D}{9}{AUC vs L1 Selection}{appendix.D}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {E}Restricted Probe (Smaller-Model vs Ablate-Complement)}{9}{appendix.E}\protected@file@percent }
-\newlabel{app:restricted}{{E}{9}{Restricted Probe (Smaller-Model vs Ablate-Complement)}{appendix.E}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {F}Per-Domain Patching Breakdown}{9}{appendix.F}\protected@file@percent }
-\newlabel{app:patching-perdomain}{{F}{9}{Per-Domain Patching Breakdown}{appendix.F}{}}
-\gdef \@abspage@last{9}
+\bibcite{jiang2023mistral}{{7}{2023}{{Jiang et~al.}}{{Jiang, Sablayrolles, Mensch, Bamford, Chaplot, Casas, Bressand, Lengyel, Lample, Saulnier, Lavaud, Lachaux, Stock, Le~Scao, Lavril, Wang, Lacroix, and El~Sayed}}}
+\bibcite{kuznetsov2025sae}{{8}{2025}{{Kuznetsov et~al.}}{{Kuznetsov, Kushnareva, Druzhinina, Razzhigaev, Voznyuk, Piontkovskaya, Burnaev, and Barannikov}}}
+\bibcite{kuznetsov2024restricted}{{9}{2024}{{Kuznetsov et~al.}}{{Kuznetsov, Tulchinskii, Kushnareva, Magai, Barannikov, Nikolenko, and Piontkovskaya}}}
+\bibcite{meng2022rome}{{10}{2022}{{Meng et~al.}}{{Meng, Bau, Andonian, and Belinkov}}}
+\bibcite{mitchell2023detectgpt}{{11}{2023}{{Mitchell et~al.}}{{Mitchell, Lee, Khazatsky, Manning, and Finn}}}
+\bibcite{pudasaini2026why}{{12}{2026}{{Pudasaini et~al.}}{{Pudasaini, Lillis, Miralles-Pechu{\'a}n, and Llorens~Salvador}}}
+\bibcite{ravindran2025adversarial}{{13}{2025}{{Ravindran}}{{}}}
+\@writefile{toc}{\contentsline {paragraph}{Adversarial robustness not evaluated.}{12}{section*.24}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Scope of causal claim.}{12}{section*.25}\protected@file@percent }
+\newlabel{sec:ethics}{{10}{12}{Ethics Statement}{section*.26}{}}
+\newlabel{sec:ack}{{10}{12}{Acknowledgments}{section*.27}{}}
+\bibcite{rogers2020primer}{{14}{2020}{{Rogers et~al.}}{{Rogers, Kovaleva, and Rumshisky}}}
+\bibcite{solaiman2019release}{{15}{2019}{{Solaiman et~al.}}{{Solaiman, Brundage, Clark, Askell, Herbert-Voss, Wu, Radford, and Wang}}}
+\bibcite{tenney2019bert}{{16}{2019}{{Tenney et~al.}}{{Tenney, Das, and Pavlick}}}
+\bibcite{vig2020causal}{{17}{2020}{{Vig et~al.}}{{Vig, Gehrmann, Belinkov, Qian, Nevo, Singer, and Shieber}}}
+\@writefile{toc}{\contentsline {section}{\numberline {A}Pipeline Details}{13}{appendix.A}\protected@file@percent }
+\newlabel{app:pipeline}{{A}{13}{Pipeline Details}{appendix.A}{}}
+\@writefile{toc}{\contentsline {paragraph}{Data sampling.}{13}{section*.29}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Feature extraction.}{13}{section*.30}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Normalisation.}{13}{section*.31}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Cross-validation protocol.}{13}{section*.32}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{L1 selection.}{13}{section*.33}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Stable neuron aggregation.}{13}{section*.34}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{L2 evaluation probe.}{13}{section*.35}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Patching protocol.}{13}{section*.36}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {B}Stability Sweep}{13}{appendix.B}\protected@file@percent }
+\newlabel{app:stability}{{B}{13}{Stability Sweep}{appendix.B}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {C}Per-Cell Metrics}{14}{appendix.C}\protected@file@percent }
+\newlabel{app:per-cell}{{C}{14}{Per-Cell Metrics}{appendix.C}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {D}AUC vs L1 Selection}{14}{appendix.D}\protected@file@percent }
+\newlabel{app:auc-l1}{{D}{14}{AUC vs L1 Selection}{appendix.D}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {E}Restricted Probe}{14}{appendix.E}\protected@file@percent }
+\newlabel{app:restricted}{{E}{14}{Restricted Probe}{appendix.E}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {F}Per-Domain Patching Breakdown}{14}{appendix.F}\protected@file@percent }
+\newlabel{app:patching-perdomain}{{F}{14}{Per-Domain Patching Breakdown}{appendix.F}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Mean Jaccard stability (and mean $\bar  {n}$ selected) across 15 random pairs of selection runs. Rows are $C$ values; columns are $N$ values. Larger Jaccard is better. \textbf  {Bold}: chosen operating point ($C=0.005$, $N=7{,}500$).}}{15}{table.caption.37}\protected@file@percent }
+\newlabel{tab:stability-grid}{{9}{15}{Mean Jaccard stability (and mean $\bar {n}$ selected) across 15 random pairs of selection runs. Rows are $C$ values; columns are $N$ values. Larger Jaccard is better. \textbf {Bold}: chosen operating point ($C=0.005$, $N=7{,}500$)}{table.caption.37}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Per-cell L2-probe metrics for all six generators. Each block of 15 rows is one generator; columns are seed and fold index. Acc: accuracy; AUC: AUC-ROC; $n_{\text  {sel}}$: neurons selected by L1 in this cell.}}{16}{table.caption.38}\protected@file@percent }
+\newlabel{tab:per-cell}{{10}{16}{Per-cell L2-probe metrics for all six generators. Each block of 15 rows is one generator; columns are seed and fold index. Acc: accuracy; AUC: AUC-ROC; $n_{\text {sel}}$: neurons selected by L1 in this cell}{table.caption.38}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces L1 vs.\ AUC selection: mean across 15 cells. $n$: features selected. Jaccard: overlap between the two selection sets. Drop: accuracy drop from baseline when complement is ablated (positive = degradation). Three regimes are visible: parsimony (GPT-4, Mistral, LLaMA --- L1 selects far fewer features with equivalent or smaller drop), convergence (GPT-2 --- similar $n$, similar drop), and reversal (Cohere --- AUC selects fewer with smaller drop).}}{17}{table.caption.39}\protected@file@percent }
+\newlabel{tab:auc-l1}{{11}{17}{L1 vs.\ AUC selection: mean across 15 cells. $n$: features selected. Jaccard: overlap between the two selection sets. Drop: accuracy drop from baseline when complement is ablated (positive = degradation). Three regimes are visible: parsimony (GPT-4, Mistral, LLaMA --- L1 selects far fewer features with equivalent or smaller drop), convergence (GPT-2 --- similar $n$, similar drop), and reversal (Cohere --- AUC selects fewer with smaller drop)}{table.caption.39}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces Per-domain selected flip rate (\%) at $k = \text  {full}$, 15-cell means. Domain means may differ slightly from the overall mean due to variation in the number of valid-human pairs per domain. GPT-2 shows elevated flip rates on news, Reddit, and wiki (3.1--4.9\%) relative to books and reviews (1.9--2.0\%), suggesting its detection signal is stronger in formal or community text domains. Cohere is uniformly high across all six domains (5.5--10.1\%), consistent with its proximity to the probe decision boundary overall. Mistral shows a notable wiki spike (3.54\%) while reviews are weak (0.62\%). }}{18}{table.caption.40}\protected@file@percent }
+\newlabel{tab:perdomain}{{12}{18}{Per-domain selected flip rate (\%) at $k = \text {full}$, 15-cell means. Domain means may differ slightly from the overall mean due to variation in the number of valid-human pairs per domain. GPT-2 shows elevated flip rates on news, Reddit, and wiki (3.1--4.9\%) relative to books and reviews (1.9--2.0\%), suggesting its detection signal is stronger in formal or community text domains. Cohere is uniformly high across all six domains (5.5--10.1\%), consistent with its proximity to the probe decision boundary overall. Mistral shows a notable wiki spike (3.54\%) while reviews are weak (0.62\%)}{table.caption.40}{}}
+\gdef \@abspage@last{18}

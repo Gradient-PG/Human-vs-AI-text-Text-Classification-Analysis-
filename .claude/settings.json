@@ -1,7 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "Bash",
       "Read",
       "Write",
       "Edit",
@@ -10,7 +9,34 @@
       "Grep",
       "LS",
       "TodoRead",
-      "TodoWrite"
+      "TodoWrite",
+      "WebSearch",
+      "WebFetch",
+      "Bash(ls)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(pwd)",
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git log)",
+      "Bash(git log *)",
+      "Bash(git branch)",
+      "Bash(git branch *)",
+      "Bash(git show)",
+      "Bash(git show *)",
+      "Bash(git remote -v)",
+      "Bash(git stash list)",
+      "Bash(echo *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(which *)",
+      "Bash(where *)",
+      "Bash(type *)",
+      "Bash(python3 -c *)",
+      "Bash(python -c *)"
     ],
     "deny": []
   }

@@ -1,4 +1,4 @@
-\begin{thebibliography}{14}
+\begin{thebibliography}{17}
 \providecommand{\natexlab}[1]{#1}
 
 \bibitem[{Borile and Abrate(2025)}]{borile2025confounding}
@@ -47,6 +47,17 @@ Stefan Heimersheim and Neel Nanda. 2024.
   activation patching}.
 \newblock \emph{Preprint}, arXiv:2404.15255.
 
+\bibitem[{Jiang et~al.(2023)Jiang, Sablayrolles, Mensch, Bamford, Chaplot,
+  Casas, Bressand, Lengyel, Lample, Saulnier, Lavaud, Lachaux, Stock, Le~Scao,
+  Lavril, Wang, Lacroix, and El~Sayed}]{jiang2023mistral}
+Albert~Q. Jiang, Alexandre Sablayrolles, Arthur Mensch, Chris Bamford,
+  Devendra~Singh Chaplot, Diego de~las Casas, Florian Bressand, Gianna Lengyel,
+  Guillaume Lample, Lucile Saulnier, L{\'e}lio~Renard Lavaud, Marie-Anne
+  Lachaux, Pierre Stock, Teven Le~Scao, Thibaut Lavril, Jian Wang, Timoth{\'e}e
+  Lacroix, and William El~Sayed. 2023.
+\newblock \href {https://arxiv.org/abs/2310.06825} {Mistral {7B}}.
+\newblock \emph{Preprint}, arXiv:2310.06825.
+
 \bibitem[{Kuznetsov et~al.(2025)Kuznetsov, Kushnareva, Druzhinina, Razzhigaev,
   Voznyuk, Piontkovskaya, Burnaev, and Barannikov}]{kuznetsov2025sae}
 Kirill Kuznetsov, Laida Kushnareva, Polina Druzhinina, Anton Razzhigaev,
@@ -94,6 +105,14 @@ Santhosh~Kumar Ravindran. 2025.
   safety-aligned transformers}.
 \newblock \emph{Preprint}, arXiv:2507.09406.
 
+\bibitem[{Rogers et~al.(2020)Rogers, Kovaleva, and
+  Rumshisky}]{rogers2020primer}
+Anna Rogers, Olga Kovaleva, and Anna Rumshisky. 2020.
+\newblock \href {https://arxiv.org/abs/2002.12327} {A primer in {BERT}ology:
+  What we know about how {BERT} works}.
+\newblock \emph{Transactions of the Association for Computational Linguistics},
+  8:842--866.
+
 \bibitem[{Solaiman et~al.(2019)Solaiman, Brundage, Clark, Askell, Herbert-Voss,
   Wu, Radford, and Wang}]{solaiman2019release}
 Irene Solaiman, Miles Brundage, Jack Clark, Amanda Askell, Ariel Herbert-Voss,
@@ -101,6 +120,13 @@ Irene Solaiman, Miles Brundage, Jack Clark, Amanda Askell, Ariel Herbert-Voss,
 \newblock \href {https://arxiv.org/abs/1908.09203} {Release strategies and the
   social impacts of language models}.
 \newblock \emph{Preprint}, arXiv:1908.09203.
+
+\bibitem[{Tenney et~al.(2019)Tenney, Das, and Pavlick}]{tenney2019bert}
+Ian Tenney, Dipanjan Das, and Ellie Pavlick. 2019.
+\newblock \href {https://arxiv.org/abs/1905.05950} {{BERT} rediscovers the
+  classical {NLP} pipeline}.
+\newblock In \emph{Proceedings of the 57th Annual Meeting of the Association
+  for Computational Linguistics}.
 
 \bibitem[{Vig et~al.(2020)Vig, Gehrmann, Belinkov, Qian, Nevo, Singer, and
   Shieber}]{vig2020causal}
