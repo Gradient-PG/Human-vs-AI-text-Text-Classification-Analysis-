@@ -1357,6 +1357,114 @@
 <hr>
 <p class="footnote">Updated 2026-05-09. MPT-7B run <code>20260509_165026</code> complete. All paper &lt;todo&gt; items for second base generator resolved. Remaining open items: runner aggregation enhancement (&sect;5.1&nbsp;G); within-generator fold Jaccard for mpt estimated analytically (&sim;0.75) rather than computed from per-fold files.</p>
 
+<p class="footnote"><strong>Minor corrections from independent re-verification (2026-05-10):</strong> (a) MPT patching k=full: confirmed <strong>1.52% &plusmn; 0.22%</strong> (progress report above says 1.59%&thinsp;—&thinsp;discard the earlier figure); (b) MPT &Vert;w&Vert;: confirmed <strong>53.8</strong>, not 53.9 as noted in &sect;7.6; (c) MPT n_observed: confirmed <strong>94</strong>, not ~93.</p>
+
+<!-- ================================================================= -->
+<h2 id="logo-dev">8. Intermediate LOGO Development Runs (2026-05-06&ndash;07)</h2>
+
+<p>Between the headline run (<code>20260426_20_full_c0005_n7500_seeds3</code>) and the final LOGO run (<code>20260507_195821</code>), six intermediate LOGO-only experiment runs were produced. These are development iterations that explored the LOGO protocol; all were superseded by the final family-LOGO run. They are recorded here for completeness.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Run ID</th>
+      <th>Timestamp</th>
+      <th>Contents</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>20260506_094607</code></td>
+      <td>2026-05-06 09:46</td>
+      <td>LOGO only (<code>logo/</code> subdirectory)</td>
+      <td class="pill drop">superseded</td>
+    </tr>
+    <tr>
+      <td><code>20260506_095800</code></td>
+      <td>2026-05-06 09:58</td>
+      <td>LOGO only</td>
+      <td class="pill drop">superseded</td>
+    </tr>
+    <tr>
+      <td><code>20260506_231755</code></td>
+      <td>2026-05-06 23:17</td>
+      <td>LOGO only</td>
+      <td class="pill drop">superseded</td>
+    </tr>
+    <tr>
+      <td><code>20260507_174323</code></td>
+      <td>2026-05-07 17:43</td>
+      <td>LOGO only</td>
+      <td class="pill drop">superseded</td>
+    </tr>
+    <tr>
+      <td><code>20260507_180955</code></td>
+      <td>2026-05-07 18:09</td>
+      <td>LOGO only</td>
+      <td class="pill drop">superseded</td>
+    </tr>
+    <tr>
+      <td><code>20260507_181801</code></td>
+      <td>2026-05-07 18:18</td>
+      <td>LOGO only</td>
+      <td class="pill drop">superseded</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>None of these runs produced results that differ from the final <code>20260507_195821</code> family-LOGO run used in the paper (&sect;3.8). No metrics from these runs appear in the paper. Safe to ignore for publication purposes.</p>
+
+<!-- ================================================================= -->
+<h2 id="paper-audit">9. Paper Audit — Data Verification (2026-05-10)</h2>
+
+<p>Independent re-derivation of all quantitative claims in <code>_paper/main.tex</code> from the raw experiment JSON files. Issues are ordered by severity.</p>
+
+<div class="callout bad">
+  <span class="label">Issue 1 (wrong number) — Restricted probe &ldquo;Smaller model&rdquo; accuracy column</span>
+  <p>Paper Table&nbsp;3 (<code>tab:restricted-probe</code>) shows the following &ldquo;Smaller model&rdquo; values: GPT-4 0.985, GPT-2 0.948, MPT 0.960, Mistral 0.966, LLaMA 0.980, Cohere 0.887. The actual <code>smaller_model_accuracy_mean</code> from <code>restricted_probe/*/aggregate.json</code> is:</p>
+  <table>
+    <thead><tr><th>Generator</th><th class="num">Paper</th><th class="num">Actual data</th><th class="num">Diff</th></tr></thead>
+    <tbody>
+      <tr><td>GPT-4</td><td class="num">0.985</td><td class="num"><strong>0.972</strong></td><td class="num">&minus;1.3 pp</td></tr>
+      <tr><td>GPT-2</td><td class="num">0.948</td><td class="num"><strong>0.913</strong></td><td class="num">&minus;3.5 pp</td></tr>
+      <tr><td>MPT</td><td class="num">0.960</td><td class="num"><strong>0.944</strong></td><td class="num">&minus;1.6 pp</td></tr>
+      <tr><td>Mistral</td><td class="num">0.966</td><td class="num"><strong>0.934</strong></td><td class="num">&minus;3.2 pp</td></tr>
+      <tr><td>LLaMA</td><td class="num">0.980</td><td class="num"><strong>0.960</strong></td><td class="num">&minus;2.0 pp</td></tr>
+      <tr><td>Cohere</td><td class="num">0.887</td><td class="num"><strong>0.865</strong></td><td class="num">&minus;2.2 pp</td></tr>
+    </tbody>
+  </table>
+  <p>The &ldquo;Gap vs ablate-complement&rdquo; column is correct in all cases (verified against data). The <em>smaller model</em> absolute values are systematically 1.3&ndash;3.5&thinsp;pp too high. Source of the discrepancy is unclear; the paper may have used an intermediate computation or a different metric. <strong>Fix:</strong> replace the Smaller model column with the correct values above.</p>
+</div>
+
+<div class="callout bad">
+  <span class="label">Issue 2 (wrong number) — &ldquo;four of five&rdquo; should be &ldquo;five of six&rdquo; in §4.2</span>
+  <p>After MPT was added as the sixth generator, the ablation table (tab:ablation-full) was correctly extended to six rows, but the body text of §4.2 still reads: <em>&ldquo;For four of five generators the result is negative.&rdquo;</em> The correct count is <strong>five of six</strong> (GPT-4, GPT-2, MPT, Mistral, LLaMA are all within noise; Cohere is the exception). The figure caption and conclusion already say &ldquo;5 of 6&rdquo; correctly. <strong>Fix:</strong> change &ldquo;four of five&rdquo; to &ldquo;five of six&rdquo; in the body text.</p>
+</div>
+
+<div class="callout warn">
+  <span class="label">Issue 3 (inconsistency / overstatement) — Patching ratio &ldquo;10&ndash;23&times;&rdquo; vs &ldquo;10&ndash;16&times;&rdquo; within paper</span>
+  <p>The abstract and intro §1 ¶4 say <em>&ldquo;10&ndash;23&times; above a random-feature baseline&rdquo;</em>. The contributions bullet and the figure caption (fig:pipeline) say <em>&ldquo;10&ndash;16&times;&rdquo;</em>. The 23&times; figure comes from Mistral when ratios are computed per-cell and averaged: some cells have near-zero random baselines (&lt; 0.03%), inflating the per-cell ratio to 55&ndash;74&times; and driving the mean to 23.5&times;. The ratio of overall means for Mistral is 1.73%&thinsp;&divide;&thinsp;0.12% = 14.4&times;. The more robust &ldquo;10&ndash;16&times;&rdquo; figure (used in contributions and figure) is more representative. <strong>Fix:</strong> standardise on &ldquo;10&ndash;16&times;&rdquo; in abstract and §1 ¶4, and add a footnote noting the denominator instability.</p>
+</div>
+
+<div class="callout warn">
+  <span class="label">Issue 4 (misinterpretation) — LOGO Table 6 AUC column contains Full L2 AUC, not Sel L2 AUC</span>
+  <p>The LOGO table (tab:logo) has a column labelled only &ldquo;AUC&rdquo; containing 0.946, 0.993, 0.999, 0.982, 0.995. These match the <em>Full L2</em> AUC values from <code>summary.json</code> exactly. The caption text correctly states &ldquo;Sel L2 AUC ranges from 0.863 (cohere) to 0.986 (llama)&rdquo; as a separate sentence, but a reader scanning the table will assume the column shows Sel L2 AUC. The actual Sel L2 AUC values are: cohere 0.863, gpt 0.953, llama 0.986, mistral 0.925, mpt 0.926 — notably lower and more informative for assessing transfer quality. <strong>Fix:</strong> rename the column to &ldquo;Full AUC&rdquo; and add a &ldquo;Sel AUC&rdquo; column with the correct values.</p>
+</div>
+
+<div class="callout warn">
+  <span class="label">Issue 5 (overstatement) — Abstract claims stable neurons &ldquo;achieve 90.5&ndash;98.8% accuracy&rdquo;</span>
+  <p>The abstract says <em>&ldquo;stable sets of 45&ndash;62 neurons&hellip;that achieve 90.5&ndash;98.8% detection accuracy&rdquo;</em>. The 90.5&ndash;98.8% range is the full-feature L2 probe accuracy (all 9,216 features), not the accuracy of a probe restricted to the stable neurons. The actual restricted-probe (smaller model) accuracy is 86.5&ndash;97.2% (Cohere 86.5%, GPT-4 97.2%). The §3.1 prose correctly uses &ldquo;yet the L2 evaluation probe achieves&hellip;&rdquo;, making clear the full-feature probe is being measured, but the abstract phrasing implies the stable neurons alone achieve the stated accuracy. <strong>Fix:</strong> rewrite abstract to say &ldquo;&hellip;are stable; a full-feature L2 probe achieves 90.5&ndash;98.8% accuracy, and a probe restricted to the stable set retains 86.5&ndash;97.2%&rdquo;, or similar.</p>
+</div>
+
+<div class="callout warn">
+  <span class="label">Issue 6 (overstatement) — §3.1 says &ldquo;0.5&ndash;0.9%&rdquo; for stable set size but upper bound is ~0.7%</span>
+  <p>The text says <em>&ldquo;Between 45 and 62 neurons &mdash; 0.5&ndash;0.9% of the 9,216-feature CLS representation&rdquo;</em>. Actual fractions: 45/9216 = 0.49% and 62/9216 = 0.67%. The upper bound of 0.9% overstates the stable set size; it appears to come from the per-cell selected count (GPT-2 mean 84.7/9216 = 0.92%), which is a different quantity. <strong>Fix:</strong> change to &ldquo;0.5&ndash;0.7%&rdquo; for stable sets, or clarify parenthetically that the figure refers to the per-cell selected count.</p>
+</div>
+
+<hr>
+<p class="footnote">Updated 2026-05-10. Section 8 documents intermediate LOGO development runs. Section 9 records paper-vs-data audit findings. The most critical issue is #1 (restricted probe smaller-model accuracy column); all other numbers verified correct.</p>
+
 </main>
 </div>
 </body>

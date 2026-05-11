@@ -1,13 +1,13 @@
 # Fdb version 4
-["bibtex main"] 1778432211.0796 "main.aux" "main.bbl" "main" 1778432507.16928 0
+["bibtex main"] 1778448264.65353 "main.aux" "main.bbl" "main" 1778448267.26851 0
   "./acl_natbib.bst" 1778237668 45186 3d1af46d62cc9172ef6e42b56c1cd613 ""
-  "./refs.bib" 1778420253 6655 3b21fdf2afda9e105c2cac94b5750ff1 ""
-  "main.aux" 1778432506 28597 ff6e6ed313cb31c2d45865ebdca10aae "pdflatex"
+  "./refs.bib" 1778446959 16647 eb593d89c36f43e0d87393f3c381ee2c ""
+  "main.aux" 1778448266 31910 8d321d231628ab430886e5e43eeefd64 "pdflatex"
   (generated)
   "main.bbl"
   "main.blg"
   (rewritten before read)
-["pdflatex"] 1778432504.8528 "d:/_gradient/Human-vs-AI-text-Text-Classification-Analysis-/_paper/main.tex" "main.pdf" "main" 1778432507.16987 0
+["pdflatex"] 1778448264.95158 "d:/_gradient/Human-vs-AI-text-Text-Classification-Analysis-/_paper/main.tex" "main.pdf" "main" 1778448267.26913 0
   "C:/Users/Pawel/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map" 1778237634 82705 9cc9f144eacd499bc23a611703921467 ""
   "C:/Users/Pawel/AppData/Local/MiKTeX/miktex/data/le/pdftex/pdflatex.fmt" 1778237618 24225086 2b457ea6caa935e2a8cbccc345dae9e5 ""
   "C:/Users/Pawel/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/base/8r.enc" 1458473887 4993 80dc9bab7f31fb78a000ccfed0e27cab ""
@@ -225,15 +225,15 @@
   "C:/Users/Pawel/AppData/Local/Programs/MiKTeX/tex/latex/url/url.sty" 1388490452 12796 8edb7d69a20b857904dd0ea757c14ec9 ""
   "C:/Users/Pawel/AppData/Local/Programs/MiKTeX/tex/latex/xcolor/xcolor.sty" 1700127522 55487 80a65caedd3722f4c20a14a69e785d8f ""
   "acl.sty" 1778237071 11614 a1aba897b8492e063f14d0dbfc67bc57 ""
-  "d:/_gradient/Human-vs-AI-text-Text-Classification-Analysis-/_paper/main.tex" 1778432504 93872 52c86a360ad228749468aa3f99578849 ""
+  "d:/_gradient/Human-vs-AI-text-Text-Classification-Analysis-/_paper/main.tex" 1778448262 95914 08a615a37c13da3dfdd77f2971367bb9 ""
   "figures/fig_flip_rate.pdf" 1778430966 18144 0c17ee1edca97e9e7d08273420003ad8 ""
   "figures/fig_jaccard.pdf" 1778430966 16947 98e75a3e42aad014a6b12477d8d5637b ""
   "figures/fig_layer_dist.pdf" 1778430966 18649 6433f1ffdf111a407b90df36c8b69199 ""
   "figures/fig_logo.pdf" 1778430966 15217 087684c1f683bf33e0d81bb12d76646a ""
-  "main.aux" 1778432506 28597 ff6e6ed313cb31c2d45865ebdca10aae "pdflatex"
-  "main.bbl" 1778432211 7038 2d403a30fd61c881a45aa01e66e408a5 "bibtex main"
-  "main.out" 1778432506 5878 4409f40e1a01d7b6e0764472ed6dd049 "pdflatex"
-  "main.tex" 1778432504 93872 52c86a360ad228749468aa3f99578849 ""
+  "main.aux" 1778448266 31910 8d321d231628ab430886e5e43eeefd64 "pdflatex"
+  "main.bbl" 1778448264 16935 d658c345b8e247148e0fff6ae51d8499 "bibtex main"
+  "main.out" 1778448266 5878 4409f40e1a01d7b6e0764472ed6dd049 "pdflatex"
+  "main.tex" 1778448262 95914 08a615a37c13da3dfdd77f2971367bb9 ""
   (generated)
   "main.aux"
   "main.log"
