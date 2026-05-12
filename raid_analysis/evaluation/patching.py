@@ -1,8 +1,15 @@
-"""PatchingEvaluator — activation patching for sufficiency testing.
+"""PatchingEvaluator — activation patching for sufficiency / necessity testing.
 
-Tests *sufficiency*: if we transplant the top-k selected neurons' activations
-from an AI sample into a human sample, does the L2 eval probe flip its
-prediction from human to AI?
+Forward direction (default, sufficiency):
+    Transplant the top-k selected neurons' activations from an AI sample into a
+    human sample.  A flip occurs when the eval probe changes from human (0) → AI
+    (1).  Tests whether AI-linked signal is *sufficient* to fool the probe.
+
+Reverse direction (necessity via patching):
+    Transplant the top-k selected neurons' activations from a human sample into
+    an AI sample.  A flip occurs when the eval probe changes from AI (1) →
+    human (0).  Tests whether replacing AI signal with human signal is enough to
+    suppress detection.
 
 For each k in ``k_values``, patches the top-k neurons (by selection ranking)
 and compares the flip rate against patching k random neurons (baseline).
@@ -28,14 +35,13 @@ from .protocol import Evaluator
 
 
 class PatchingEvaluator(Evaluator):
-    """Evaluate sufficiency via same-domain activation patching at multiple k.
+    """Evaluate sufficiency / necessity via same-domain activation patching.
 
     For each k in ``k_values``, patches the top-k neurons (by selection
-    ranking) from a same-domain AI donor into a human base.  Measures the
-    fraction of patched samples where the eval probe flips from human (0)
-    to AI (1).  A random-k baseline (patching k random neurons) is computed
-    for comparison.  Pairings are shuffled ``n_shuffles`` times to produce
-    a distribution.
+    ranking) from a same-domain donor into a base sample.  Measures the
+    fraction of patched samples where the eval probe flips its prediction.
+    A random-k baseline (patching k random neurons) is computed for comparison.
+    Pairings are shuffled ``n_shuffles`` times to produce a distribution.
 
     Args:
         k_values: List of neuron counts to patch.  If ``None``, defaults to
@@ -47,6 +53,10 @@ class PatchingEvaluator(Evaluator):
         n_shuffles: Number of random pairings to average over.
         n_random_draws: Number of random neuron draws for the baseline
             at each k.
+        direction: ``"ai_into_human"`` (default) — AI donor activations
+            transplanted into human base samples; flip is human→AI prediction.
+            ``"human_into_ai"`` — human donor activations transplanted into AI
+            base samples; flip is AI→human prediction.
     """
 
     def __init__(
@@ -55,21 +65,28 @@ class PatchingEvaluator(Evaluator):
         pairing: str = "same_domain",
         n_shuffles: int = 20,
         n_random_draws: int = 20,
+        direction: str = "ai_into_human",
     ) -> None:
         if pairing != "same_domain":
             raise ValueError(
                 f"Unsupported pairing strategy: {pairing!r}; "
                 f"only 'same_domain' is currently supported"
             )
+        if direction not in ("ai_into_human", "human_into_ai"):
+            raise ValueError(
+                f"direction must be 'ai_into_human' or 'human_into_ai', got {direction!r}"
+            )
         self.k_values = k_values or [1, 2, 5, 10, 20, 50, 100, 200]
         self.pairing = pairing
         self.n_shuffles = n_shuffles
         self.n_random_draws = n_random_draws
+        self.direction = direction
 
     def __repr__(self) -> str:
         return (
             f"PatchingEvaluator(k_values={self.k_values}, "
-            f"pairing={self.pairing!r}, n_shuffles={self.n_shuffles})"
+            f"pairing={self.pairing!r}, n_shuffles={self.n_shuffles}, "
+            f"direction={self.direction!r})"
         )
 
     def evaluate(
@@ -86,28 +103,34 @@ class PatchingEvaluator(Evaluator):
         ]
         n_features = test_activations.shape[1]
 
-        human_indices = np.where(test_labels == 0)[0]
-        ai_indices = np.where(test_labels == 1)[0]
+        # Determine base and donor roles based on direction.
+        # ai_into_human: human (0) is base, AI (1) is donor.  Flip: 0→1.
+        # human_into_ai: AI (1) is base, human (0) is donor.  Flip: 1→0.
+        base_label = 0 if self.direction == "ai_into_human" else 1
+        donor_label = 1 - base_label
 
-        ai_by_domain: dict[int, np.ndarray] = {}
-        for d_id in np.unique(test_metadata.domain_ids[ai_indices]):
-            mask = test_metadata.domain_ids[ai_indices] == d_id
-            ai_by_domain[int(d_id)] = ai_indices[mask]
+        base_indices = np.where(test_labels == base_label)[0]
+        donor_indices = np.where(test_labels == donor_label)[0]
 
-        valid_humans: list[int] = []
-        human_domains: list[int] = []
-        for h_idx in human_indices:
-            d = int(test_metadata.domain_ids[h_idx])
-            if d in ai_by_domain and len(ai_by_domain[d]) > 0:
-                valid_humans.append(h_idx)
-                human_domains.append(d)
+        donor_by_domain: dict[int, np.ndarray] = {}
+        for d_id in np.unique(test_metadata.domain_ids[donor_indices]):
+            mask = test_metadata.domain_ids[donor_indices] == d_id
+            donor_by_domain[int(d_id)] = donor_indices[mask]
 
-        if not valid_humans:
+        valid_bases: list[int] = []
+        base_domains: list[int] = []
+        for b_idx in base_indices:
+            d = int(test_metadata.domain_ids[b_idx])
+            if d in donor_by_domain and len(donor_by_domain[d]) > 0:
+                valid_bases.append(b_idx)
+                base_domains.append(d)
+
+        if not valid_bases:
             return self._empty_result(selection, len(test_labels))
 
-        valid_humans_arr = np.array(valid_humans)
-        human_domains_arr = np.array(human_domains)
-        base_acts = test_activations[valid_humans_arr]
+        valid_bases_arr = np.array(valid_bases)
+        base_domains_arr = np.array(base_domains)
+        base_acts = test_activations[valid_bases_arr]
         base_preds = eval_probe.predict(base_acts)
 
         resolved_ks: list[int] = []
@@ -128,8 +151,8 @@ class PatchingEvaluator(Evaluator):
             # Selected top-k: shuffle pairings n_shuffles times
             selected_flip_rates = self._sweep_shuffles(
                 test_activations, base_acts, base_preds,
-                human_domains_arr, ai_by_domain,
-                top_k_indices, eval_probe,
+                base_domains_arr, donor_by_domain,
+                top_k_indices, eval_probe, base_label,
             )
 
             # Random-k baseline: for each random draw, sweep shuffles
@@ -141,8 +164,8 @@ class PatchingEvaluator(Evaluator):
                 ).tolist()
                 rand_rates = self._sweep_shuffles(
                     test_activations, base_acts, base_preds,
-                    human_domains_arr, ai_by_domain,
-                    rand_indices, eval_probe,
+                    base_domains_arr, donor_by_domain,
+                    rand_indices, eval_probe, base_label,
                 )
                 random_flip_rates.append(float(np.mean(rand_rates)))
 
@@ -159,35 +182,36 @@ class PatchingEvaluator(Evaluator):
         domain_neuron_indices = ranked_global[:max_k_used]
         domain_results = self._domain_breakdown(
             test_activations, base_acts, base_preds,
-            human_domains, human_domains_arr, ai_by_domain,
-            domain_neuron_indices, test_metadata, eval_probe,
+            base_domains, base_domains_arr, donor_by_domain,
+            domain_neuron_indices, test_metadata, eval_probe, base_label,
         )
 
         return {
             "patching_sweep": patching_sweep,
             "flip_rate_by_domain": domain_results,
-            "n_pairs_per_shuffle": len(valid_humans),
+            "n_pairs_per_shuffle": len(valid_bases),
             "n_shuffles": self.n_shuffles,
             "n_random_draws": self.n_random_draws,
             "n_selected": selection.n_selected,
             "n_test": len(test_labels),
+            "direction": self.direction,
         }
 
     def _generate_donor_indices(
         self,
         rng: np.random.RandomState,
-        n_humans: int,
-        human_domains_arr: np.ndarray,
-        ai_by_domain: dict[int, np.ndarray],
+        n_bases: int,
+        base_domains_arr: np.ndarray,
+        donor_by_domain: dict[int, np.ndarray],
     ) -> np.ndarray:
-        """Assign a same-domain AI donor index to each human sample."""
-        donor_idxs = np.empty(n_humans, dtype=int)
-        for d_id, ai_pool in ai_by_domain.items():
-            mask = human_domains_arr == d_id
+        """Assign a same-domain donor index to each base sample."""
+        donor_idxs = np.empty(n_bases, dtype=int)
+        for d_id, donor_pool in donor_by_domain.items():
+            mask = base_domains_arr == d_id
             n_need = int(mask.sum())
             if n_need == 0:
                 continue
-            shuffled = rng.permutation(ai_pool)
+            shuffled = rng.permutation(donor_pool)
             tiled = np.tile(shuffled, (n_need // len(shuffled)) + 1)[:n_need]
             donor_idxs[mask] = tiled
         return donor_idxs
@@ -197,26 +221,27 @@ class PatchingEvaluator(Evaluator):
         test_activations: np.ndarray,
         base_acts: np.ndarray,
         base_preds: np.ndarray,
-        human_domains_arr: np.ndarray,
-        ai_by_domain: dict[int, np.ndarray],
+        base_domains_arr: np.ndarray,
+        donor_by_domain: dict[int, np.ndarray],
         neuron_indices: list[int],
         eval_probe: EvalProbe,
+        base_label: int,
     ) -> list[float]:
         """Run n_shuffles random pairings and return per-shuffle flip rates."""
         rng = np.random.RandomState(42)
-        n_humans = len(base_acts)
+        n_bases = len(base_acts)
         flip_rates: list[float] = []
 
         for _ in range(self.n_shuffles):
             donor_idxs = self._generate_donor_indices(
-                rng, n_humans, human_domains_arr, ai_by_domain,
+                rng, n_bases, base_domains_arr, donor_by_domain,
             )
             donor_acts = test_activations[donor_idxs]
             patched = patch_neurons(base_acts, donor_acts, neuron_indices)
             patched_preds = eval_probe.predict(patched)
 
-            flips = (base_preds == 0) & (patched_preds == 1)
-            flip_rates.append(float(flips.sum()) / n_humans)
+            flips = (base_preds == base_label) & (patched_preds == 1 - base_label)
+            flip_rates.append(float(flips.sum()) / n_bases)
 
         return flip_rates
 
@@ -225,33 +250,34 @@ class PatchingEvaluator(Evaluator):
         test_activations: np.ndarray,
         base_acts: np.ndarray,
         base_preds: np.ndarray,
-        human_domains: list[int],
-        human_domains_arr: np.ndarray,
-        ai_by_domain: dict[int, np.ndarray],
+        base_domains: list[int],
+        base_domains_arr: np.ndarray,
+        donor_by_domain: dict[int, np.ndarray],
         neuron_indices: list[int],
         test_metadata: SampleMetadata,
         eval_probe: EvalProbe,
+        base_label: int,
     ) -> dict[str, dict[str, Any]]:
         """Per-domain flip rate at full selected set, averaged over shuffles."""
         rng = np.random.RandomState(42)
-        n_humans = len(base_acts)
+        n_bases = len(base_acts)
         per_shuffle_domain_flips: list[dict[int, list[bool]]] = []
 
         for _ in range(self.n_shuffles):
             donor_idxs = self._generate_donor_indices(
-                rng, n_humans, human_domains_arr, ai_by_domain,
+                rng, n_bases, base_domains_arr, donor_by_domain,
             )
             donor_acts = test_activations[donor_idxs]
             patched = patch_neurons(base_acts, donor_acts, neuron_indices)
             patched_preds = eval_probe.predict(patched)
-            flips = (base_preds == 0) & (patched_preds == 1)
+            flips = (base_preds == base_label) & (patched_preds == 1 - base_label)
 
             domain_flips: dict[int, list[bool]] = defaultdict(list)
-            for i, d in enumerate(human_domains):
+            for i, d in enumerate(base_domains):
                 domain_flips[d].append(bool(flips[i]))
             per_shuffle_domain_flips.append(dict(domain_flips))
 
-        all_domains = sorted(set(human_domains))
+        all_domains = sorted(set(base_domains))
         result: dict[str, dict[str, Any]] = {}
         for d_id in all_domains:
             d_name = test_metadata.domain_names[d_id]

@@ -1,5 +1,12 @@
-\begin{thebibliography}{40}
+\begin{thebibliography}{41}
 \providecommand{\natexlab}[1]{#1}
+
+\bibitem[{Antverg and Belinkov(2022)}]{antverg2022pitfalls}
+Omer Antverg and Yonatan Belinkov. 2022.
+\newblock \href {https://openreview.net/forum?id=8uz0EWPQIMu} {On the pitfalls
+  of analyzing individual neurons in language models}.
+\newblock In \emph{Proceedings of the International Conference on Learning
+  Representations (ICLR)}.
 
 \bibitem[{Bereska and Gavves(2024)}]{bereska2024mechanistic}
 Leonard Bereska and Efstratios Gavves. 2024.

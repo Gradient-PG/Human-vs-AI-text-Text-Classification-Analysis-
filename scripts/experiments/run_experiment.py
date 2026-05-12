@@ -201,6 +201,10 @@ def _run_standard(config: ExperimentConfig, args, output_dir: Path):
 
     Works for both primary experiments (sparse_probe) and dependent ones
     (ablation, patching, confound) that reuse selections from a source.
+
+    For the patching experiment both directions are run automatically:
+    - ai_into_human (AI donor → human base) at ``output_dir``  [unchanged path]
+    - human_into_ai (human donor → AI base) at ``<run_root>/patching_human_into_ai/<gen>``
     """
     from raid_analysis.experiments.factory import build_evaluator, build_selector
     from raid_analysis.experiments.runner import run_experiment
@@ -231,6 +235,39 @@ def _run_standard(config: ExperimentConfig, args, output_dir: Path):
         precomputed_selections=precomputed,
         output_dir=output_dir,
     )
+
+    # For patching, automatically run human_into_ai so both directions are
+    # produced in a single pipeline pass.  ai_into_human stays at its existing
+    # path (output_dir) for backward compatibility; human_into_ai goes to a
+    # sibling directory: <run_root>/patching_human_into_ai/<generator>.
+    if args.experiment == "patching":
+        from raid_analysis.evaluation.patching import PatchingEvaluator
+
+        # output_dir layout: <output_dir_root>/<run_id>/patching/<generator>
+        run_root = output_dir.parent.parent
+        reverse_dir = run_root / "patching_human_into_ai" / output_dir.name
+
+        print(f"\n--- Patching: human donor → AI base (human_into_ai) ---")
+        print(f"Output: {reverse_dir}\n")
+
+        reverse_evaluator = PatchingEvaluator(
+            k_values=evaluator.k_values,
+            pairing=evaluator.pairing,
+            n_shuffles=evaluator.n_shuffles,
+            n_random_draws=evaluator.n_random_draws,
+            direction="human_into_ai",
+        )
+        run_experiment(
+            activations=activations,
+            labels=labels,
+            metadata=metadata,
+            splits_by_seed=splits_by_seed,
+            evaluator=reverse_evaluator,
+            config=config,
+            selector=selector,
+            precomputed_selections=precomputed,
+            output_dir=reverse_dir,
+        )
 
 
 def _run_auc_comparison(config: ExperimentConfig, args, output_dir: Path):
