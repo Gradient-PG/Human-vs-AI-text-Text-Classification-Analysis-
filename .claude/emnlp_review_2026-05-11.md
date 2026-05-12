@@ -123,3 +123,114 @@ The agreed-upon clean pairs (cohere/cohere_chat, mistral/mistral_chat, llama/lla
 5. RAID domain justification (C3)
 6. Flip-rate denominator framing (C4)
 7. Remove script reference (C2)
+
+---
+
+# Page Length & Formal Submission Checklist
+*Added: 2026-05-11 (second review pass)*
+
+## Page Length Problem — Most Urgent
+
+**Hard 8-page limit on §1–§9 (intro through conclusion). Desk-reject if exceeded.**
+- Limitations, Ethical Considerations, References, Appendices do NOT count.
+- Current estimate: ~10 pages of body content → ~2 pages over.
+- Accepted papers get 9 pages (camera-ready only, not submission).
+- Source: ARR Reviewer Guidelines, EMNLP 2026 CFP, ACLPUB formatting guidelines.
+
+### Cuts ranked by priority (~2 pages total needed)
+
+| Cut | Save | Notes |
+|-----|------|-------|
+| Figure 1 (pipeline overview) | ~0.7 pp | Move to Appendix A or shrink to half-column inline. Prose in §3 already covers this. |
+| §4.2 CAV Diagnostics + Table 2 → Appendix | ~0.5 pp | Cohere distinctness is established 4× elsewhere (§5.1.2, §5.2, §5.3, §6.1). Keep one sentence in §4.1 pointing to appendix. |
+| §5.3 Restricted Probe + Table 5 → Appendix or compress | ~0.4 pp | Third proof of bipartite split. Move full analysis to appendix; keep one synthesis sentence in §6. |
+| §6.2 Core Neurons subsection | ~0.2 pp | Compress to two sentences inline with Jaccard discussion. |
+| §8 Discussion "Outliers" paragraph | ~0.3 pp | Already told in §4.2, §5.1.2, §5.2. Compress to synthesis sentence; use freed space for Dalvi/Elhage citations. |
+| Drop Figure 5 (LOGO bar chart) | ~0.3 pp | Table 8 already gives Full L2 / Sel L2 / ratio. Bar chart adds no new information. |
+| Compress Conclusion by ~1/3 | ~0.2 pp | Currently reiterates every finding. Keep ~8–10 sentences on: sufficiency, redundancy, bipartite structure, LOGO transfer. |
+| **Optional:** merge §8 Discussion + §9 Conclusion | ~0.2 pp | Many MI papers do this; reads more naturally. |
+
+Do **not** cut: §5.1 (headline patching protocol), §6.1 (layer distribution), §7 (LOGO transfer), Figure 2 (k-sweep + random envelope), Figure 4 (Jaccard heatmap).
+
+---
+
+## A. Desk-Reject Risks — Must Fix
+
+1. **Cut body to ≤8 pages** (§1–§9). Currently ~10 pp. See cuts table above.
+2. **Rename "Ethics Statement" → "Ethical considerations"** exactly. Automation counts it against page limit if title doesn't match.
+3. **Remove Acknowledgments section header** for review submission. Add back for camera-ready.
+4. **Compile with `[review]` flag** in ACL style file. Line numbers must appear in margins. Verify now.
+5. **Run ACL pubcheck** (`pip install aclpubcheck`) on non-review version first, then re-enable `[review]`. Catches font/margin violations.
+6. **Remove `exp_characterize.py` reference in §6.2** and all `\todo{}` comments / commented-out meta-text.
+7. **Limits section must have no new content** — §10 looks compliant but verify.
+8. **Fill Responsible NLP Checklist properly** on the OpenReview form. Systematic failures = desk rejection. See Section D below for per-item answers.
+
+---
+
+## B. Required Content Additions
+
+1. **Add English-only limitation to §10.** Not just "evaluated on English RAID" but why: *"the layer-12 footprint may not generalize to languages with richer morphology."*
+2. **Report computational budget in Appendix A or §3.** Checklist C1 requires: number of parameters (BERT-base-uncased = ~110M), total GPU hours, computing infrastructure. One sentence suffices.
+3. **Discuss RAID license/terms of use** (MIT license) — one sentence in Appendix A or §3.1.
+4. **Mention BERT-base-uncased parameters and license** (110M params, Apache 2.0) — Appendix A.
+5. **AI assistant disclosure** on submission form (Checklist E1). Mark explicitly if AI was used for writing or coding.
+
+---
+
+## C. Formatting Compliance
+
+- **DOIs/ACL Anthology links** required in references. Run `rebiber` (`pip install rebiber`) to auto-populate. Many current bib entries likely missing DOIs.
+- **Hyperlinks**: dark blue (#000099), not underlined/boxed. ACL style default — just verify nothing overridden.
+- **Figures in grayscale**: Figure 4 (Jaccard heatmap, blue colormap) — OK. Figure 2 (k-sweep, red/blue) — check if distinguishable in grayscale.
+- **Appendices must be double-column** (April 2025 update). Verify A–F are double-column.
+- **No links to non-anonymous repos**. If code repo is referenced, use anonymous.4open.science or equivalent.
+
+---
+
+## D. Responsible NLP Checklist (OpenReview form)
+
+Provide section numbers for "Yes" answers; justifications for "No/NA":
+
+| Item | Answer | Notes |
+|------|--------|-------|
+| A1 Limitations | Yes | §10 |
+| A2 Risks | Yes | Ethical Considerations |
+| B1 Cite creators | Yes | §3.1 (RAID), §3.2 (BERT) |
+| B2 License/terms | Yes | Add to Appendix A or §3.1 |
+| B3 Intended use | Yes | Ethical Considerations |
+| B4 PII/offensive content | Yes | State RAID is pre-screened academic benchmark; no PII collected |
+| B5 Documentation | Yes | §3.1; note English language explicitly |
+| B6 Statistics | Yes | §3.3 (15 cells, 5 folds × 3 seeds), Appendix C |
+| C1 Parameters/budget/infra | **Add this** | Currently missing — one sentence in Appendix A |
+| C2 Hyperparameters | Yes | §3.4, Appendix A, Appendix B |
+| C3 Descriptive statistics | Yes | All tables report mean ± std |
+| C4 Existing packages | Yes | Appendix A (HuggingFace Transformers) |
+| D1–D5 Human annotators | N/A | No human annotation |
+| E1 AI assistants | Yes/No | Justify explicitly |
+
+---
+
+## E. Administrative Deadlines
+
+| Task | Deadline | Notes |
+|------|----------|-------|
+| Both authors complete OpenReview profiles | Several days before May 25 | Must include Semantic Scholar/DBLP/ACL Anthology links |
+| Submit paper | **May 25 (AoE)** | Don't submit at last minute — OpenReview congested |
+| Both authors complete reviewer registration | Within 48h of May 25 | **Failure = desk rejection** |
+| Verify reviewer eligibility | Before May 22 | ≥2 short/long papers in ACL main or Findings + ≥1 more in ACL Anthology or major ML/AI venue. If not eligible, claim exemption with justification. |
+| Preprint status decision | At submission | Binding choice: "We do not intend to release" vs "We are considering" |
+
+---
+
+## F. Suggested Order of Operations
+
+| Dates | Task |
+|-------|------|
+| May 11–14 | **Make the 8-page cuts.** Nothing else matters without this. |
+| May 14–18 | Content: random baselines in Table 3, English-only limitation, compute budget, license mentions, Enkhbayar reframing, Dalvi citation, qualitative example |
+| May 18–20 | Run `rebiber` for DOIs; remove `exp_characterize.py`; rename Ethics section; remove Acknowledgments header |
+| May 20–22 | Compile without `[review]`, run `aclpubcheck`, fix errors. Re-enable `[review]`, recompile. |
+| May 22–24 | Both authors complete OpenReview profiles. Fill Responsible NLP Checklist. Verify reviewer eligibility. |
+| May 24 | Final PDF check: no comments, anonymized, line numbers present, no non-anonymous links |
+| **May 25** | **Submit (AoE).** |
+| Within 48h post-May 25 | Both authors complete reviewer registration form |
