@@ -9,15 +9,15 @@ from pathlib import Path
 
 # ── paths ──────────────────────────────────────────────────────────────────
 ROOT   = Path(__file__).parent.parent
-EXP    = ROOT / 'results/experiments/20260426_20_full_c0005_n7500_seeds3'
-LOGO_E = ROOT / 'results/experiments/20260507_195821'
+EXP    = ROOT / 'results/experiments/20260510_rerun_main'
+LOGO_E = ROOT / 'results/experiments/20260513_190517'
 CHAR_J = EXP / 'characterize/characterize_results.json'
 OUT    = Path(__file__).parent / 'figures'
 OUT.mkdir(exist_ok=True)
 
 GENERATORS_ALL = ['gpt4', 'gpt2', 'mpt', 'mistral-chat', 'llama-chat', 'cohere-chat']
 # Only these have patching data
-GENERATORS_PATCH = ['gpt4', 'gpt2', 'mistral-chat', 'llama-chat', 'cohere-chat']
+GENERATORS_PATCH = ['gpt4', 'gpt2', 'mpt', 'mistral-chat', 'llama-chat', 'cohere-chat']
 PRETTY = {
     'gpt4': 'GPT-4', 'gpt2': 'GPT-2', 'mpt': 'MPT',
     'mistral-chat': 'Mistral', 'llama-chat': 'LLaMA', 'cohere-chat': 'Cohere'

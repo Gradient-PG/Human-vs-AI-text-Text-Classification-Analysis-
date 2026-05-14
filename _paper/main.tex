@@ -105,7 +105,7 @@ Sparse Probing and Activation Patching on RAID}
 % (4) Result B — HEADLINE: same-domain donor→target activation patching flips human predictions to AI at 1.07–8.15\%, 10–24× above random-feature baselines, providing the first causal-sufficiency evidence for AI-detection circuits in a frozen encoder.
 % (5) Result C: detection circuits are generator-specific (pairwise Jaccard 0.00–0.24) but ~32× above chance; chat-RLHF generators concentrate in layer 12, the only base generator (gpt2) peaks at layer 11.
 % (6) Position: complementary to confounder-suppression frameworks (Borile \& Abrate, 2025) — we patch to demonstrate sufficiency rather than ablate to remove bias.
-AI-generated text detectors achieve high accuracy on standard benchmarks, yet the internal representations that drive these predictions remain poorly understood. We study which neurons in a \textit{frozen}, unmodified \bertbase encoder support AI-text detection, using the RAID benchmark across six generators spanning pure-base and instruction-tuned architectures. Applying the L1$\to$L2 sparse-probing protocol of \citet{gurnee2023haystack} to all 9,216 CLS hidden-state dimensions (12 layers $\times$ 768), which we term \textit{neurons} throughout, we identify stable sets of 45--62 neurons per generator ($<$1\% of neurons); a full-feature L2 probe achieves 90.5--98.8\% detection accuracy, while a probe restricted to the stable set retains 86.5--97.2\%, both with high cross-fold reproducibility (Jaccard 0.67--0.76). To assess the causal role of these neurons, we apply same-domain activation patching: transplanting the selected neurons' activations from AI donors into human targets flips 1.07--8.15\% of predictions to AI, 10--16$\times$ above a random-neuron baseline, while mean-ablating the same set leaves accuracy largely intact ($\leq$1.1\,pp drop on 5/6 generators), suggesting the signal is redundantly distributed. Cross-generator analysis reveals a bipartite structure: instruction-tuned generators concentrate 30--36\% of stable neurons in BERT's final layer, while both base generators fall below 14\%, consistent with a layer-12 footprint of post-training alignment. Leave-one-family-out evaluation shows that the selected neurons retain 86--94\% of the full-feature ceiling on entirely unseen generator families.
+AI-generated text detectors achieve high accuracy on standard benchmarks, yet the internal representations that drive these predictions remain poorly understood. We study which neurons in a \textit{frozen}, unmodified \bertbase encoder support AI-text detection, using the RAID benchmark across six generators spanning pure-base and instruction-tuned architectures. Applying the L1$\to$L2 sparse-probing protocol of \citet{gurnee2023haystack} to all 9,216 CLS hidden-state dimensions (12 layers $\times$ 768), which we term \textit{neurons} throughout, we identify stable sets of 45--62 neurons per generator ($<$1\% of neurons); a full-feature L2 probe achieves 90.5--98.8\% detection accuracy, while a probe restricted to the stable set retains 86.5--97.2\%, both with high cross-fold reproducibility (Jaccard 0.67--0.76). To assess the causal role of these neurons, we apply same-domain bidirectional activation patching: transplanting AI activations into human targets (forward) flips 1.07--8.15\% of predictions to AI, 10--16$\times$ above a random-neuron baseline; transplanting human activations into AI targets (reverse) flips 0.65--5.74\%, 7--12$\times$ above random, confirming partial necessity. Mean-ablating the same set leaves accuracy largely intact ($\leq$1.1\,pp drop on 5/6 generators), suggesting the signal is redundantly distributed. Cross-generator analysis reveals a bipartite structure: instruction-tuned generators concentrate 30--36\% of stable neurons in BERT's final layer, while both base generators fall below 14\%, consistent with a layer-12 footprint of post-training alignment. Leave-one-family-out evaluation shows that the selected neurons retain 86--94\% of the full-feature ceiling on entirely unseen generator families.
 \end{abstract}
 
 % =====================================================================
@@ -123,11 +123,11 @@ Existing interpretability work on AI-text detection takes several forms: (a)~\te
 
 % ¶3 — Approach. Frozen \bertbase + Gurnee-style L1-then-L2 sparse probing on RAID across 5 generators (1 base + 4 chat-RLHF). Two interventions on the SAME selected set: mean-ablation (necessity) and same-domain donor→target activation patching (sufficiency).
 
-We address this gap with a causal intervention study on a \textit{frozen} \bertbase (see Figure~\ref{fig:pipeline} in Appendix~\ref{app:pipeline} for a visual overview). Rather than fine-tuning the model for detection, we train sparse linear probes on pretrained CLS-token activations concatenated across all 12 layers (9{,}216 neurons total), following the sparse-probing protocol of \citet{gurnee2023haystack}. An L1-regularized logistic regression selects a small stable set of candidate neurons; an independent L2 probe serves as the frozen evaluator for all subsequent experiments. We then apply two causal interventions to the same selected neuron set: \textit{mean ablation}, which replaces these neurons with their training-set means to test whether they are necessary, and \textit{same-domain donor $\to$ target activation patching}, which replaces their activations in human samples with those from AI donors to test whether they are \textit{sufficient} to flip detector predictions. The intervention orientation is the key distinction from prior work: rather than suppressing suspected confounders, we inject AI-donor activations into human samples and measure whether predictions flip.
+We address this gap with a causal intervention study on a \textit{frozen} \bertbase (see Figure~\ref{fig:pipeline} in Appendix~\ref{app:pipeline} for a visual overview). Rather than fine-tuning the model for detection, we train sparse linear probes on pretrained CLS-token activations concatenated across all 12 layers (9{,}216 neurons total), following the sparse-probing protocol of \citet{gurnee2023haystack}. An L1-regularized logistic regression selects a small stable set of candidate neurons; an independent L2 probe serves as the frozen evaluator for all subsequent experiments. We then apply two causal interventions to the same selected neuron set: \textit{mean ablation}, which replaces these neurons with their training-set means to test necessity; and \textit{same-domain bidirectional activation patching}, run in both the forward direction (AI donor $\to$ human target, testing sufficiency) and the reverse direction (human donor $\to$ AI target, providing complementary on-manifold causal validation from the reverse direction). The intervention orientation is the key distinction from prior work: rather than suppressing suspected confounders, we inject donor activations and measure whether predictions flip.
 
 % ¶4 — Findings preview (mirror abstract): three numbered findings — sparse stable set; causal sufficiency via patching; generator-specific circuits with chat-RLHF vs base layer asymmetry.
 
-Our experiments suggest that such sufficiency holds. Across six generators spanning two pure-base and four instruction-tuned model families, patching $\sim$50 selected neurons flips human $\to$ AI predictions at 1.07--8.15\%, 10--16$\times$ above a random-feature baseline, providing causal-sufficiency evidence for AI-detection circuits in a frozen pretrained encoder. Mean-ablation of the same neurons causes only 0.03--1.06\,pp accuracy loss, suggesting that the detection signal is \textit{redundantly distributed}: easy to inject, hard to erase. Cross-generator analysis shows that stable neuron sets are largely generator-specific (pairwise Jaccard 0.00--0.24) yet cluster $\sim$24$\times$ above chance. Instruction-tuned generators concentrate 30--36\% of stable neurons in layer~12, while both pure-base generators (GPT-2, MPT-7B) have $\leq$14\%. Leave-one-family-out evaluation confirms that 91--125 neurons identified from training families retain 86--94\% of full-feature detection signal on entirely unseen generator families.
+Our experiments confirm both: the same circuits are causally validated from both directions. Across six generators spanning two pure-base and four instruction-tuned model families, bidirectional activation patching shows: (i)~forward (AI donor $\to$ human target) flips 1.07--8.15\% of human predictions to AI, 10--16$\times$ above a random-feature baseline; (ii)~reverse (human donor $\to$ AI target) flips 0.65--5.74\% of AI predictions to human, 7--12$\times$ above random. Mean-ablation of the same neurons causes only 0.03--1.06\,pp accuracy loss, suggesting that the detection signal is \textit{redundantly distributed}: easy to inject, hard to erase. Cross-generator analysis shows that stable neuron sets are largely generator-specific (pairwise Jaccard 0.00--0.24) yet cluster $\sim$24$\times$ above chance. Instruction-tuned generators concentrate 30--36\% of stable neurons in layer~12, while both pure-base generators (GPT-2, MPT-7B) have $\leq$14\%. Leave-one-family-out evaluation confirms that 91--125 neurons identified from training families retain 86--94\% of full-feature detection signal on entirely unseen generator families.
 
 % ¶5 — Position vs prior work in one paragraph. Borile \& Abrate differ on 4 axes (frozen vs fine-tuned; CLS vs FFN intermediate; positive-patching vs hard-suppression; RAID vs DAIGT/M4/HC3). Enkhbayar (2025) reports a "causality gap" in observational discriminativity — we close that gap with patching. Kuznetsov et al. 2024 use coordinate-subspace removal, not neuron-level probing.
 
@@ -139,7 +139,7 @@ Our work is most directly related to \citet{borile2025confounding}, who suppress
 \begin{enumerate}
     \item A sparse-probing characterization of AI-detection signal in frozen \bertbase across six generators on RAID, identifying stable sets of 45--62 neurons ($<$1\% of 9,216 neurons) sufficient for 90.5--98.8\% detection accuracy with high cross-fold stability (Jaccard 0.67--0.76), with hyperparameters validated via a multi-generator stability sweep.
 
-    \item The first causal-sufficiency test for AI-detection neurons via same-domain donor $\to$ target activation patching, yielding flip rates 10--16$\times$ above a random-feature baseline across all six generators.
+    \item The first causal test for AI-detection neurons via same-domain \textit{bidirectional} activation patching: forward (AI donor $\to$ human target) yields flip rates of 1.07--8.15\%, 10--16$\times$ above a random-feature baseline; reverse (human donor $\to$ AI target) yields 0.65--5.74\%, 7--12$\times$ above random, jointly establishing causal sufficiency and reverse-direction causal contribution—the first bidirectional causal validation of AI-detection circuits.
 
     \item A cross-generator circuit analysis revealing generator-specific stable sets that nonetheless overlap ${\sim}24\times$ above chance, with instruction-tuned generators concentrating 30--36\% of stable neurons in layer~12 versus only 4--13\% for the two base generators (GPT-2, MPT-7B), supported by a base-model cluster Jaccard of $40\times$ chance.
 
@@ -354,8 +354,8 @@ Cohere  & $0.905 \pm 0.008$ & $0.968 \pm 0.003$ & $72.3 \pm 3.1$ & $0.749 \pm 0.
 \end{tabular}%
 }% end resizebox
 \caption{Sparse-probe results across six generators: 15-cell means $\pm$ std (5 folds $\times$ 3 seeds). Val acc: L2 evaluation probe accuracy (all 9{,}216 neurons). AUC: area under the ROC curve. $\nselected$: mean candidate set size per cell. Jaccard: mean pairwise fold Jaccard over all 105 fold-pairs (C(15,2)), computed from per-fold selection sets. $n_{\text{stable}}$: neurons in $\geq$50\% of cells; $n_{\text{obs}}$: total distinct neurons selected at least once.
-% Source: accuracy/n_selected from sparse_probe/aggregate.json; Jaccard computed from sparse_probe/seed_*/fold_*/selection.json neuron_indices_global.
-% Headline run 20260426_20_full_c0005_n7500_seeds3 (gpt4/gpt2/mistral/llama/cohere); mpt from 20260509_165026. Configs identical: C=0.005, N=7500, seeds=[42,123,456], n_folds=5.
+% Source: accuracy/n_selected from sparse_probe/aggregate.json; Jaccard computed from sparse_probe/seed_*/fold_*/eval_metrics.json neuron_indices.
+% Run: 20260510_rerun_main. Configs: C=0.005, N=7500, seeds=[42,123,456], n_folds=5.
 }
 \label{tab:sparse-summary}
 \end{table}
@@ -397,41 +397,45 @@ Per-generator geometric diagnostics (CAV cosine alignment, mean-difference norm,
 \section{Causal Role of the Selected Neurons}
 \label{sec:results-causal}
 
-Having identified a sparse stable set, we ask two complementary causal questions: are these neurons \textit{sufficient} to produce AI-text predictions (tested via forward activation patching and reverse patching), and are they \textit{necessary} (tested via mean ablation)? Sections~\ref{sec:results-patching} and~\ref{sec:results-necessity} address each in turn; a restricted-probe localisation analysis that reinforces the base/instruction-tuned split is provided in Appendix~\ref{app:restricted}.
+Having identified a sparse stable set, we ask two complementary causal questions: are these neurons \textit{sufficient} to produce AI-text predictions, and are they \textit{necessary}? Section~\ref{sec:results-patching} addresses both via bidirectional activation patching---transplanting AI activations into human targets (forward; sufficiency) and human activations into AI targets (reverse; necessity from an on-manifold perspective); Section~\ref{sec:results-necessity} complements this with mean ablation. A restricted-probe localisation analysis reinforcing the base/instruction-tuned split is provided in Appendix~\ref{app:restricted}.
 
-\subsection{Causal Sufficiency via Activation Patching}
+\subsection{Causal Role via Bidirectional Activation Patching}
 \label{sec:results-patching}
 
 \subsubsection{Patching Protocol}
 \label{sec:patching-protocol}
-% For each fold, restrict to human samples (label=0) that have at least one same-domain AI sample in the test fold ("valid_humans").
+% Bidirectional: forward (AI donor -> human target) and reverse (human donor -> AI target).
+% Source: patching/ (forward) and patching_human_into_ai/ (reverse) — run 20260510_rerun_main.
+% For each fold, restrict to valid samples (same-domain donor exists in test fold).
 % For each of n_shuffles=20 random within-domain donor assignments:
 %   patched_acts = base_acts; patched_acts[:, top_k_indices] = donor_acts[:, top_k_indices]
-%   flip = (eval_probe.predict(patched) == 1) AND (eval_probe.predict(base) == 0)
-% Flip rate = flips / |valid_humans|. Mean/std over 20 shuffles, then over 15 cells.
+%   flip = prediction changes after patch
+% Flip rate = flips / |valid_samples|. Mean/std over 20 shuffles, then over 15 cells.
 % Random-k baseline: n_random_draws=20 random k-subsets, each run with 20 shuffles.
 % Note: same-domain donor sampling controls for domain shift (Heimersheim & Nanda 2024 on-manifold guidance).
 
-For each (seed, fold) cell we identify \textit{valid human} samples: test-fold human texts that share a domain with at least one test-fold AI sample. For each of $n_{\text{shuffles}} = 20$ random within-domain donor permutations we construct a patched activation $\tilde{\mathbf{z}}$ by replacing the selected neurons with those from the AI donor:
+We run patching \textbf{bidirectionally} to assess both causal directions: (i)~\textbf{forward} (AI donor $\to$ human target): transplanting the selected neurons' activations from AI samples into human targets, testing whether the selected set is \textit{sufficient} to flip the probe to an AI prediction; and (ii)~\textbf{reverse} (human donor $\to$ AI target): transplanting human activations into AI targets, testing whether the selected set is partially \textit{necessary} for maintaining AI predictions.
+
+For each (seed, fold) cell and direction we identify \textit{valid target} samples: test-fold samples of the target class that share a domain with at least one test-fold donor sample. For each of $n_{\text{shuffles}} = 20$ random within-domain donor permutations we construct a patched activation $\tilde{\mathbf{z}}$ by replacing the selected neurons with those from the donor:
 \[
   \tilde{\mathbf{z}}_i =
   \begin{cases}
     \mathbf{z}^{\text{donor}}_i & i \in \mathcal{S} \\
-    \mathbf{z}^{\text{human}}_i & i \notin \mathcal{S}
+    \mathbf{z}^{\text{target}}_i & i \notin \mathcal{S}
   \end{cases}
 \]
-A \textit{flip} occurs when the frozen evaluation probe classifies $\tilde{\mathbf{z}}$ as AI but the unpatched $\mathbf{z}^{\text{human}}$ as human. The flip rate is the fraction of valid human samples that flip, averaged over the 20 donor permutations and then over the 15 cells. Donor sampling is restricted to the same domain as the target, following the on-manifold recommendation of \citet{heimersheim2024patching} to avoid injecting out-of-distribution activations.
+A \textit{flip} occurs when the frozen evaluation probe's predicted class changes after patching (human $\to$ AI in the forward direction; AI $\to$ human in the reverse). The flip rate is the fraction of valid target samples that flip, averaged over the 20 donor permutations and then over the 15 cells. Donor sampling is restricted to the same domain as the target, following the on-manifold recommendation of \citet{heimersheim2024patching} to avoid injecting out-of-distribution activations.
 
 The \textit{random-$k$ baseline} draws 20 random subsets of size $k$ from the 9{,}216 neurons and runs the identical procedure, providing a null that controls for the number of patched dimensions. We sweep $k \in \{1, 5, 10, 20, 50, \text{full}\}$ where $k = \text{full}$ equals the cell's actual $|\mathcal{S}|$ (53--92 neurons depending on generator and cell). In all ablation and patching experiments, $k = \text{full}$ refers to the \textit{per-fold} L1-selected set (53--92 neurons depending on generator and fold). The cross-fold \textit{stable set} (neurons appearing in $\geq$50\% of cells) is used for cross-generator analysis and LOGO evaluation, but not as the intervention target.
 
-\subsubsection{Flip-Rate Results}
+\subsubsection{Flip-Rate Results (Forward and Reverse)}
 \label{sec:patching-results}
-% Table: k-sweep (k = 1, 5, 10, 20, 50, full) × 5 generators, selected flip rate only.
-% Headline at k=full: gpt4 1.23\%, gpt2 3.13\%, mistral 1.73\%, llama 1.07\%, cohere 8.15\% — monotone in k for every generator.
-% Ratio vs random-k baseline at k=full (rerun 20260510): 10× (gpt2), 10× (llama), 10× (cohere), 14× (mistral), 16× (gpt4). All six generators now in 10–16× range.
-% Per-domain breakdown table → appendix or compact figure.
-% Interpretation: "selected neurons are sufficient to push human predictions toward AI on all five generators." Cohere is most easily perturbed (probe least confident, 90.5\% baseline); llama least (1.07\%).
+% Forward (AI->human): k=full: gpt4 1.23%, gpt2 3.13%, mistral 1.73%, llama 1.07%, cohere 8.15%, mpt 1.52% — monotone in k for every generator.
+% Ratio vs random-k baseline: 10–16× across all generators.
+% Reverse (human->AI): k=full: gpt4 0.65%, gpt2 2.41%, mistral 1.35%, llama 0.92%, cohere 5.74%, mpt 1.36%.
+% Ratio vs random: 7–12× across all generators. Run: 20260510_rerun_main (patching/ and patching_human_into_ai/).
 
+\paragraph{Forward direction (AI $\to$ human).}
 Figure~\ref{fig:flip-rate} and the full $k$-sweep (Table~\ref{tab:patching-sweep}, Appendix~\ref{app:patching-sweep}) show monotonically increasing flip rates across all generators. At $k = \text{full}$, patching the selected neurons causes 1.07--8.15\% of human samples to be reclassified as AI-generated. Against a random baseline of 0.08--0.79\% at the same $k$, this yields a ratio of 10--16$\times$ across all six generators. MPT-7B falls at the lower end of the range (1.52\%, $\sim$11$\times$ above random), consistent with its moderate detection difficulty.
 
 \begin{table}[t]
@@ -449,13 +453,14 @@ LLaMA   & $1.07_{\pm 0.37}$ & ${\sim}0.11$ & ${\sim}10{\times}$ \\
 Cohere  & $8.15_{\pm 1.27}$ & ${\sim}0.79$ & ${\sim}10{\times}$ \\
 \bottomrule
 \end{tabular}
-\caption{Selected and random-$k$ flip rates (\%) at $k = \text{full}$ (15-cell means $\pm$ std). Ratio = selected / random. All six generators fall in the 10--16$\times$ range. Full $k$-sweep in Appendix~\ref{app:patching-sweep}.}
+\caption{Forward-direction (AI $\to$ human) selected and random-$k$ flip rates (\%) at $k = \text{full}$ (15-cell means $\pm$ std). Ratio = selected / random. All six generators fall in the 10--16$\times$ range. Full $k$-sweep in Appendix~\ref{app:patching-sweep}. Reverse-direction (human $\to$ AI) results are reported in the text.}
 \label{tab:patching-full}
 \end{table}
 
 Cohere-Command-Chat is the most patchable generator (8.15\% at $k = \text{full}$, $\pm$1.27\%), consistent with its lowest baseline accuracy (90.5\%): a probe operating nearer its decision boundary crosses it under a smaller perturbation. LLaMA-2-Chat is the hardest to flip (1.07\%, $\pm$0.37\%) despite its high baseline accuracy (98.6\%), suggesting its detection signal is more broadly distributed. As shown in Figure~\ref{fig:flip-rate}, flip rate grows monotonically with $k$ at a diminishing rate across all generators, suggesting sub-linear scaling rather than a concentration of effect in a few critical units.
 
-We additionally ran the reverse patching direction---transplanting human-donor activations into AI-target samples---to assess whether the selected neurons are necessary from a causal perspective. At $k = \text{full}$, 0.65--5.74\% of AI samples were reclassified as human after replacing their selected neurons with human donor values (GPT-4: $0.65_{\pm 0.21}$\%, GPT-2: $2.41_{\pm 0.62}$\%, MPT: $1.36_{\pm 0.40}$\%, Mistral: $1.35_{\pm 0.27}$\%, LLaMA: $0.92_{\pm 0.21}$\%, Cohere: $5.74_{\pm 0.87}$\%). These rates are consistently 7--12$\times$ above a random-neuron baseline, indicating that the selected set carries a non-negligible share of \textit{causal necessity} for AI-class predictions in addition to their demonstrated sufficiency. Flip rates in the reverse direction are lower than in the forward direction (0.65--5.74\% vs.\ 1.07--8.15\%), which is consistent with the redundant-distribution account: the remaining 9{,}000$+$ unpatched neurons provide AI signal that partially preserves the prediction even when the selected set is overwritten. Together, the forward and reverse patching results suggest an interpretation of \textit{partial redundancy}: the selected neurons are sufficient to induce AI predictions when injected, and partially necessary---but not solely responsible---for maintaining AI predictions, with the signal distributed across a broader feature population.
+\paragraph{Reverse direction (human $\to$ AI).}
+Transplanting human-donor activations into AI-target samples tests whether the selected neurons carry a causal contribution in the reverse direction (reverse-direction necessity) for maintaining AI-class predictions. At $k = \text{full}$, 0.65--5.74\% of AI samples were reclassified as human after replacing their selected neurons with human donor values (GPT-4: $0.65_{\pm 0.21}$\%, GPT-2: $2.41_{\pm 0.62}$\%, MPT: $1.36_{\pm 0.40}$\%, Mistral: $1.35_{\pm 0.27}$\%, LLaMA: $0.92_{\pm 0.21}$\%, Cohere: $5.74_{\pm 0.87}$\%). These rates are consistently 7--12$\times$ above a random-neuron baseline, indicating that the selected set carries a non-negligible share of \textit{causal necessity} for AI-class predictions in addition to their demonstrated sufficiency. Flip rates in the reverse direction are lower than in the forward direction (0.65--5.74\% vs.\ 1.07--8.15\%), which is consistent with the redundant-distribution account: the remaining 9{,}000$+$ unpatched neurons provide AI signal that partially preserves the prediction even when the selected set is overwritten. Together, the forward and reverse patching results suggest an interpretation of \textit{partial redundancy}: the selected neurons are sufficient to induce AI predictions when injected, and partially necessary, but not solely responsible, for maintaining AI predictions, with the signal distributed across a broader feature population.
 
 % TABLE MOVED TO APPENDIX~\ref{app:patching-sweep} to save ~0.18 pp. k=full row now in Table~\ref{tab:patching-full}.
 %\begin{table*}[t]
@@ -475,7 +480,7 @@ We additionally ran the reverse patching direction---transplanting human-donor a
 %\bottomrule
 %\end{tabular}
 %\caption{Selected flip rate (\%) across the $k$-sweep, 15-cell means (5 folds $\times$ 3 seeds). $k = \text{full}$ equals each cell's actual $|\mathcal{S}|$ (53--92 neurons); std shown only for $k = \text{full}$. Flip rate is monotonically increasing in $k$ for every generator.
-%% Source: headline run 20260426_20_full_c0005_n7500_seeds3 (5 generators); mpt from 20260509_165026. All k-sweep values are 15-fold means from raw eval_metrics.json fold files.
+%% Source: run 20260510_rerun_main. All k-sweep values are 15-fold means from raw eval_metrics.json fold files.
 %}
 %\label{tab:patching-sweep}
 %\end{table*}
@@ -528,8 +533,7 @@ Cohere-Command-Chat is the exception. Its full-set ablation drop is 1.06\,$\pm$\
 % Original paragraphs 3–4 of §5.2 (compressed below):
 % There is no contradiction between the small ablation drops here and the large patching flip rates in Section~\ref{sec:results-patching}. Ablation tests necessity \textit{against a probe that has access to all other features}: removing $\leq$1\% of 9{,}216 features leaves thousands of correlated dimensions intact. Patching tests sufficiency by \textit{injecting wrong-class signal that competes with the remainder of the network}. A representation that is redundantly distributed is exactly what would produce small ablation drops alongside meaningful patching effects. We interpret the joint result as: the selected neurons carry genuine AI-detection signal, but the same signal is also distributed across the broader feature space.
 %
-% A methodological note: mean ablation replaces activations with out-of-distribution values that fall off the natural data manifold, which can introduce artefacts \citep{heimersheim2024patching}. We treat the necessity result as conservative; a comparison with zero-ablation is discussed in Section~\ref{sec:patching-robustness}.
-The absence of contradiction follows from redundant distribution: the L2 probe retains 9,000+ correlated neurons, making ablation of $\leq$1\% a weak test; mean ablation also moves activations off-manifold~\citep{heimersheim2024patching}, so we treat this as a conservative lower bound. The reverse patching experiment (§\ref{sec:patching-results}) provides a complementary causal-necessity estimate that is not subject to the same off-manifold concern, and confirms that the selected neurons carry partial but not exclusive necessity.
+% A methodological note: mean ablation replaces activations with out-of-distribution values that fall off the natural data manifold, which can introduce artefacts \citep{heimersheim2024patching}. We treat the necessity result as conservative; a comparison with zero-The absence of contradiction follows from redundant distribution: the L2 probe retains 9,000+ correlated neurons, making ablation of $\leq$1\% a weak test; mean ablation also moves activations off-manifold~\citep{heimersheim2024patching}, so we treat this as a conservative lower bound. The reverse patching experiment (§\ref{sec:patching-results}) provides a complementary causal-necessity estimate that is not subject to the same off-manifold concern, and confirms partial but non-exclusive causal necessity, complementing the sufficiency result.
 
 \begin{table}[t]
 \centering
@@ -548,7 +552,7 @@ Cohere  & 0.905 & $\mathbf{+1.06 \pm 0.52}$\,pp & $+0.06$\,pp \\
 \end{tabular}%
 }% end resizebox
 \caption{Mean-ablation accuracy drop at $k = \text{full}$, 15-cell means $\pm$ std (positive = drop). Sel.\ drop: ablating the stable set; Rand.\ drop: mean over 20 random $k$-subsets. Cohere is the only generator substantially above the random baseline.
-% Source: ablation/seed_*/fold_*/eval_metrics.json — headline run (5 gen) + mpt from 20260509_165026.
+% Source: ablation/seed_*/fold_*/eval_metrics.json — run 20260510_rerun_main.
 }
 \label{tab:ablation-full}
 \end{table}
@@ -595,7 +599,7 @@ Across both pure-base generators, the shared pattern is markedly low layer-12 co
 %\bottomrule
 %\end{tabular}
 %\caption{Stable-neuron counts by layer group across six generators. Bold indicates the peak layer group for each generator. Instruction-tuned generators (GPT-4, Mistral, LLaMA, Cohere) concentrate 30--36\% of stable neurons in layer~12; both pure-base generators (GPT-2, MPT) have $\leq$14\% in layer~12.
-%% Source: characterize_results.json layer_distributions — run 20260426_20_full_c0005_n7500_seeds3.
+%% Source: characterize_results.json layer_distributions — run 20260510_rerun_main.
 %}
 %\label{tab:layer-dist}
 %\end{table*}
@@ -648,7 +652,7 @@ The data reveal a clear bipartite structure (Figure~\ref{fig:jaccard}). Among in
 %\bottomrule
 %\end{tabular}
 %\caption{Pairwise Jaccard similarity between stable sets (15 generator pairs). $\times$\,chance is observed Jaccard divided by the analytic random-null Jaccard for two sets of the same sizes drawn from 9,216 features ($\approx$0.003 per pair). The mpt--gpt2 pair (bold) is the highest base$\times$base overlap; all base$\times$instruction-tuned pairs cluster at the bottom.
-%% Source: characterize_results.json jaccard.matrix — run 20260426_20_full_c0005_n7500_seeds3.
+%% Source: characterize_results.json jaccard.matrix — run 20260510_rerun_main.
 %}
 %\label{tab:jaccard}
 %\end{table}
@@ -670,7 +674,7 @@ Neurons appearing in the stable sets of at least 3 of the 6 generators (minimal 
 % ~2/3 page. Motivation: prove that stable circuits generalise beyond the
 % generators seen at probe-training time — i.e., that the neurons are not
 % artefacts of the specific generation models used in §4.
-% LOGO run: 20260507_195821, family mode, 11 RAID generators, 5 families.
+% LOGO run: 20260513_190517, family mode, 11 RAID generators, 5 families.
 
 The experiments above characterise stable neurons for each generator
 \emph{independently}.  A stronger test of the mechanistic claim is whether a
@@ -696,7 +700,7 @@ with a leave-one-family-out (LOGO) evaluation.
 % This measures whether the stable neuron set, defined purely from training
 % families, retains discriminative signal for an unseen family.
 \paragraph{Protocol.}
-We partition all 11 RAID generators into five families: \texttt{gpt}, \texttt{cohere}, \texttt{llama}, \texttt{mistral}, and \texttt{mpt}. For each held-out family we run the sparse-probe pipeline on the remaining generators and evaluate two probes on the held-out set: (i)~\textbf{Full L2} on all 9{,}216 neurons, and (ii)~\textbf{Sel\,L2} on only the stable neurons identified from training families. To handle the larger combined training pool, LOGO uses a tighter regularisation ($C = 0.0005$) and caps the training set at 28{,}000 rows per fold (compared to $C = 0.005$, $N = 7{,}500$ in the per-generator headline runs). Family sizes are unequal (1--4 generators per family, following RAID's taxonomy), so training pool size and test-set size vary across folds. The Sel/Full ratio in Table~\ref{tab:logo} normalises for this by expressing each family's held-out accuracy as a fraction of its own full-feature ceiling.
+We partition all 11 RAID generators into five families: \texttt{gpt}, \texttt{cohere}, \texttt{llama}, \texttt{mistral}, and \texttt{mpt}. For each held-out family we run the sparse-probe pipeline on the remaining generators and evaluate two probes on the held-out set: (i)~\textbf{Full L2} on all 9{,}216 neurons, and (ii)~\textbf{Sel\,L2} on only the stable neurons identified from training families. To handle the larger combined training pool, LOGO uses a tighter regularisation ($C = 0.001$) and caps each generator's contribution at 5{,}000 samples (compared to $C = 0.005$, $N = 7{,}500$ in the per-generator headline runs). Family sizes are unequal (1--4 generators per family, following RAID's taxonomy), so training pool size and test-set size vary across folds. The Sel/Full ratio in Table~\ref{tab:logo} normalises for this by expressing each family's held-out accuracy as a fraction of its own full-feature ceiling.
 
 \paragraph{Results.}
 Table~\ref{tab:logo} reports the outcome.
@@ -747,7 +751,7 @@ Full AUC: area under the ROC curve (AUC) for the full-feature L2 probe.
 Sel AUC: AUC for the Sel\,L2 probe, ranging from 0.863 (cohere) to 0.986 (llama).
 All metrics are means over 3 seeds $\times$ 5 folds = 15 cells.
 Test set sizes: 5{,}000 (llama, 1 generator) to 20{,}000 (gpt, 4 generators).
-% Source: results/experiments/20260513\_190517/logo/summary.json (rerun; identical to 20260507\_195821).
+% Source: results/experiments/20260513\_190517/logo/family_*/aggregate.json.
 }
 \label{tab:logo}
 \end{table}
@@ -799,7 +803,7 @@ Cohere-Command-Chat's consistently diffuse geometry (lowest CAV cosine, largest 
 
 % [COMPRESSED — first sentence removed as it echoes the abstract; core numbers and framing retained]
 % Original first sentence: "Frozen \bertbase already encodes sparse, causally sufficient AI-detection circuits."
-An L1-regularised probe stably selects 45--62 neurons ($<$1\% of 9,216 CLS neurons). Patching these neurons flips human predictions to AI at 1.07--8.15\%, 10--16$\times$ above a random baseline; mean-ablation of the same set causes $\leq$1.1\,pp accuracy loss on five of six generators. The joint pattern, large flip rates alongside negligible ablation drops, is the signature of a signal that is \textit{easy to inject, hard to erase}: redundantly distributed across the full representation but concentrated enough to be causally sufficient.
+An L1-regularised probe stably selects 45--62 neurons ($<$1\% of 9,216 CLS neurons). Bidirectional activation patching shows these neurons are both sufficient and partially necessary: forward patching (AI $\to$ human) flips 1.07--8.15\% of human predictions to AI, 10--16$\times$ above a random baseline; reverse patching (human $\to$ AI) flips 0.65--5.74\% of AI predictions to human, 7--12$\times$ above random. Mean-ablation of the same set causes $\leq$1.1\,pp accuracy loss on five of six generators. The joint pattern, large flip rates alongside negligible ablation drops, is the signature of a signal that is \textit{easy to inject, hard to erase}: redundantly distributed across the full representation but concentrated enough to be causally sufficient.
 
 Cross-generator analysis reveals a bipartite structure: instruction-tuned generators concentrate 30--36\% of stable neurons in BERT's final layer, while both pure-base generators fall below 14\%, consistent with a layer-12 footprint of post-training alignment. Leave-one-family-out evaluation confirms that neurons identified from training families retain 86--94\% of the full-feature ceiling on entirely held-out generator families. This establishes that the discovered circuits are not artefacts of the specific generators studied.
 
@@ -889,18 +893,18 @@ AI-text detection is a dual-use capability: detectors can support platform integ
 \draw[->] (l2a)    -- (rA);
 \node[note, above=0.18cm of ablbox] {\textit{necessity test}};
 \node[box, below right=1.55cm and 0.55cm of S] (patbox)
-  {Activation patching\\{\footnotesize AI donor $\to$ human}};
+  {Activation patching\\{\footnotesize bidirectional}};
 \node[frozen,  below=0.55cm of patbox] (l2p)
   {L2 eval probe\\{\footnotesize (frozen)}};
 \node[outcome, below=0.55cm of l2p]   (rP)
-  {Flip rate 1--8\%\\{\footnotesize $10\text{--}16{\times}$ random}\\{\footnotesize \S\ref{sec:results-patching}}};
+  {Fwd: 1--8\% (10--16$\times$)\\{\footnotesize Rev: 0.65--5.74\% (7--12$\times$)}\\{\footnotesize \S\ref{sec:results-patching}}};
 \draw[->] (fork) -| (patbox.north);
 \draw[->] (patbox) -- (l2p);
 \draw[->] (l2p)    -- (rP);
 \node[note, above=0.18cm of patbox] {\textit{sufficiency test}};
 \end{tikzpicture}%
 }
-\caption{Overview of the experimental pipeline. Frozen \bertbase CLS activations are concatenated across all 12 layers, yielding $\mathbf{z}\in\mathbb{R}^{9{,}216}$. An L1-regularised probe ($C\!=\!0.005$) selects a sparse candidate set per (fold, seed) cell; neurons stable in ${\geq}50\%$ of all 15 cells become the \textit{stable set}~$\mathcal{S}$ (45--62 neurons per generator). An independent L2 probe trained on all 9{,}216 neurons is frozen and reused as the decision function in both experiments. \textbf{Left branch} (\S\ref{sec:results-necessity}): mean ablation tests necessity (accuracy drops $\leq\!1.2$\,pp on 5/6 generators). \textbf{Right branch} (\S\ref{sec:results-patching}): activation patching tests causal sufficiency: 1--8\% of human samples flip to AI, $10\text{--}16\times$ above a random baseline.}
+\caption{Overview of the experimental pipeline. Frozen \bertbase CLS activations are concatenated across all 12 layers, yielding $\mathbf{z}\in\mathbb{R}^{9{,}216}$. An L1-regularised probe ($C\!=\!0.005$) selects a sparse candidate set per (fold, seed) cell; neurons stable in ${\geq}50\%$ of all 15 cells become the \textit{stable set}~$\mathcal{S}$ (45--62 neurons per generator). An independent L2 probe trained on all 9{,}216 neurons is frozen and reused as the decision function in both experiments. \textbf{Left branch} (\S\ref{sec:results-necessity}): mean ablation tests necessity (accuracy drops $\leq\!1.2$\,pp on 5/6 generators). \textbf{Right branch} (\S\ref{sec:results-patching}): bidirectional activation patching: forward (AI $\to$ human) flips 1--8\% of human samples to AI, $10\text{--}16\times$ above random; reverse (human $\to$ AI) flips 0.65--5.74\% of AI samples to human, $7\text{--}12\times$ above random.}
 \label{fig:pipeline}
 \end{figure*}
 
@@ -1000,7 +1004,7 @@ Three observations drive the choice of $C=0.005$, $N=7{,}500$. \textbf{(1) Spars
 \section{Per-Cell Metrics}
 \label{app:per-cell}
 
-Table~\ref{tab:per-cell} reports L2-probe accuracy, AUC-ROC, F1, and number of L1-selected neurons for every evaluation cell (seed $\times$ fold). Run identifier: \texttt{20260426\_20\_full\allowbreak\_c0005\allowbreak\_n7500\allowbreak\_seeds3}.
+Table~\ref{tab:per-cell} reports L2-probe accuracy, AUC-ROC, F1, and number of L1-selected neurons for every evaluation cell (seed $\times$ fold). Run identifier: \texttt{20260510\_rerun\_main}.
 
 \begin{table*}[h]
 \centering
@@ -1236,7 +1240,7 @@ Mean (full) & 1.23 & 3.13 & 1.52 & 1.73 & 1.07 & 8.15 \\
 \end{tabular}
 \caption{Per-domain selected flip rate (\%) at $k = \text{full}$, 15-cell means. Domain means may differ slightly from the overall mean due to variation in the number of valid-human pairs per domain. GPT-2 shows elevated flip rates on news, Reddit, and wiki (3.1--4.9\%) relative to books and reviews (1.9--2.0\%), suggesting its detection signal is stronger in formal or community text domains. Cohere is uniformly high across all six domains (5.5--10.1\%), consistent with its proximity to the probe decision boundary overall. Mistral shows a notable wiki spike (3.54\%) while reviews are weak (0.62\%).
 % Source: patching/seed_*/fold_*/eval_metrics.json, flip_rate_by_domain field.
-% Headline run 20260426_20_full_c0005_n7500_seeds3 (gpt4/gpt2/mistral/llama/cohere); mpt from 20260509_165026.
+% Run: 20260510_rerun_main.
 }
 \label{tab:perdomain}
 \end{table*}
@@ -1262,7 +1266,7 @@ Layer & GPT-4 & GPT-2 & MPT & Mistral & LLaMA & Cohere \\
 \bottomrule
 \end{tabular}
 \caption{Stable-neuron counts by layer group across six generators. Bold indicates the peak layer group for each generator. Instruction-tuned generators (GPT-4, Mistral, LLaMA, Cohere) concentrate 30--36\% of stable neurons in layer~12; both pure-base generators (GPT-2, MPT) have $\leq$14\% in layer~12.
-% Source: characterize_results.json layer_distributions — run 20260426_20_full_c0005_n7500_seeds3.
+% Source: characterize_results.json layer_distributions — run 20260510_rerun_main.
 }
 \label{tab:layer-dist}
 \end{table}
@@ -1300,7 +1304,7 @@ Mean              & 0.073 & $\sim$24$\times$ \\
 \bottomrule
 \end{tabular}
 \caption{Pairwise Jaccard similarity between stable sets (15 generator pairs). $\times$\,chance is observed Jaccard divided by the analytic random-null Jaccard for two sets of the same sizes drawn from 9,216 neurons ($\approx$0.003 per pair). The mpt--gpt2 pair (bold) is the highest base$\times$base overlap; all base$\times$instruction-tuned pairs cluster at the bottom.
-% Source: characterize_results.json jaccard.matrix — run 20260426_20_full_c0005_n7500_seeds3.
+% Source: characterize_results.json jaccard.matrix — run 20260510_rerun_main.
 }
 \label{tab:jaccard}
 \end{table}
@@ -1328,7 +1332,7 @@ full & $1.23_{\pm 0.33}$ & $3.13_{\pm 0.54}$ & $1.52_{\pm 0.22}$ & $1.73_{\pm 0.
 \bottomrule
 \end{tabular}
 \caption{Selected flip rate (\%) across the $k$-sweep, 15-cell means (5 folds $\times$ 3 seeds). $k = \text{full}$ equals each cell's actual $|\mathcal{S}|$ (53--92 neurons); std shown only for $k = \text{full}$. Flip rate is monotonically increasing in $k$ for every generator.
-% Source: headline run 20260426_20_full_c0005_n7500_seeds3 (5 generators); mpt from 20260509_165026. All k-sweep values are 15-fold means from raw eval_metrics.json fold files.
+% Source: run 20260510_rerun_main. All k-sweep values are 15-fold means from raw eval_metrics.json fold files.
 }
 \label{tab:patching-sweep}
 \end{table*}
