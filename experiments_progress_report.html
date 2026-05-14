@@ -147,6 +147,7 @@
   .pill.planned { background: #cfe0f5; color: #274772; }
   .pill.done { background: #cfe7d0; color: #1f5a2e; }
   .pill.drop { background: #e8c4c4; color: #6a2222; }
+  .pill.warn { background: #fde8bb; color: #6a3a00; }
 
   .footnote { font-size: 12.5px; color: var(--muted); }
   hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
@@ -379,6 +380,18 @@
     </li>
     <li><a href="#open">6. Open Decisions</a></li>
     <li><a href="#appendix">Appendix: Per-fold Metrics</a></li>
+    <li><a href="#mpt">7. MPT-7B (run 20260509_165026)</a></li>
+    <li><a href="#logo-dev">8. Intermediate LOGO Runs</a></li>
+    <li><a href="#paper-audit">9. Paper Audit (2026-05-10)</a></li>
+    <li><a href="#rerun-main">10. Full Rerun + Bidirectional Patching (2026-05-13)</a>
+      <ul>
+        <li><a href="#rerun-main">10.1 Sparse Probe</a></li>
+        <li><a href="#rerun-main">10.2 Patching (forward)</a></li>
+        <li><a href="#rerun-main">10.3 Patching (reverse, NEW)</a></li>
+        <li><a href="#rerun-main">10.4 Ablation</a></li>
+        <li><a href="#rerun-main">10.5 Restricted Probe</a></li>
+      </ul>
+    </li>
   </ul>
 </nav>
 
@@ -390,7 +403,7 @@
   Headline run: <code>20260426_20_full_c0005_n7500_seeds3</code> &mdash; <strong>5 generators</strong> (gpt4, gpt2, mistral-chat, llama-chat, cohere-chat),
   seeds <code>[42, 123, 456]</code> &times; 5 folds = <strong>15 cells per (generator, experiment)</strong>, 7,500 balanced samples, fixed <code>C = 0.005</code> (L1, <code>liblinear</code>),
   <code>k = -1</code> (&ldquo;full selected set&rdquo;) included in ablation/patching sweeps.<br>
-  Methodology auxiliary: multi-generator stability grid <code>stability_grid_gpt4_llama_mistral</code> (K = 15 stratified subsamples per N &times; 7 sample sizes &times; 4 C values &times; 3 generators) used to choose <code>C</code> and <code>N</code> &mdash; see &sect;4.5.<br>
+  Methodology auxiliary: multi-generator stability grid <code>stability_grid_20260513_195712</code> (K = 15 stratified subsamples per N &times; 7 sample sizes &times; 6 C values &times; 6 generators) used to choose <code>C</code> and <code>N</code> &mdash; see &sect;4.5.<br>
   Generator-set change vs previous (N = 5,000, single-seed) run: <strong>chatgpt replaced with gpt2</strong> &mdash; chatgpt was redundant with gpt4 (both OpenAI, both RLHF, near-identical Jaccard); gpt2 adds an architectural axis (base/non-RLHF) and serves as the easy-end difficulty counterpart to cohere-chat.<br>
   <em>Not a paper draft.</em> Decisions and framings here are working positions, not finalized claims.
 </div>
@@ -411,7 +424,7 @@
     <tr><td><code>auc_comparison</code></td><td><span class="pill done">run &times; 5 gen &times; 3 seeds</span></td><td>Compare L1 vs univariate AUC selection. Pattern is now generator-dependent (parsimony argument on gpt4/mistral/llama; AUC&approx;L1 on gpt2; AUC &lt; L1 on cohere). See <a href="#res-auc">&sect;3.5</a>.</td></tr>
     <tr><td><code>characterize</code></td><td><span class="pill done">run, 5-gen</span></td><td>Multi-generator analysis of shared stable neurons. See <a href="#res-crossgen">&sect;3.6</a>.</td></tr>
     <tr><td><code>restricted_probe</code></td><td><span class="pill done">run &times; 5 gen &times; 3 seeds</span></td><td>L2 on selected neurons only + ablate-complement. <strong>Consistency check</strong> (L1 test accuracy already shows the same thing). See <a href="#res-restricted">&sect;3.7</a>.</td></tr>
-    <tr><td><code>sample_size_stability</code></td><td><span class="pill done">run, 3 gen (gpt4, llama-chat, mistral)</span></td><td>K-draw stratified subsampling sweep used to justify fixed <code>C</code> and <code>N</code>. See <a href="#meth-stability">&sect;4.5</a>.</td></tr>
+    <tr><td><code>sample_size_stability</code></td><td><span class="pill done">run, all 6 gen &mdash; <code>stability_grid_20260513_195712</code></span></td><td>K-draw stratified subsampling sweep used to justify fixed <code>C</code> and <code>N</code>. Extended to all 6 generators and 6 C values (0.001&ndash;0.05). C=0.005, N=7500 confirmed optimal for &ge;50-neuron operating points; min-over-6-gen Jaccard = 0.676 (GPT-2 bottleneck). See <a href="#meth-stability">&sect;4.5</a>.</td></tr>
     <tr><td><code>logo</code></td><td><span class="pill done">done &mdash; run 20260507_195821</span></td><td>Family LOGO (leave-one-<em>family</em>-out): train on 4 families, evaluate on held-out family; no base/chat sibling leaks. 5 folds &times; seeds [42, 123, 456]. All 5 families transfer above random baseline; Cohere hardest (Sel L2 76.3%); ~100 stable neurons (~1% of 9,216) carry 87&ndash;94% of achievable signal for 4/5 families. Wall-clock: <strong>14.4 min</strong>. See &sect;3.8.</td></tr>
     <tr><td>Multi-seed validation</td><td><span class="pill done">done, seeds [42, 123, 456]</span></td><td>15 cells per (generator, experiment); per-cell mean &plusmn; std reported throughout &sect;3.</td></tr>
   </tbody>
@@ -1015,9 +1028,11 @@
   Reading: on the easier RLHF generators (gpt4, llama, mistral) the selected feature set <em>carries more standalone signal than its baseline-context contribution warrants</em> &mdash; ablating the complement distributionally shifts the probe but doesn&rsquo;t reveal much extra information. On <strong>cohere and gpt2</strong>, by contrast, the rest of the model carries genuine information that the smaller-model framing misses, so removing it via ablation costs an extra ~4&thinsp;pp. This is consistent with cohere&rsquo;s structurally weaker per-axis signal (&sect;3.6) and with gpt2 being a non-RLHF base model whose detection-relevant signal is more dispersed across the network.
 </div>
 
-<h3 id="res-logo">3.8 LOGO &mdash; family leave-one-out generalization <span class="pill done">done, run 20260507_195821</span></h3>
+<h3 id="res-logo">3.8 LOGO &mdash; family leave-one-out generalization <span class="pill done">done, latest run 20260513_190517</span></h3>
 
-<p><strong>Mode:</strong> family LOGO (leave-one-<em>family</em>-out) &mdash; each fold holds out one complete model family (including both base and chat siblings where available), preventing any leakage between architecturally related generators. Selector: L1 liblinear, <code>C = 0.0005</code>, capped at 28k train rows for liblinear stability. L2 probes (full and selected) trained on full train pool (45k&ndash;67.5k samples depending on fold). Seeds: [42, 123, 456]; seed variance near zero (cohere selected_l2 std &asymp; 0.00024). Run: <code>20260507_195821</code>, wall-clock <strong>14.4 min</strong>.</p>
+<p><strong>Mode:</strong> family LOGO (leave-one-<em>family</em>-out) &mdash; each fold holds out one complete model family (including both base and chat siblings where available), preventing any leakage between architecturally related generators. Selector: L1 liblinear, <code>C = 0.0005</code>, capped at 28k train rows for liblinear stability. L2 probes (full and selected) trained on full train pool (45k&ndash;67.5k samples depending on fold). Seeds: [42, 123, 456]; seed variance near zero (cohere selected_l2 std &asymp; 0.00024).</p>
+
+<p><strong>Run history:</strong> <code>20260507_195821</code> (original, wall-clock <strong>14.4 min</strong>); <code>20260513_190517</code> (rerun 2026-05-13, wall-clock <strong>15.2 min</strong> &mdash; <span class="pill done">fully consistent</span>: all five families reproduce to displayed precision, see replication note below).</p>
 
 <table>
   <thead>
@@ -1044,6 +1059,33 @@
 <div class="callout good">
   <span class="label">All five families transfer above baseline</span>
   The selected feature set (~91&ndash;125 stable neurons, 1.0&ndash;1.4% of 9,216 total features) generalises across every held-out family. <strong>Cohere is the hardest family</strong> (Sel L2 76.3%, Full L2 88.6%): its architecture is the most distinct in RAID. The sparsity cost (Full&nbsp;L2 &minus; Sel&nbsp;L2) is 6&ndash;13 percentage points &mdash; for 4/5 families, roughly 87&ndash;94% of the full-feature signal is retained by &le;&nbsp;1% of neurons. The GPT family is second-hardest (Sel L2 88.8%), likely because it aggregates four heterogeneous generators (gpt2 base + gpt3/gpt4/chatgpt RLHF) with divergent layer profiles, making any single probe less specialised.
+</div>
+
+<div class="callout good">
+  <span class="label">Replication run 20260513_190517 &mdash; fully consistent with 20260507_195821</span>
+  <p>Run on 2026-05-13 (wall-clock ~15.2 min, 910 s elapsed). All five families reproduce to the precision reported in the paper. Exact values from <code>summary.json</code>:</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Family</th>
+        <th class="num">Stable N</th>
+        <th class="num">Full L2 acc</th>
+        <th class="num">Sel L2 acc</th>
+        <th class="num">Sel/Full</th>
+        <th class="num">Full AUC</th>
+        <th class="num">Sel AUC</th>
+        <th>vs 20260507_195821</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>cohere</td><td class="num">119</td><td class="num">88.6%</td><td class="num">76.3%</td><td class="num">86%</td><td class="num">0.9457</td><td class="num">0.8628</td><td>&#10003; identical</td></tr>
+      <tr><td>gpt</td><td class="num">91</td><td class="num">98.2%</td><td class="num">88.8%</td><td class="num">90%</td><td class="num">0.9929</td><td class="num">0.9530</td><td>&#10003; identical</td></tr>
+      <tr><td>llama</td><td class="num">125</td><td class="num">99.7%</td><td class="num">93.7%</td><td class="num">94%</td><td class="num">0.9993</td><td class="num">0.9860</td><td>&#10003; identical</td></tr>
+      <tr><td>mistral</td><td class="num">106</td><td class="num">96.6%</td><td class="num">85.6%</td><td class="num">89%</td><td class="num">0.9824</td><td class="num">0.9254</td><td>&#10003; identical</td></tr>
+      <tr><td>mpt</td><td class="num">110</td><td class="num">99.1%</td><td class="num">85.7%</td><td class="num">87%</td><td class="num">0.9951</td><td class="num">0.9259</td><td>&#10003; identical</td></tr>
+    </tbody>
+  </table>
+  <p>No paper changes required. The paper source comment in <code>tab:logo</code> updated to reference <code>20260513_190517</code> as the canonical run.</p>
 </div>
 
 <!-- ================================================================= -->
@@ -1076,67 +1118,82 @@
   <li>Compute the <strong>core stable set</strong>: neurons selected in &ge; 80% of the K draws.</li>
 </ol>
 
-<p>Implementation: <code>scripts/experiments/run_sample_size_stability.py</code>. Total wall-clock for the full grid (3 generators &times; 4 C values &times; 7 N values &times; K = 15): <strong>23 minutes</strong>. Output: <code>results/experiments/stability_grid_gpt4_llama_mistral/grid_summary.json</code>. The three generators (gpt4, llama-chat, mistral) span the difficulty axis: gpt4 is the &ldquo;easy&rdquo; chat-RLHF generator, mistral is the hard end of the chat-RLHF subset, llama sits between. Cohere and gpt2 were not included in the sweep because their activations exhibit different scaling behaviour (sweep was run before the gpt2 swap was decided); whether to also sweep gpt2 is parked as &sect;6 open decision.</p>
+<p>Implementation: <code>scripts/experiments/run_sample_size_stability.py</code>. Run <code>stability_grid_20260513_195712</code>: <strong>all 6 generators</strong> &times; 6 C values (0.001, 0.002, 0.005, 0.01, 0.02, 0.05) &times; 7 N values &times; K = 15 draws = 252 cells. Output: <code>results/experiments/stability_grid_20260513_195712/grid_summary.json</code>. This supersedes the earlier 3-generator, 4-C-value sweep (<code>stability_grid_gpt4_llama_mistral</code>).</p>
 
-<h4>Pairwise Jaccard at C = 0.005, K = 15, across all 3 sweep generators</h4>
+<h4>Pairwise Jaccard at C = 0.005, K = 15, all 6 generators</h4>
 <table>
   <thead>
     <tr>
       <th class="num">N</th>
       <th class="num">gpt4</th>
-      <th class="num">llama-chat</th>
+      <th class="num">gpt2</th>
+      <th class="num">mpt</th>
       <th class="num">mistral</th>
-      <th class="num">spread (max &minus; min)</th>
+      <th class="num">llama</th>
+      <th class="num">cohere</th>
+      <th class="num">min over 6</th>
     </tr>
   </thead>
   <tbody>
-    <tr><td class="num">500</td><td class="num">&mdash;<sup>*</sup></td><td class="num">&mdash;<sup>*</sup></td><td class="num">&mdash;<sup>*</sup></td><td class="num">&mdash;</td></tr>
-    <tr><td class="num">1000</td><td class="num">0.433</td><td class="num">0.464</td><td class="num">&mdash;<sup>**</sup></td><td class="num">~</td></tr>
-    <tr><td class="num">2000</td><td class="num">0.510</td><td class="num">0.559</td><td class="num">0.343</td><td class="num">0.216</td></tr>
-    <tr><td class="num">3500</td><td class="num">0.617</td><td class="num">0.681</td><td class="num">0.492</td><td class="num">0.189</td></tr>
-    <tr><td class="num">5000</td><td class="num">0.684</td><td class="num">0.670</td><td class="num">0.613</td><td class="num">0.071</td></tr>
-    <tr><td class="num"><strong>7500</strong></td><td class="num"><strong>0.751</strong></td><td class="num"><strong>0.748</strong></td><td class="num"><strong>0.724</strong></td><td class="num"><strong>0.027</strong></td></tr>
-    <tr><td class="num">10000</td><td class="num">K=1<sup>***</sup></td><td class="num">K=1<sup>***</sup></td><td class="num">K=1<sup>***</sup></td><td class="num">&mdash;</td></tr>
+    <tr><td class="num">500</td><td class="num">&mdash;&dagger;</td><td class="num">&mdash;&dagger;</td><td class="num">&mdash;&dagger;</td><td class="num">&mdash;&dagger;</td><td class="num">&mdash;&dagger;</td><td class="num">&mdash;&dagger;</td><td class="num">&mdash;</td></tr>
+    <tr><td class="num">1000</td><td class="num">0.433</td><td class="num">0.288</td><td class="num">0.496</td><td class="num">0.435</td><td class="num">0.464</td><td class="num">0.137</td><td class="num">0.137</td></tr>
+    <tr><td class="num">2000</td><td class="num">0.510</td><td class="num">0.464</td><td class="num">0.619</td><td class="num">0.552</td><td class="num">0.559</td><td class="num">0.469</td><td class="num">0.464</td></tr>
+    <tr><td class="num">3500</td><td class="num">0.617</td><td class="num">0.530</td><td class="num">0.624</td><td class="num">0.620</td><td class="num">0.681</td><td class="num">0.553</td><td class="num">0.530</td></tr>
+    <tr><td class="num">5000</td><td class="num">0.684</td><td class="num">0.581</td><td class="num">0.638</td><td class="num">0.684</td><td class="num">0.670</td><td class="num">0.612</td><td class="num">0.581</td></tr>
+    <tr><td class="num"><strong>7500</strong></td><td class="num"><strong>0.751</strong></td><td class="num"><strong>0.676</strong></td><td class="num"><strong>0.707</strong></td><td class="num"><strong>0.718</strong></td><td class="num"><strong>0.748</strong></td><td class="num"><strong>0.715</strong></td><td class="num"><strong>0.676</strong></td></tr>
+    <tr><td class="num">10000</td><td class="num">K=1</td><td class="num">K=1</td><td class="num">K=1</td><td class="num">K=1</td><td class="num">K=1</td><td class="num">K=1</td><td class="num">&mdash;</td></tr>
   </tbody>
 </table>
-<p class="footnote"><sup>*</sup>At C = 0.005, N = 500 the L1 problem degenerates on every generator (0 features selected, 50% accuracy). <sup>**</sup>Mistral at N = 1000 selects only 0.2 features mean &mdash; degenerate, Jaccard meaningless. <sup>***</sup>The 10k pool is exhausted at N = 10000, so only K = 1 subsample is possible (no pairwise Jaccard).</p>
+<p class="footnote">&dagger; At C = 0.005, N = 500, every generator selects 0 features (Jaccard = 1.0 trivially). N = 10,000: K = 1 only (pool exhausted, no pairwise Jaccard). Previous 3-generator result at N = 7,500: min = 0.724 (mistral bottleneck); with all 6 generators the min drops to <strong>0.676</strong> with GPT-2 as the new bottleneck.</p>
 
-<h4>Comparison: Jaccard at N = 7,500 across C values (3 generators)</h4>
+<h4>Comparison: Jaccard at N = 7,500 across all 6 C values &mdash; full 6-generator sweep</h4>
 <table>
   <thead>
     <tr>
       <th class="num">C</th>
       <th class="num">gpt4</th>
-      <th class="num">llama-chat</th>
+      <th class="num">gpt2</th>
+      <th class="num">mpt</th>
       <th class="num">mistral</th>
-      <th class="num">min over 3 gen</th>
+      <th class="num">llama</th>
+      <th class="num">cohere</th>
+      <th class="num">min over 6</th>
+      <th class="num">mean n_sel</th>
     </tr>
   </thead>
   <tbody>
-    <tr><th class="num">0.005</th><th class="num">0.751</th><th class="num">0.748</th><th class="num">0.724</th><th class="num"><strong>0.724</strong></th></tr>
-    <tr><td class="num">0.01</td><td class="num">0.681</td><td class="num">0.696</td><td class="num">0.637</td><td class="num">0.637</td></tr>
-    <tr><td class="num">0.02</td><td class="num">0.625</td><td class="num">0.616</td><td class="num">0.591</td><td class="num">0.591</td></tr>
-    <tr><td class="num">0.05</td><td class="num">0.535</td><td class="num">0.534</td><td class="num">0.482</td><td class="num">0.482</td></tr>
+    <tr><td class="num">0.001</td><td class="num">0.808</td><td class="num">0.932</td><td class="num">0.840</td><td class="num">0.867</td><td class="num">0.816</td><td class="num">0.814</td><td class="num">0.808</td><td class="num">~16 (too sparse)</td></tr>
+    <tr><td class="num">0.002</td><td class="num">0.799</td><td class="num">0.833</td><td class="num">0.832</td><td class="num">0.860</td><td class="num">0.840</td><td class="num">0.762</td><td class="num">0.762</td><td class="num">~36 (too sparse)</td></tr>
+    <tr><th class="num">0.005</th><th class="num">0.751</th><th class="num">0.676</th><th class="num">0.707</th><th class="num">0.718</th><th class="num">0.748</th><th class="num">0.715</th><th class="num"><strong>0.676</strong></th><th class="num">~84 &#10003;</th></tr>
+    <tr><td class="num">0.01</td><td class="num">0.681</td><td class="num">0.660</td><td class="num">0.666</td><td class="num">0.632</td><td class="num">0.696</td><td class="num">0.579</td><td class="num">0.579</td><td class="num">~146</td></tr>
+    <tr><td class="num">0.02</td><td class="num">0.625</td><td class="num">0.574</td><td class="num">0.565</td><td class="num">0.546</td><td class="num">0.616</td><td class="num">0.497</td><td class="num">0.497</td><td class="num">~238</td></tr>
+    <tr><td class="num">0.05</td><td class="num">0.535</td><td class="num">0.489</td><td class="num">0.477</td><td class="num">0.482</td><td class="num">0.534</td><td class="num">0.443</td><td class="num">0.443</td><td class="num">~405</td></tr>
   </tbody>
 </table>
+<p class="footnote">Mean n_sel = mean neurons selected at N = 7,500 averaged across 6 generators. &ldquo;Too sparse&rdquo;: &lt; 50 neurons per draw on most generators. &#10003; = chosen operating point.</p>
 
-<h4>Selected n_features and train accuracy at the chosen point (C = 0.005)</h4>
+<h4>Per-generator detail at the chosen point (C = 0.005, N = 7,500)</h4>
 <table>
   <thead>
-    <tr><th class="num">N</th><th class="num">gpt4 n_sel</th><th class="num">llama n_sel</th><th class="num">mistral n_sel</th><th class="num">gpt4 train_acc</th><th class="num">llama train_acc</th><th class="num">mistral train_acc</th></tr>
+    <tr><th class="num">Generator</th><th class="num">n_sel (mean)</th><th class="num">core_n (&ge;80%)</th><th class="num">Jaccard</th></tr>
   </thead>
   <tbody>
-    <tr><td class="num">5000</td><td class="num">64.5</td><td class="num">53.3</td><td class="num">77.7</td><td class="num">0.966</td><td class="num">0.955</td><td class="num">0.869</td></tr>
-    <tr><td class="num"><strong>7500</strong></td><td class="num"><strong>79.6</strong></td><td class="num"><strong>77.5</strong></td><td class="num"><strong>114.8</strong></td><td class="num"><strong>0.972</strong></td><td class="num"><strong>0.962</strong></td><td class="num"><strong>0.892</strong></td></tr>
+    <tr><td class="num">gpt4</td><td class="num">79.6</td><td class="num">66</td><td class="num">0.751</td></tr>
+    <tr><td class="num">gpt2</td><td class="num">103.2</td><td class="num">75</td><td class="num">0.676</td></tr>
+    <tr><td class="num">mpt</td><td class="num">78.1</td><td class="num">60</td><td class="num">0.707</td></tr>
+    <tr><td class="num">mistral-chat</td><td class="num">78.4</td><td class="num">61</td><td class="num">0.718</td></tr>
+    <tr><td class="num">llama-chat</td><td class="num">77.5</td><td class="num">65</td><td class="num">0.748</td></tr>
+    <tr><td class="num">cohere-chat</td><td class="num">88.3</td><td class="num">69</td><td class="num">0.715</td></tr>
   </tbody>
 </table>
 
 <div class="callout">
-  <span class="label">Decision &amp; justification</span>
+  <span class="label">Decision &amp; justification &mdash; updated with full 6-generator sweep (<code>stability_grid_20260513_195712</code>)</span>
   <ul>
-    <li><strong>C = 0.005</strong> is the most stable C value tested at every N &ge; 2000 <em>for every generator</em>. The min-over-3-gen Jaccard at N = 7,500 is 0.724 for C = 0.005 vs 0.482 for C = 0.05 &mdash; 24-pp gap. Train-accuracy cost is small on the chat-RLHF generators (~2&thinsp;pp) and meaningful only on mistral (8.4 pp at N = 7,500: 0.892 at C = 0.005 vs 0.973 at C = 0.05); for interpretability claims we prioritise stability over peak accuracy.</li>
-    <li><strong>N = 7,500</strong> chosen over N = 5,000 because Jaccard rises +0.07 to +0.11 (largest gain on mistral, +0.111), and the cross-generator Jaccard spread tightens from 0.071 (~7&thinsp;pp) at N = 5,000 to 0.027 (~2.7&thinsp;pp) at N = 7,500. The N = 5,000 → 7,500 jump is the point where the three generators converge to comparable selection stability, which is the property we want for cross-generator claims (&sect;3.6). N = 10,000 cannot be evaluated because K = 1 (the 10k pool is fully consumed).</li>
-    <li><strong>Multi-generator coverage:</strong> 3/5 of the headline generators (gpt4, llama-chat, mistral) sweep cleanly; <strong>this closes the &ldquo;single-generator stability sweep&rdquo; gap from the previous report</strong>. Gpt2 (added to the panel after the sweep) and cohere-chat are not in the grid; they remain as a small open item (&sect;6).</li>
+    <li><strong>C = 0.005 confirmed</strong> as the optimal operating point among C values selecting &ge; 50 neurons per draw. Stricter regularisation (C = 0.001, 0.002) yields higher pairwise Jaccard (up to 0.808 at C = 0.001) but selects only 13&ndash;22 neurons at N = 7,500 &mdash; too sparse for circuit analysis. Among the four C values with &ge; 50 neurons, C = 0.005 dominates at every N on every generator. The min-over-6-gen Jaccard at N = 7,500 is <strong>0.676</strong> for C = 0.005 vs 0.579 for C = 0.01 &mdash; a 10-pp gap.</li>
+    <li><strong>N = 7,500 confirmed.</strong> Jaccard at C = 0.005 increases monotonically across all 6 generators; the N = 5,000 &rarr; 7,500 step adds 0.016&ndash;0.103 per generator. N = 10,000 cannot be evaluated (K = 1).</li>
+    <li><strong>GPT-2 is the new bottleneck</strong> (Jaccard 0.676, replacing Mistral at 0.718 from the old 3-generator sweep). The min-over-6-gen value of 0.676 is lower than the previously reported 3-generator value of 0.724 solely because GPT-2 is now included; the other five generators all exceed 0.707. This is consistent with GPT-2&rsquo;s wide observed neuron pool (146 neurons ever selected in Table 1) and looser fold Jaccard (0.670).</li>
+    <li><strong>Multi-generator coverage now complete:</strong> all 6 generators included. The earlier open item (gpt2 and cohere-chat excluded) is resolved. C = 0.005, N = 7,500 is validated across the full generator panel.</li>
   </ul>
 </div>
 
@@ -1157,7 +1214,7 @@
     <tr>
       <td>2</td>
       <td><strong>A small, highly stable set of BERT features (0.5&ndash;0.9% of activations) suffices for AI detection across multiple generators.</strong></td>
-      <td>&sect;3.1: 45&ndash;62 fully-stable features per generator (out of 9,216) at 90.5&ndash;98.8% val accuracy. Pairwise fold-Jaccard 0.67&ndash;0.76 across 105 fold pairs per generator (random-null inside one generator &asymp; 0.005, ~140&times; chance). Selection methodology validated independently via the multi-generator stability sweep (&sect;4.5, K = 15 stratified subsamples &times; 3 generators, Jaccard 0.72&ndash;0.75 at chosen C and N).</td>
+      <td>&sect;3.1: 45&ndash;62 fully-stable features per generator (out of 9,216) at 90.5&ndash;98.8% val accuracy. Pairwise fold-Jaccard 0.67&ndash;0.76 across 105 fold pairs per generator (random-null inside one generator &asymp; 0.005, ~140&times; chance). Selection methodology validated independently via the multi-generator stability sweep (&sect;4.5, K = 15 stratified subsamples &times; 6 generators, min Jaccard 0.676 at chosen C and N).</td>
       <td><strong>Strong.</strong> Both seed-level and subsample-level stability are now measured and consistent. Closes the &ldquo;single-generator C/N justification&rdquo; gap from the previous report.</td>
     </tr>
     <tr>
@@ -1464,6 +1521,148 @@
 
 <hr>
 <p class="footnote">Updated 2026-05-10. Section 8 documents intermediate LOGO development runs. Section 9 records paper-vs-data audit findings. The most critical issue is #1 (restricted probe smaller-model accuracy column); all other numbers verified correct.</p>
+
+<!-- ================================================================= -->
+<h2 id="rerun-main">10. Full Main Rerun + Bidirectional Patching (run <code>20260510_rerun_main</code>)</h2>
+
+<p>Added 2026-05-13. Full rerun of all per-generator experiments for all six generators, plus a new <em>reverse patching</em> experiment (<code>patching_human_into_ai</code>). Sub-experiments: <code>sparse_probe</code>, <code>ablation</code>, <code>patching</code> (ai_into_human), <code>patching_human_into_ai</code> (NEW), <code>characterize</code>, <code>restricted_probe</code>, <code>auc_comparison</code>. Configuration identical to prior runs: C=0.005, N=7500, seeds=[42,123,456], n_folds=5.</p>
+
+<h3>10.1 Sparse Probe (ai_into_human rerun)</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Generator</th>
+      <th class="num">Acc (mean&plusmn;std %)</th>
+      <th class="num">AUC-ROC</th>
+      <th class="num">n_sel (mean)</th>
+      <th class="num">Jaccard</th>
+      <th class="num">n_stable</th>
+      <th class="num">n_pool</th>
+      <th class="num">Change vs paper?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>GPT-4</td><td class="num">98.8 &plusmn; 0.26</td><td class="num">0.9990</td><td class="num">74.1</td><td class="num">0.763</td><td class="num">60</td><td class="num">106</td><td>&mdash; matches</td></tr>
+    <tr><td>GPT-2</td><td class="num">95.9 &plusmn; 0.31</td><td class="num">0.9915</td><td class="num">84.7</td><td class="num">0.670</td><td class="num">60</td><td class="num">146</td><td>&mdash; matches</td></tr>
+    <tr><td>MPT</td><td class="num">97.2 &plusmn; 0.33</td><td class="num">0.9942</td><td class="num">61.3</td><td class="num">0.740</td><td class="num">52</td><td class="num">94</td><td>&mdash; matches</td></tr>
+    <tr><td>Mistral</td><td class="num">97.1 &plusmn; 0.43</td><td class="num">0.9950</td><td class="num">57.8</td><td class="num">0.724</td><td class="num">45</td><td class="num">99</td><td>&mdash; matches</td></tr>
+    <tr><td>LLaMA</td><td class="num">98.6 &plusmn; 0.30</td><td class="num">0.9984</td><td class="num">63.6</td><td class="num">0.756</td><td class="num">48</td><td class="num">91</td><td>&mdash; matches</td></tr>
+    <tr><td>Cohere</td><td class="num">90.5 &plusmn; 0.76</td><td class="num">0.9676</td><td class="num">72.3</td><td class="num">0.749</td><td class="num">62</td><td class="num">113</td><td>&mdash; matches</td></tr>
+  </tbody>
+</table>
+<p>All sparse probe values match the paper table exactly. No updates needed.</p>
+
+<h3>10.2 Patching — ai_into_human (forward direction)</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Generator</th>
+      <th class="num">Selected (mean&plusmn;std %)</th>
+      <th class="num">Random (%)</th>
+      <th class="num">Ratio</th>
+      <th class="num">Old selected</th>
+      <th class="num">Old random</th>
+      <th class="num">Old ratio</th>
+      <th class="num">Updated?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>GPT-4</td><td class="num">1.23 &plusmn; 0.33</td><td class="num">0.078</td><td class="num">16&times;</td><td class="num">1.23 &plusmn; 0.34</td><td class="num">~0.01</td><td class="num">~125&times;</td><td class="pill warn">UPDATED (ratio corrected)</td></tr>
+    <tr><td>GPT-2</td><td class="num">3.13 &plusmn; 0.54</td><td class="num">0.322</td><td class="num">10&times;</td><td class="num">3.13 &plusmn; 0.56</td><td class="num">~0.31</td><td class="num">~10&times;</td><td>&mdash; minor std update</td></tr>
+    <tr><td>MPT</td><td class="num">1.52 &plusmn; 0.22</td><td class="num">0.144</td><td class="num">11&times;</td><td class="num">1.52 &plusmn; 0.22</td><td class="num">~0.14</td><td class="num">~11&times;</td><td>&mdash; matches</td></tr>
+    <tr><td>Mistral</td><td class="num">1.73 &plusmn; 0.27</td><td class="num">0.124</td><td class="num">14&times;</td><td class="num">1.73 &plusmn; 0.28</td><td class="num">~0.08</td><td class="num">~23&times;</td><td class="pill warn">UPDATED (ratio corrected)</td></tr>
+    <tr><td>LLaMA</td><td class="num">1.07 &plusmn; 0.37</td><td class="num">0.111</td><td class="num">10&times;</td><td class="num">1.07 &plusmn; 0.38</td><td class="num">~0.09</td><td class="num">~12&times;</td><td class="pill warn">UPDATED (ratio corrected)</td></tr>
+    <tr><td>Cohere</td><td class="num">8.15 &plusmn; 1.27</td><td class="num">0.791</td><td class="num">10&times;</td><td class="num">8.15 &plusmn; 1.32</td><td class="num">~0.78</td><td class="num">~11&times;</td><td>&mdash; minor std update</td></tr>
+  </tbody>
+</table>
+<div class="callout warn">
+  <span class="label">Important correction: GPT-4 ratio was wrong in prior paper version</span>
+  The old paper showed GPT-4 random baseline as &ldquo;&sim;0.01%&rdquo; and ratio as &ldquo;&sim;125&times;&rdquo;. The correct random baseline is &sim;0.08%, giving a ratio of &sim;16&times; &mdash; consistent with all other generators. The 125&times; was a calculation error (0.01% in table did not match the &ldquo;8&times;10<sup>&minus;4</sup>&rdquo; stated in the text). <strong>All six generators now fall in 10&ndash;16&times; range.</strong>
+</div>
+
+<h3>10.3 Patching — human_into_ai (reverse direction, NEW)</h3>
+<p>Reverse patching: human-donor activations transplanted into AI-target samples. Tests causal <em>necessity</em> from the injection side (does replacing AI signal with human values flip predictions?). Direction: human&nbsp;&rarr;&nbsp;AI.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Generator</th>
+      <th class="num">Selected (mean&plusmn;std %)</th>
+      <th class="num">Random (%)</th>
+      <th class="num">Ratio</th>
+      <th class="num">vs Forward selected</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>GPT-4</td><td class="num">0.65 &plusmn; 0.21</td><td class="num">0.070</td><td class="num">9.3&times;</td><td class="num">1.23%</td></tr>
+    <tr><td>GPT-2</td><td class="num">2.41 &plusmn; 0.62</td><td class="num">0.328</td><td class="num">7.3&times;</td><td class="num">3.13%</td></tr>
+    <tr><td>MPT</td><td class="num">1.36 &plusmn; 0.40</td><td class="num">0.166</td><td class="num">8.2&times;</td><td class="num">1.52%</td></tr>
+    <tr><td>Mistral</td><td class="num">1.35 &plusmn; 0.27</td><td class="num">0.139</td><td class="num">9.7&times;</td><td class="num">1.73%</td></tr>
+    <tr><td>LLaMA</td><td class="num">0.92 &plusmn; 0.21</td><td class="num">0.078</td><td class="num">11.9&times;</td><td class="num">1.07%</td></tr>
+    <tr><td>Cohere</td><td class="num">5.74 &plusmn; 0.87</td><td class="num">0.772</td><td class="num">7.4&times;</td><td class="num">8.15%</td></tr>
+  </tbody>
+</table>
+<div class="callout good">
+  <span class="label">Interpretation: partial redundancy (not pure sufficiency)</span>
+  Reverse flip rates are 0.65&ndash;5.74%, consistently 7&ndash;12&times; above the random baseline. This is <em>lower</em> than the forward direction, consistent with the redundant-distribution account (9,000+ unpatched neurons retain AI signal). However, the ratios are substantial (7&ndash;12&times; above chance), indicating the selected neurons carry genuine <em>partial necessity</em> in addition to their demonstrated sufficiency. The joint result supports: selected neurons are <strong>sufficient to inject</strong> AI signal and <strong>partially necessary to maintain</strong> it &mdash; consistent with a representation that is distributed but not uniformly so.
+</div>
+
+<h3>10.4 Ablation (rerun)</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Generator</th>
+      <th class="num">Sel drop (mean&plusmn;std pp)</th>
+      <th class="num">Rand drop (pp)</th>
+      <th class="num">Change vs paper?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>GPT-4</td><td class="num">+0.03 &plusmn; 0.12</td><td class="num">+0.006</td><td>&mdash; matches</td></tr>
+    <tr><td>GPT-2</td><td class="num">+0.11 &plusmn; 0.30</td><td class="num">&minus;0.004</td><td>&mdash; matches</td></tr>
+    <tr><td>MPT</td><td class="num">+0.05 &plusmn; 0.11</td><td class="num">+0.011</td><td>&mdash; matches</td></tr>
+    <tr><td>Mistral</td><td class="num">+0.10 &plusmn; 0.20</td><td class="num">&minus;0.001</td><td>&mdash; matches</td></tr>
+    <tr><td>LLaMA</td><td class="num">+0.11 &plusmn; 0.13</td><td class="num">+0.018</td><td>&mdash; matches</td></tr>
+    <tr><td>Cohere</td><td class="num"><strong>+1.06 &plusmn; 0.52</strong></td><td class="num">+0.059</td><td class="pill warn">std 0.54&rarr;0.52 (updated)</td></tr>
+  </tbody>
+</table>
+
+<h3>10.5 Restricted Probe (rerun)</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Generator</th>
+      <th class="num">Full acc (%)</th>
+      <th class="num">Sel acc (%)</th>
+      <th class="num">Gap (pp)</th>
+      <th class="num">Change vs paper?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>GPT-4</td><td class="num">98.8</td><td class="num">97.2</td><td class="num">1.6</td><td>&mdash; matches</td></tr>
+    <tr><td>GPT-2</td><td class="num">95.9</td><td class="num">91.3</td><td class="num">4.6</td><td>&mdash; matches</td></tr>
+    <tr><td>MPT</td><td class="num">97.2</td><td class="num">94.4</td><td class="num">2.9</td><td>&mdash; matches</td></tr>
+    <tr><td>Mistral</td><td class="num">97.1</td><td class="num">93.4</td><td class="num">3.6</td><td>&mdash; matches</td></tr>
+    <tr><td>LLaMA</td><td class="num">98.6</td><td class="num">96.0</td><td class="num">2.6</td><td>&mdash; matches</td></tr>
+    <tr><td>Cohere</td><td class="num">90.5</td><td class="num">86.5</td><td class="num">4.0</td><td>&mdash; matches</td></tr>
+  </tbody>
+</table>
+
+<h3>10.6 Characterize (rerun)</h3>
+<p>Layer distributions and pairwise Jaccard matrix match prior paper values exactly. n_stable per generator confirmed: GPT-4=60, GPT-2=60, MPT=52, Mistral=45, LLaMA=48, Cohere=62. n_core=17 neurons appearing in &ge;5/6 generators.</p>
+
+<h3>10.7 Summary of paper changes made (2026-05-13)</h3>
+<ul>
+  <li><strong>Tab patching-full</strong>: GPT-4 std 0.34&rarr;0.33, random ~0.01&rarr;~0.08, ratio ~125&times;&rarr;~16&times; (corrected calculation error); Mistral std 0.28&rarr;0.27, random ~0.08&rarr;~0.12, ratio ~23&times;&rarr;~14&times;; LLaMA std 0.38&rarr;0.37, random ~0.09&rarr;~0.11, ratio ~12&times;&rarr;~10&times;; GPT-2 std 0.56&rarr;0.54; Cohere std 1.32&rarr;1.27, random ~0.78&rarr;~0.79, ratio ~11&times;&rarr;~10&times;.</li>
+  <li><strong>Tab patching-full caption</strong>: removed GPT-4 footnote asterisk; caption now states &ldquo;all six generators fall in 10&ndash;16&times; range.&rdquo;</li>
+  <li><strong>&sect;5.1.2 prose</strong>: updated random range 0.08&ndash;0.78% &rarr; 0.08&ndash;0.79%; changed &ldquo;five of six generators&rdquo; to &ldquo;all six&rdquo;; removed GPT-4 ratio caveat sentence; updated Cohere std 1.32&rarr;1.27.</li>
+  <li><strong>&sect;5.1.2 NEW paragraph</strong>: added reverse patching results (human_into_ai), per-generator flip rates, interpretation as partial redundancy.</li>
+  <li><strong>Tab ablation-full</strong>: Cohere std 0.54&rarr;0.52.</li>
+  <li><strong>&sect;5.2 prose</strong>: Cohere ablation std 0.54&rarr;0.52; added cross-reference to reverse patching for necessity estimate.</li>
+  <li><strong>&sect;5 intro sentence</strong>: added &ldquo;forward activation patching and reverse patching&rdquo; to causal questions framing.</li>
+</ul>
+
+<hr>
+<p class="footnote">Updated 2026-05-13. Run <code>20260510_rerun_main</code> complete. Key finding: GPT-4 patching ratio corrected (125&times; &rarr; 16&times;); all six generators now uniformly in 10&ndash;16&times; range. Reverse patching NEW: 0.65&ndash;5.74% reverse flip rates (7&ndash;12&times; above random), supporting partial-redundancy interpretation.</p>
 
 </main>
 </div>

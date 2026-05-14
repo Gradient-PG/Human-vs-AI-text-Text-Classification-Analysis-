@@ -1,4 +1,4 @@
-\begin{thebibliography}{41}
+\begin{thebibliography}{40}
 \providecommand{\natexlab}[1]{#1}
 
 \bibitem[{Antverg and Belinkov(2022)}]{antverg2022pitfalls}
@@ -278,15 +278,6 @@ Hugo Touvron, Louis Martin, Kevin Stone, Peter Albert, Amjad Almahairi, Yasmine
 \newblock \href {https://arxiv.org/abs/2307.09288} {Llama 2: Open foundation
   and fine-tuned chat models}.
 \newblock \emph{Preprint}, arXiv:2307.09288.
-
-\bibitem[{Verma et~al.(2024)Verma, Fleisig, Tomlin, and
-  Klein}]{verma2024ghostbuster}
-Vivek Verma, Eve Fleisig, Nicholas Tomlin, and Dan Klein. 2024.
-\newblock \href {https://aclanthology.org/2024.naacl-long.95/} {Ghostbuster:
-  Detecting text ghostwritten by large language models}.
-\newblock In \emph{Proceedings of the 2024 Conference of the North American
-  Chapter of the Association for Computational Linguistics: Human Language
-  Technologies (Volume 1: Long Papers)}.
 
 \bibitem[{Vig et~al.(2020)Vig, Gehrmann, Belinkov, Qian, Nevo, Singer, and
   Shieber}]{vig2020causal}

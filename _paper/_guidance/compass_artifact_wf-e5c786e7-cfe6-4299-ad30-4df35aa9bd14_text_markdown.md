@@ -1,6 +1,7 @@
 # Annotated Bibliography for "A Mechanistic Study of AI-Detection Features in Frozen BERT: Sparse Probing and Activation Patching on RAID"
 
 ## TL;DR
+
 - The strongest existing peg for your work is **Borile & Abrate (Findings of EMNLP 2025)**, which independently identifies "confounding neurons" in transformer detectors and validates that neuron-level interventions can disentangle generator/domain signal — your paper should cite it as the closest prior art and explicitly differentiate (frozen base BERT, no detector head, RAID's six generators, donor patching with quantified flip rate).
 - The methodological backbone of your paper is well-supported by canonical work: **Gurnee et al. (TMLR 2024)** for L1 sparse probing, **Vig et al. (NeurIPS 2020) + Geiger et al. (NeurIPS 2021)** for causal mediation/interchange interventions, **Durrani et al. (EMNLP 2020) and Antverg & Belinkov (ICLR 2022)** for neuron ranking and probing pitfalls, and **Elhage et al. (Anthropic 2022) + Dalvi et al. (EMNLP 2020)** for the distributed/redundant-coding lens you need to explain low ablation impact.
 - For each of the seven areas below, 3–5 high-citation, peer-reviewed papers are identified that directly support specific claims; they are mapped section-by-section to the paper's stages (probing → patching → ablation → Jaccard → leave-one-family-out).
@@ -184,22 +185,18 @@ The seven request areas decompose into one tight cluster of "must-cite" papers (
 ## Recommendations
 
 1. **Primary differentiators to highlight in the abstract.** Foreground that (a) you use *frozen, unmodified* BERT — no detection head, unlike Borile & Abrate (1.1) and Kuznetsov et al. (1.3); (b) you provide *causal-sufficiency* evidence via donor patching with a quantified 10–16× flip rate above random baseline (Vig 2.1, Geiger 2.2, Finlayson 2.3 supply the methodological lineage); and (c) you evaluate on the most challenging public benchmark (Dugan 1.2) across six generators.
-
 2. **Anchor methods section in a tight triad.**
-   - L1 probing → Gurnee 3.1 (TMLR 2024) + Durrani 3.2 (EMNLP 2020) + Antverg 3.3 (ICLR 2022).
-   - Activation patching → Vig 2.1 (NeurIPS 2020) + Geiger 2.2 (NeurIPS 2021) + Wang 2.5 (ICLR 2023) + Conmy 2.6 (NeurIPS 2023).
-   - Distributed/redundancy framing for the ablation result → Elhage 6.1 (Anthropic 2022) + Dalvi 6.2 (EMNLP 2020, "85% of neurons … are redundant and … at least 92% of them can be removed") + Belrose 6.4 (NeurIPS 2023).
-
+  - L1 probing → Gurnee 3.1 (TMLR 2024) + Durrani 3.2 (EMNLP 2020) + Antverg 3.3 (ICLR 2022).
+  - Activation patching → Vig 2.1 (NeurIPS 2020) + Geiger 2.2 (NeurIPS 2021) + Wang 2.5 (ICLR 2023) + Conmy 2.6 (NeurIPS 2023).
+  - Distributed/redundancy framing for the ablation result → Elhage 6.1 (Anthropic 2022) + Dalvi 6.2 (EMNLP 2020, "85% of neurons … are redundant and … at least 92% of them can be removed") + Belrose 6.4 (NeurIPS 2023).
 3. **For the cross-generator section, lead with universality citations.** Gurnee et al. 5.3 ("Universal Neurons in GPT2") provides the explicit 1–5% baseline measured via "pairwise correlations of neuron activations over 100 million tokens"; Olsson 5.1 and Chughtai 5.2 frame the universality hypothesis; MAGE (5.4) frames leave-one-out as accepted practice.
-
 4. **For the RLHF/instruction-tuning angle, prefer the recent peer-reviewed quartet.** Lin et al. 4.1 (ICLR 2024), Jain et al. 4.2 (NeurIPS 2024), Prakash 4.4 (ICLR 2024), and Lee 4.5 (ICML 2024) form a coherent story that fine-tuning leaves base representations largely intact — directly supporting why frozen BERT can detect their outputs.
-
 5. **Calibrate numerical claims with peer-reviewed precision.**
-   - When you report your 45–62 neurons per generator, cite Gurnee 3.1 (TMLR 2024) since it "probe[s] for over 100 unique features comprising 10 different categories in 7 different models spanning 70 million to 6.9 billion parameters," giving a precedent for similarly small sparse sets.
-   - When you report Jaccard overlap across generators, contextualize against the 1–5% universal-neuron baseline (Gurnee 5.3).
-   - When discussing why mean ablation has small effect, cite the 85%/92% redundancy figures from Dalvi 6.2 verbatim.
-   - When discussing why even removing the identified subspace doesn't fully suppress detection, cite both LEACE (Belrose 6.4) and INLP (Ravfogel 6.3).
-   - When comparing your subspace-removal-adjacent results to detector-side work, cite Kuznetsov 1.3's specific OOD gains of "up to 9% and 14% in particular setups for RoBERTa and BERT embeddings respectively."
+  - When you report your 45–62 neurons per generator, cite Gurnee 3.1 (TMLR 2024) since it "probe[s] for over 100 unique features comprising 10 different categories in 7 different models spanning 70 million to 6.9 billion parameters," giving a precedent for similarly small sparse sets.
+  - When you report Jaccard overlap across generators, contextualize against the 1–5% universal-neuron baseline (Gurnee 5.3).
+  - When discussing why mean ablation has small effect, cite the 85%/92% redundancy figures from Dalvi 6.2 verbatim.
+  - When discussing why even removing the identified subspace doesn't fully suppress detection, cite both LEACE (Belrose 6.4) and INLP (Ravfogel 6.3).
+  - When comparing your subspace-removal-adjacent results to detector-side work, cite Kuznetsov 1.3's specific OOD gains of "up to 9% and 14% in particular setups for RoBERTa and BERT embeddings respectively."
 
 ---
 
@@ -211,3 +208,4 @@ The seven request areas decompose into one tight cluster of "must-cite" papers (
 - **Some methodological citations (Wang 2.5, Conmy 2.6) are autoregressive-LM papers**; their methodology transfers, but reviewers may ask for encoder-specific precedents — Geiger 2.2 and Tucker 2.4 cover this gap.
 - **The "Enkhbayar (2025)" paper on atomic literary styling (arXiv 2510.17909)** that surfaced in initial searching is an interesting parallel finding (ablating discriminative neurons sometimes *improves* generation quality, suggesting the encoded-vs-used distinction) but is a single-author preprint without venue; recommend citing only if directly relevant to your ablation analysis.
 - **The Tulchinskii et al. NeurIPS 2023 PHD result (1.5)** reports intrinsic-dimension values of ~9 (human, alphabet-based) vs. ~7.5 (AI, alphabet-based) and ~7 vs. ~5.5 (Chinese); these are useful concrete numbers to cite alongside your representation-based detection claims, but note they were measured on contextual embeddings from a frozen encoder, which is a relevant methodological parallel to your setup.
+
