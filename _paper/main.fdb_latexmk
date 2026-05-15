@@ -1,13 +1,13 @@
 # Fdb version 4
-["bibtex main"] 1778872783.30202 "main.aux" "main.bbl" "main" 1778872786.33029 0
+["bibtex main"] 1778873642.65273 "main.aux" "main.bbl" "main" 1778873645.66886 0
   "./acl_natbib.bst" 1778741477 47126 3d1af46d62cc9172ef6e42b56c1cd613 ""
   "./refs.bib" 1778860135 18185 b10ae7fcea130000b31ac4d32e439c1b ""
-  "main.aux" 1778872785 50385 88b054e8d16e92bd1fa866df4ccd115e "pdflatex"
+  "main.aux" 1778873644 49804 aa242181d57bbd3acfab332d4d8290a6 "pdflatex"
   (generated)
   "main.bbl"
   "main.blg"
   (rewritten before read)
-["pdflatex"] 1778872783.59701 "main.tex" "main.pdf" "main" 1778872786.33365 0
+["pdflatex"] 1778873643.07727 "main.tex" "main.pdf" "main" 1778873645.66956 0
   "C:/Users/pawel/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map" 1778781122 82507 a9eef8696c92627b87e9975edea03b2a ""
   "C:/Users/pawel/AppData/Local/MiKTeX/miktex/data/le/pdftex/pdflatex.fmt" 1778746657 13350272 ab16f8920db59daba754a83914dcd4ab ""
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/base/8r.enc" 1458473887 4993 80dc9bab7f31fb78a000ccfed0e27cab ""
@@ -17,7 +17,6 @@
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/fonts/tfm/adobe/helvetic/phvb8r.tfm" 1136768654 4484 b828043cbd581d289d955903c1339981 ""
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/fonts/tfm/adobe/times/ptmb8r.tfm" 1136768654 4524 6bce29db5bc272ba5f332261583fee9c ""
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/fonts/tfm/adobe/times/ptmb8t.tfm" 1136768654 6880 f19b8995b61c334d78fc734065f6b4d4 ""
-  "C:/Users/pawel/AppData/Local/Programs/MiKTeX/fonts/tfm/adobe/times/ptmr8c.tfm" 1136768654 1352 fa28a7e6d323c65ce7d13d5342ff6be2 ""
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/fonts/tfm/adobe/times/ptmr8r.tfm" 1136768654 4408 25b74d011a4c66b7f212c0cc3c90061b ""
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/fonts/tfm/adobe/times/ptmr8t.tfm" 1136768654 6672 e3ab9e37e925f3045c9005e6d1473d56 ""
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/fonts/tfm/adobe/times/ptmri8r.tfm" 1136768654 4640 532ca3305aad10cc01d769f3f91f1029 ""
@@ -87,7 +86,6 @@
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/fonts/vf/adobe/courier/pcrr8t.vf" 1136765053 2184 8475af1b9cfa983db5f46f5ed4b8f9f7 ""
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/fonts/vf/adobe/helvetic/phvb.vf" 1136768654 1516 a73c15525916e6e96ff30639f5ddb11b ""
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/fonts/vf/adobe/times/ptmb8t.vf" 1136768654 2340 df9c920cc5688ebbf16a93f45ce7bdd3 ""
-  "C:/Users/pawel/AppData/Local/Programs/MiKTeX/fonts/vf/adobe/times/ptmr8c.vf" 1136768654 3556 8a9a6dcbcd146ef985683f677f4758a6 ""
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/fonts/vf/adobe/times/ptmr8t.vf" 1136768654 2348 91706c542228501c410c266421fbe30c ""
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/fonts/vf/adobe/times/ptmri8t.vf" 1136768654 2328 6cd7df782b09b29cfc4d93e55b6b9a59 ""
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/tex/context/base/mkii/supp-pdf.mkii" 1580390158 71627 94eb9990bed73c364d7f53f960cc8c5b ""
@@ -224,7 +222,6 @@
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/tex/latex/psnfss/t1pcr.fd" 1585253778 835 d5895e9edc628f2be019beb2c0ec66df ""
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/tex/latex/psnfss/t1ptm.fd" 1585253778 817 61d7da1e9f9e74989b196d147e623736 ""
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/tex/latex/psnfss/times.sty" 1585926771 888 8e0e5c8cca7b18e0400f97f5a2b90a99 ""
-  "C:/Users/pawel/AppData/Local/Programs/MiKTeX/tex/latex/psnfss/ts1ptm.fd" 1585253778 653 96f56dc5d1ef1fe1121f1cfeec70ee0c ""
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/tex/latex/refcount/refcount.sty" 1576433952 9878 9e94e8fa600d95f9c7731bb21dfb67a4 ""
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/tex/latex/rerunfilecheck/rerunfilecheck.sty" 1751104012 9684 a33a14b82ce60d6e77cb9be689d79ee6 ""
   "C:/Users/pawel/AppData/Local/Programs/MiKTeX/tex/latex/tools/xspace.sty" 1761901070 4545 d7bb86d489a8ad5263e4c34304c03aee ""
@@ -234,10 +231,10 @@
   "figures/fig_flip_rate.pdf" 1778872770 19588 b0746fef3e8d5bb95e86a3691fd9df26 ""
   "figures/fig_jaccard.pdf" 1778872543 16947 7806a2b601d553319a5ef370519f7691 ""
   "figures/fig_layer_dist.pdf" 1778872543 18649 5b66f0678584a9a6a086ec415359b23e ""
-  "main.aux" 1778872785 50385 88b054e8d16e92bd1fa866df4ccd115e "pdflatex"
-  "main.bbl" 1778872783 18620 f62c6759edb2741777ae632d27f606cf "bibtex main"
-  "main.out" 1778872785 6341 50d995c44494478cce2cbbfb3a71d11e "pdflatex"
-  "main.tex" 1778872770 80924 8c46b078553f4ebee249ae1222c2f4f2 ""
+  "main.aux" 1778873644 49804 aa242181d57bbd3acfab332d4d8290a6 "pdflatex"
+  "main.bbl" 1778873642 18620 f62c6759edb2741777ae632d27f606cf "bibtex main"
+  "main.out" 1778873644 6341 50d995c44494478cce2cbbfb3a71d11e "pdflatex"
+  "main.tex" 1778873544 79628 603b5fb25ff402c422e1d3c596925c21 ""
   (generated)
   "main.aux"
   "main.log"
