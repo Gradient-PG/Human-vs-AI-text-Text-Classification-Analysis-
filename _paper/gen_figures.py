@@ -80,10 +80,6 @@ for g in GENERATORS_PATCH:
 
 k_arr = np.array(FIXED_K)
 
-# Shared random-k band: envelope across all generators
-rnd_lo = np.min([rnd_means[g] for g in GENERATORS_PATCH], axis=0)
-rnd_hi = np.max([rnd_means[g] for g in GENERATORS_PATCH], axis=0)
-
 # ── log-linearity check ──
 print("\n  Log-linearity check R2(log10(k), flip_rate):")
 log_k = np.log10(k_arr)
@@ -102,15 +98,23 @@ linestyles = ['-', '--', '-.', ':', (0,(3,1,1,1)), (0,(5,1))]
 markers    = ['o', 's', 'D', '^', 'v', 'P']
 
 fig, ax = plt.subplots(figsize=(3.4, 2.6))
-ax.fill_between(k_arr, rnd_lo, rnd_hi, color='#cccccc', alpha=0.7,
-                label='Random-k (envelope)')
-
 for i, g in enumerate(GENERATORS_PATCH):
     ax.plot(k_arr, sel_means[g],
             marker=markers[i], markersize=4,
             linestyle=linestyles[i % len(linestyles)],
             color=gen_color(g),
             label=PRETTY[g], linewidth=1.4)
+
+# Per-line selected/random ratio at the rightmost k (k=50)
+print("\n  selected/random ratio at k=50:")
+for i, g in enumerate(GENERATORS_PATCH):
+    ratio = sel_means[g][-1] / max(rnd_means[g][-1], 1e-6)
+    ax.annotate(f'{ratio:.0f}x',
+                xy=(k_arr[-1], sel_means[g][-1]),
+                xytext=(6, 0), textcoords='offset points',
+                fontsize=7, color=gen_color(g),
+                va='center', ha='left')
+    print(f"  {PRETTY[g]:8s}  {ratio:.1f}x")
 
 ax.set_xscale('log')
 ax.set_xticks(FIXED_K)
@@ -119,7 +123,7 @@ ax.set_xlabel('Number of patched neurons k')
 ax.set_ylabel('Flip rate (%)')
 ax.legend(loc='upper left', frameon=False, fontsize=7.5)
 ax.spines[['top', 'right']].set_visible(False)
-ax.set_xlim(0.8, 65)
+ax.set_xlim(0.8, 90)
 
 plt.tight_layout(pad=0.4)
 fig.savefig(OUT / 'fig_flip_rate.pdf', bbox_inches='tight')
@@ -171,7 +175,7 @@ c_early = '#c6dbef'
 c_mid   = '#6baed6'
 c_late  = '#08519c'
 
-fig, ax = plt.subplots(figsize=(3.5, 3.0))
+fig, ax = plt.subplots(figsize=(3.5, 3.3))
 ax.barh(y_pos, row_early, color=c_early, label='Layers 1–10', edgecolor='white', linewidth=0.3)
 ax.barh(y_pos, row_mid,  left=row_early,              color=c_mid, label='Layer 11', edgecolor='white', linewidth=0.3)
 ax.barh(y_pos, row_late, left=row_early + row_mid,    color=c_late, label='Layer 12', edgecolor='white', linewidth=0.3)
@@ -196,10 +200,11 @@ ax.set_xlim(0, 100)
 ax.spines[['top', 'right']].set_visible(False)
 handles, labels = ax.get_legend_handles_labels()
 fig.legend(handles, labels, loc='lower center',
-           bbox_to_anchor=(0.5, 0.01), ncol=3, frameon=False, fontsize=7.5)
+           bbox_to_anchor=(0.5, 0.02), ncol=3, frameon=False, fontsize=7.5,
+           columnspacing=1.2)
 
-plt.subplots_adjust(left=0.20, right=0.97, top=0.97, bottom=0.13)
-fig.savefig(OUT / 'fig_layer_dist.pdf', bbox_inches='tight')
+plt.subplots_adjust(left=0.20, right=0.97, top=0.97, bottom=0.26)
+fig.savefig(OUT / 'fig_layer_dist.pdf')
 plt.close()
 print(f"  Saved -> {OUT / 'fig_layer_dist.pdf'}")
 

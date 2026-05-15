@@ -268,7 +268,7 @@ Transplanting human-donor activations into AI-target samples tests whether the s
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_flip_rate.pdf}
-\caption{Flip rate (\%) vs.\ number of patched neurons $k$ on a log-scale x-axis, averaged over 15 cells (5 folds $\times$ 3 seeds). Grey band: min--max envelope of random-$k$ baseline flip rates. Instruction-tuned generators (blue) and base generators (red) both sit well above the random baseline at every $k$.}
+\caption{Forward flip rate (\%) vs.\ number of patched neurons $k$ on a log-scale x-axis, averaged over 15 cells (5 folds $\times$ 3 seeds). Instruction-tuned generators are shown in blue, base generators in red. Numbers to the right of each line are selected/random ratios at $k=50$ (8--14$\times$); headline ratios at $k = \text{full}$ (the per-fold L1-selected set, 53--92 neurons) are 10--16$\times$ across generators (Table~\ref{tab:patching-sweep}).}
 \label{fig:flip-rate}
 \end{figure}
 
