@@ -94,6 +94,7 @@ poetry.lock
 
 # uv
 .venv/
+.venv-aclpubcheck/
 
 # PEP 582
 __pypackages__/
@@ -193,3 +194,13 @@ $RECYCLE.BIN/
 
 # Secrets
 hidden.py
+# LaTeX build artifacts (paper directory)
+_paper/main.aux
+_paper/main.bbl
+_paper/main.blg
+_paper/main.fdb_latexmk
+_paper/main.fls
+_paper/main.log
+_paper/main.out
+_paper/main.synctex.gz
+_paper/refs_rebiber*.bib

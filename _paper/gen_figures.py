@@ -171,7 +171,7 @@ c_early = '#c6dbef'
 c_mid   = '#6baed6'
 c_late  = '#08519c'
 
-fig, ax = plt.subplots(figsize=(3.5, 2.4))
+fig, ax = plt.subplots(figsize=(3.5, 2.7))
 ax.barh(y_pos, row_early, color=c_early, label='Layers 1–10', edgecolor='white', linewidth=0.3)
 ax.barh(y_pos, row_mid,  left=row_early,              color=c_mid, label='Layer 11', edgecolor='white', linewidth=0.3)
 ax.barh(y_pos, row_late, left=row_early + row_mid,    color=c_late, label='Layer 12', edgecolor='white', linewidth=0.3)
@@ -193,7 +193,7 @@ ax.set_yticks(y_pos)
 ax.set_yticklabels(pretty_labels, fontsize=8)
 ax.set_xlabel('% of stable neurons')
 ax.set_xlim(0, 100)
-ax.legend(loc='lower right', frameon=False, fontsize=7.5)
+ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.18), ncol=3, frameon=False, fontsize=7.5)
 ax.spines[['top', 'right']].set_visible(False)
 
 plt.tight_layout(pad=0.4)
